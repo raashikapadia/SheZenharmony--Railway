@@ -1,0 +1,29 @@
+# Laravel
+backend/.env
+backend/vendor/
+backend/node_modules/
+backend/storage/*.key
+backend/storage/logs/*
+backend/bootstrap/cache/*.php
+
+# Flutter
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.packages
+frontend/build/
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/ios/Pods/
+frontend/ios/.symlinks/
+frontend/ios/Flutter/ephemeral/
+
+# Firebase / secrets
+**/serviceAccountKey.json
+**/*firebase-adminsdk*.json
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+*.iml

@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Development only: allows the Android emulator to reach the local
+         Laravel HTTP server. Production should use HTTPS. -->
+    <application android:usesCleartextTraffic="true" />
+</manifest>

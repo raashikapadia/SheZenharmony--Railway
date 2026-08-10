@@ -1,0 +1,25 @@
+{
+  "folders": [
+    { "name": "SheZen Root", "path": "." },
+    { "name": "Laravel Backend", "path": "backend" },
+    { "name": "Flutter Frontend", "path": "frontend" }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.dart_tool": true,
+      "**/vendor": true,
+      "**/node_modules": true
+    },
+    "editor.formatOnSave": true
+  },
+  "extensions": {
+    "recommendations": [
+      "Dart-Code.dart-code",
+      "Dart-Code.flutter",
+      "bmewburn.vscode-intelephense-client",
+      "onecentlin.laravel-blade",
+      "amiralizadeh9480.laravel-extra-intellisense",
+      "eamodio.gitlens"
+    ]
+  }
+}
