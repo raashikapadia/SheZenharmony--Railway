@@ -1,10 +1,12 @@
 # Laravel
 backend/.env
+backend/.env.*
+!backend/.env.example
 backend/vendor/
 backend/node_modules/
 backend/storage/*.key
-backend/storage/logs/*
-backend/bootstrap/cache/*.php
+backend/storage/logs/
+backend/bootstrap/cache/
 
 # Flutter
 frontend/.dart_tool/
@@ -17,12 +19,22 @@ frontend/android/local.properties
 frontend/ios/Pods/
 frontend/ios/.symlinks/
 frontend/ios/Flutter/ephemeral/
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
 
 # Firebase / secrets
 **/serviceAccountKey.json
 **/*firebase-adminsdk*.json
+**/*firebase*.json
+**/*private*.key
+**/*.pem
+**/*.key
+**/.env
+**/.env.*
 
 # Editors / OS
+.vscode/
 .DS_Store
 Thumbs.db
 .idea/

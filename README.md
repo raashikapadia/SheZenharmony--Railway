@@ -1,113 +1,68 @@
-# SheZen Harmony — Development Starter
+# SheZen Harmony
 
-This starter is designed for the SheZen capstone project.
+## Technology Stack
+- Flutter/Dart
+- Laravel 13 / PHP 8.4
+- MySQL 8.4
+- Laravel Sanctum
+- Git/GitHub
+- Android Studio
+- VS Code
 
-## Target stack
+## Prerequisites
+Developers need:
+- Git
+- VS Code
+- Flutter
+- Android Studio + Android SDK
+- Laravel Herd or PHP 8.4 + Composer
+- MySQL 8.4
 
-- Flutter / Dart — student mobile app
-- Laravel 13 — REST API + web-admin backend
-- Laravel Sanctum — mobile/API authentication (installed during bootstrap)
-- MySQL — application database
-- Firebase Analytics / Google Analytics — added after the local stack is working
-- Git + GitHub — team version control
-- VS Code — main editor
-- Android Studio / Pixel emulator — Android testing
-
-## Important
-
-This ZIP does **not** contain passwords, API keys, Firebase configuration, Composer `vendor/`,
-Flutter build output, or generated Laravel secrets.
-
-The first setup script creates fresh Laravel 13 and Flutter projects on your computer and
-then copies the SheZen starter files into them.
-
----
-
-# Recommended folder
-
-Extract this ZIP somewhere simple, for example:
-
-`C:\Development\SheZenHarmony_Starter`
-
-Avoid OneDrive-synced folders and very long paths while you are getting the project working.
-
----
-
-# Step 1 — Open the workspace
-
-In VS Code:
-
-1. File → Open Workspace from File
-2. Open `SheZenHarmony.code-workspace`
-
-Or open the extracted folder directly.
-
----
-
-# Step 2 — Check your computer
-
-Open a **PowerShell** terminal in VS Code and run:
-
-```powershell
-.\scripts\check-environment.ps1
-```
-
-You need these commands to work:
+Verification commands:
 
 ```powershell
 php -v
 composer -V
 flutter --version
+flutter doctor
 git --version
+mysql --version
 ```
 
-For Android development you also need Android Studio / Android SDK configured.
-
-MySQL is required before you run the database migrations.
-
----
-
-# Step 3 — Create the actual Laravel + Flutter projects
-
-Run:
+## Clone the Repository
 
 ```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\scripts\bootstrap.ps1
+git clone https://github.com/gwennatly01/SheZenHarmony.git
+cd SheZenHarmony
 ```
 
-This script will:
+## Backend Setup
 
-1. Create `backend/` as a fresh Laravel 13 application.
-2. Install Laravel API support / Sanctum.
-3. Copy the SheZen API starter into Laravel.
-4. Create `frontend/` as a Flutter Android + iOS application.
-5. Add the Flutter `http` package.
-6. Copy the SheZen starter UI/API service into Flutter.
-7. Configure Android debug builds to allow the local HTTP development server.
-
-After this completes, you will have:
-
-```text
-SheZenHarmony_Starter/
-├── backend/
-├── frontend/
-├── starter/
-├── scripts/
-└── SheZenHarmony.code-workspace
+```powershell
+cd backend
+composer install
+Copy-Item .env.example .env
+php artisan key:generate
 ```
 
----
+Configure your own local MySQL password in `backend/.env`.
 
-# Step 4 — Create the MySQL database
+Example local values:
 
-Open MySQL from a terminal:
+```dotenv
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=shezen_harmony
+DB_USERNAME=root
+DB_PASSWORD=YOUR_LOCAL_PASSWORD
+```
+
+Create the database:
 
 ```powershell
 mysql -u root -p
 ```
-
-Then create the database:
 
 ```sql
 CREATE DATABASE shezen_harmony
@@ -115,195 +70,108 @@ CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 ```
 
-Check it:
+Then run:
 
-```sql
-SHOW DATABASES;
+```powershell
+php artisan config:clear
+php artisan migrate --seed
 ```
 
-Exit:
+## Run Laravel
 
-```sql
-exit;
+```powershell
+php artisan serve --host=0.0.0.0 --port=8000
 ```
 
-If `mysql` is not recognized, MySQL may be installed but its `bin` folder is not in PATH.
-You can also use MySQL Workbench to create the database.
+Health endpoint:
 
----
+http://127.0.0.1:8000/api/health
 
-# Step 5 — Connect Laravel to MySQL
+Questions endpoint:
+
+http://127.0.0.1:8000/api/v1/questions
+
+## Flutter Setup
+
+```powershell
+cd frontend
+flutter pub get
+```
+
+Launch emulator:
+
+```powershell
+flutter emulators
+flutter emulators --launch Pixel_8
+flutter devices
+```
 
 Run:
 
 ```powershell
-.\scripts\configure-database.ps1
+flutter run
 ```
 
-The script will ask for:
+The Android emulator communicates with the Windows host through:
 
-- DB host (normally `127.0.0.1`)
-- DB port (normally `3306`)
-- DB name (`shezen_harmony`)
-- DB username (`root` or preferably a dedicated development user)
-- DB password
+http://10.0.2.2:8000/api
 
-The password is stored only in your local `backend/.env` file, which is ignored by Git.
-
-Then run:
+If you use a different backend port, run Flutter with the device ID shown by `flutter devices`:
 
 ```powershell
-cd backend
-php artisan migrate
-php artisan db:seed
-cd ..
+flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8001/api
 ```
 
----
+Replace `emulator-5554` with the actual device ID from your machine.
 
-# Step 6 — Run Laravel
+## Normal Development Workflow
 
-From the project root:
-
-```powershell
-.\scripts\run-backend.ps1
-```
-
-Or manually:
+Terminal 1:
 
 ```powershell
 cd backend
 php artisan serve --host=0.0.0.0 --port=8000
 ```
 
-Test in your Windows browser:
-
-`http://127.0.0.1:8000/api/health`
-
-Expected JSON:
-
-```json
-{
-  "status": "success",
-  "service": "SheZen API",
-  "message": "Laravel backend is connected."
-}
-```
-
----
-
-# Step 7 — Run Flutter
-
-Keep Laravel running.
-
-Open another VS Code PowerShell terminal:
+Terminal 2:
 
 ```powershell
 cd frontend
-flutter emulators
-flutter emulators --launch Pixel_8
-flutter devices
 flutter run
 ```
 
-The starter Flutter home page contains **Test API connection**.
+Flutter shortcuts:
+- `r` = hot reload
+- `R` = hot restart
+- `q` = quit
 
-For an Android emulator the default API address is:
+## Project Structure
 
-`http://10.0.2.2:8000/api`
+- `frontend/lib/` = Flutter application development
+- `backend/app/` = Laravel models/controllers
+- `backend/routes/api.php` = REST API routes
+- `backend/database/migrations/` = schema changes
+- `backend/database/seeders/` = development seed data
+- `docs/` = technical documentation
 
-`10.0.2.2` is the emulator alias for the Windows host machine.
+## Important Security Notes
 
-If you use a **physical Android phone**, do not use `10.0.2.2`.
-Run Laravel on `0.0.0.0`, find your PC's LAN IP with `ipconfig`, and run Flutter with:
+- Never commit `backend/.env`
+- Never commit passwords
+- Never commit Firebase/private service keys
+- Each developer uses their own local database credentials
+- `.env.example` contains placeholders only
 
-```powershell
-flutter run --dart-define=API_BASE_URL=http://YOUR_PC_IP:8000/api
-```
+## Current Project Status
 
-Your phone and PC must be on the same network.
+The base stack is working:
 
----
+Flutter → Laravel API → MySQL
 
-# Current starter features
+Current starter capabilities:
+- Health endpoint
+- Development questionnaire data
+- Intervention database foundation
+- Flutter API connectivity test
 
-The starter intentionally contains only safe foundation work:
-
-## Flutter
-- SheZen home screen
-- API connectivity test
-- Placeholder navigation cards for:
-  - Stress Check
-  - Activities
-  - Journal
-- Central API configuration
-- HTTP API service
-
-## Laravel
-- `/api/health`
-- database models/migrations for:
-  - stress questions
-  - question options
-  - stress assessments
-  - stress responses
-  - interventions
-  - intervention usage
-- starter seed data clearly marked as development/demo content
-
-## Not yet implemented
-These should be developed after client requirements are confirmed:
-
-- final stress questionnaire
-- final scoring algorithm and low/medium/high thresholds
-- suicide-ideation/referral workflow
-- production authentication rules
-- anonymous-vs-identified data policy implementation
-- admin management screens
-- rule-based support flow
-- notifications
-- Firebase Analytics
-- production hosting
-- iOS release configuration
-
-Do **not** treat the seeded demo questions as the client's approved questionnaire.
-
----
-
-# Suggested development order
-
-1. Environment working
-2. Laravel → MySQL
-3. Flutter → Laravel
-4. Final database review
-5. User/admin authentication
-6. Admin questionnaire CRUD
-7. Approved assessment/scoring logic
-8. Mobile assessment workflow
-9. Intervention management + recommendations
-10. Anonymous session support
-11. Progress/history
-12. Rule-based support flow
-13. Notifications
-14. Analytics
-15. QA/security/privacy testing
-16. Deployment/iOS
-
----
-
-# Git
-
-After the project works:
-
-```powershell
-git init
-git add .
-git commit -m "Initial SheZen development foundation"
-```
-
-Before pushing, verify that `backend/.env` is **not** staged:
-
-```powershell
-git status
-```
-
-Never commit `.env`, Firebase private keys, passwords, or production credentials.
+The demo questionnaire content is not the client-approved final stress assessment.
