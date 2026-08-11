@@ -38,7 +38,7 @@ if ($php -and $composer -and $flutter -and $git) {
     Write-Host "Core development commands are available." -ForegroundColor Green
 } else {
     Write-Host "One or more required development commands are missing." -ForegroundColor Yellow
-    Write-Host "Read README.md before running bootstrap.ps1."
+    Write-Host "Follow the setup instructions in README.md."
 }
 
 if (-not $mysql) {

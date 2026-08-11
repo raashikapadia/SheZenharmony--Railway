@@ -1,16 +1,23 @@
 {
-  "folders": [
-    { "name": "SheZen Root", "path": "." },
-    { "name": "Laravel Backend", "path": "backend" },
-    { "name": "Flutter Frontend", "path": "frontend" }
-  ],
+  "folders": [{ "name": "SheZen Harmony", "path": "." }],
   "settings": {
     "files.exclude": {
       "**/.dart_tool": true,
+      "**/.gradle": true,
       "**/vendor": true,
-      "**/node_modules": true
+      "**/node_modules": true,
+      "**/build": true
     },
-    "editor.formatOnSave": true
+    "search.exclude": {
+      "**/.dart_tool": true,
+      "**/.gradle": true,
+      "**/vendor": true,
+      "**/node_modules": true,
+      "**/build": true
+    },
+    "editor.formatOnSave": true,
+    "intelephense.environment.documentRoot": "backend/public",
+    "intelephense.environment.includePaths": ["backend"]
   },
   "extensions": {
     "recommendations": [
@@ -20,6 +27,73 @@
       "onecentlin.laravel-blade",
       "amiralizadeh9480.laravel-extra-intellisense",
       "eamodio.gitlens"
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "SheZen: Check environment",
+        "type": "process",
+        "command": "powershell.exe",
+        "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/check-environment.ps1"],
+        "problemMatcher": []
+      },
+      {
+        "label": "SheZen: Run Laravel API",
+        "type": "process",
+        "command": "powershell.exe",
+        "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/run-backend.ps1"],
+        "isBackground": true,
+        "problemMatcher": []
+      },
+      {
+        "label": "SheZen: Run Flutter",
+        "type": "process",
+        "command": "powershell.exe",
+        "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/run-flutter.ps1"],
+        "problemMatcher": []
+      },
+      {
+        "label": "SheZen: Test backend",
+        "type": "process",
+        "command": "php",
+        "args": ["artisan", "test"],
+        "options": { "cwd": "${workspaceFolder}/backend" },
+        "group": "test",
+        "problemMatcher": []
+      },
+      {
+        "label": "SheZen: Test frontend",
+        "type": "process",
+        "command": "flutter",
+        "args": ["test"],
+        "options": { "cwd": "${workspaceFolder}/frontend" },
+        "group": "test",
+        "problemMatcher": []
+      },
+      {
+        "label": "SheZen: Get dependencies",
+        "dependsOrder": "parallel",
+        "dependsOn": ["SheZen: Composer install", "SheZen: Flutter pub get"],
+        "problemMatcher": []
+      },
+      {
+        "label": "SheZen: Composer install",
+        "type": "process",
+        "command": "composer",
+        "args": ["install"],
+        "options": { "cwd": "${workspaceFolder}/backend" },
+        "problemMatcher": []
+      },
+      {
+        "label": "SheZen: Flutter pub get",
+        "type": "process",
+        "command": "flutter",
+        "args": ["pub", "get"],
+        "options": { "cwd": "${workspaceFolder}/frontend" },
+        "problemMatcher": []
+      }
     ]
   }
 }

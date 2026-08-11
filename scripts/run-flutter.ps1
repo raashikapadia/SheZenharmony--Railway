@@ -3,7 +3,7 @@ $Root = Split-Path -Parent $PSScriptRoot
 $Frontend = Join-Path $Root "frontend"
 
 if (-not (Test-Path (Join-Path $Frontend "pubspec.yaml"))) {
-    throw "Frontend not found. Run .\scripts\bootstrap.ps1 first."
+    throw "Frontend not found. Follow the Flutter Setup steps in README.md first."
 }
 
 Push-Location $Frontend
