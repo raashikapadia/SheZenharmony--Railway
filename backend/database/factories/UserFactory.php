@@ -17,6 +17,13 @@ class UserFactory extends Factory
      */
     protected static ?string $password;
 
+    public function configure(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $user->assignRole($user->role);
+        });
+    }
+
     /**
      * Define the model's default state.
      *
@@ -29,6 +36,9 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'role' => User::ROLE_STUDENT,
+            'pseudonymous_uuid' => (string) Str::uuid(),
+            'account_status' => 'active',
             'remember_token' => Str::random(10),
         ];
     }

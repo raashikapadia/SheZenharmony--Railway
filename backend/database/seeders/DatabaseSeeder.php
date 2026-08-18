@@ -11,6 +11,8 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(RoleSeeder::class);
+
         // DEVELOPMENT ONLY.
         // Replace these with the client-approved framework/questions/scoring before real data collection.
         $question = StressQuestion::query()->updateOrCreate(

@@ -77,6 +77,12 @@ php artisan config:clear
 php artisan migrate --seed
 ```
 
+Create the first administrator account without storing its password in source:
+
+```powershell
+php artisan shezen:create-admin
+```
+
 ## Run Laravel
 
 ```powershell
@@ -90,6 +96,10 @@ http://127.0.0.1:8000/api/health
 Questions endpoint:
 
 http://127.0.0.1:8000/api/v1/questions
+
+Admin login:
+
+http://127.0.0.1:8000/admin/login
 
 ## Flutter Setup
 

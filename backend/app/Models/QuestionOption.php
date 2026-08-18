@@ -13,6 +13,7 @@ class QuestionOption extends Model
         'value',
         'score',
         'position',
+        'is_active',
     ];
 
     protected function casts(): array
@@ -20,6 +21,7 @@ class QuestionOption extends Model
         return [
             'score' => 'integer',
             'position' => 'integer',
+            'is_active' => 'boolean',
         ];
     }
 
