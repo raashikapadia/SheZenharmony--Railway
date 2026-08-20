@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class QuestionOption extends Model
 {
@@ -13,6 +14,7 @@ class QuestionOption extends Model
         'value',
         'score',
         'position',
+        'is_active',
     ];
 
     protected function casts(): array
@@ -20,11 +22,17 @@ class QuestionOption extends Model
         return [
             'score' => 'integer',
             'position' => 'integer',
+            'is_active' => 'boolean',
         ];
     }
 
     public function question(): BelongsTo
     {
         return $this->belongsTo(StressQuestion::class, 'stress_question_id');
+    }
+
+    public function responses(): HasMany
+    {
+        return $this->hasMany(StressResponse::class);
     }
 }

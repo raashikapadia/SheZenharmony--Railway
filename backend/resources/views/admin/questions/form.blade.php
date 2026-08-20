@@ -1,0 +1,14 @@
+@extends('layouts.admin')
+@section('title', $question->exists ? 'Edit question' : 'Add question')
+@section('body')
+<main class="content"><a href="{{ route('admin.questions.index') }}">← Questions</a><h1>{{ $question->exists ? 'Edit question' : 'Add question' }}</h1>
+@if($errors->any())<ul class="errors">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>@endif
+<form method="POST" action="{{ $question->exists ? route('admin.questions.update', $question) : route('admin.questions.store') }}">@csrf @if($question->exists) @method('PUT') @endif
+<label for="question_text">Question text</label><textarea id="question_text" name="question_text" required>{{ old('question_text', $question->question_text) }}</textarea>
+<div class="field-row"><div><label for="dimension">Dimension</label><input id="dimension" name="dimension" type="text" value="{{ old('dimension', $question->dimension) }}"></div><div><label for="position">Position</label><input id="position" name="position" type="number" min="0" value="{{ old('position', $question->position ?? 0) }}" required></div><div><label for="question_type">Type</label><select id="question_type" name="question_type"><option value="scale">Scale</option></select></div></div>
+<label class="remember"><input name="is_active" type="checkbox" value="1" @checked(old('is_active', $question->exists ? $question->is_active : true))> Active</label><label class="remember"><input name="is_sensitive" type="checkbox" value="1" @checked(old('is_sensitive', $question->is_sensitive))> Sensitive content</label>
+<h2>Answer options</h2><p class="muted">At least two options are required. Scores must follow the approved assessment framework.</p>
+@php($options = old('options', $question->exists ? $question->options->where('is_active', true)->map(fn($option) => ['id' => $option->id, 'label' => $option->label, 'value' => $option->value, 'score' => $option->score])->values()->all() : [['label'=>'','value'=>'','score'=>''],['label'=>'','value'=>'','score'=>'']]))
+@foreach($options as $index => $option)<div class="field-row">@if(isset($option['id']))<input name="options[{{ $index }}][id]" type="hidden" value="{{ $option['id'] }}">@endif<div><label>Option {{ $index + 1 }} label</label><input name="options[{{ $index }}][label]" type="text" value="{{ $option['label'] }}" required></div><div><label>Value</label><input name="options[{{ $index }}][value]" type="text" value="{{ $option['value'] }}" required></div><div><label>Score</label><input name="options[{{ $index }}][score]" type="number" value="{{ $option['score'] }}"></div></div>@endforeach
+<div class="actions" style="margin-top:1.5rem"><button class="button" type="submit">Save question</button><a class="button button-secondary" href="{{ route('admin.questions.index') }}">Cancel</a></div></form></main>
+@endsection

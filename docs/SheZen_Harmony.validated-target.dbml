@@ -1,0 +1,416 @@
+Project SheZen_Harmony {
+  database_type: 'MySQL'
+  Note: 'Validated target. Existing Laravel table and column names are preserved. Framework operational tables are documented separately in the validation report.'
+}
+
+Table users {
+  id "bigint unsigned" [pk, increment]
+  name varchar(255) [not null]
+  email varchar(255) [not null, unique]
+  email_verified_at timestamp
+  password varchar(255) [not null]
+  role varchar(20) [not null, default: 'student', note: 'TRANSITIONAL: retain until role backfill and application cutover are verified.']
+  pseudonymous_uuid char(36) [unique]
+  account_status varchar(20) [not null, default: 'active']
+  remember_token varchar(100)
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+
+  indexes {
+    role
+    account_status
+    deleted_at
+  }
+}
+
+Table password_reset_tokens {
+  email varchar(255) [pk]
+  token varchar(255) [not null]
+  created_at timestamp
+}
+
+Table sessions {
+  id varchar(255) [pk]
+  user_id "bigint unsigned"
+  ip_address varchar(45)
+  user_agent text
+  payload longtext [not null]
+  last_activity int [not null]
+
+  indexes {
+    user_id
+    last_activity
+  }
+}
+
+Table personal_access_tokens {
+  id "bigint unsigned" [pk, increment]
+  tokenable_type varchar(255) [not null]
+  tokenable_id "bigint unsigned" [not null]
+  name text [not null]
+  token varchar(64) [not null, unique]
+  abilities text
+  last_used_at timestamp
+  expires_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (tokenable_type, tokenable_id)
+    expires_at
+  }
+}
+
+Table user_profiles {
+  id "bigint unsigned" [pk, increment]
+  user_id "bigint unsigned" [not null, unique]
+  nickname varchar(100)
+  date_of_birth date
+  gender varchar(50)
+  country varchar(100)
+  employment_status varchar(100)
+  relationship_status varchar(100)
+  has_children boolean
+  living_situation varchar(150)
+  preferred_language varchar(50)
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table roles {
+  id "bigint unsigned" [pk, increment]
+  name varchar(100) [not null]
+  slug varchar(50) [not null, unique]
+  description text
+  is_active boolean [not null, default: true]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table user_roles {
+  id "bigint unsigned" [pk, increment]
+  user_id "bigint unsigned" [not null]
+  role_id "bigint unsigned" [not null]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (user_id, role_id) [unique]
+    role_id
+  }
+}
+
+Table user_mfa_methods {
+  id "bigint unsigned" [pk, increment]
+  user_id "bigint unsigned" [not null]
+  method varchar(30) [not null]
+  secret_encrypted text
+  recovery_codes_encrypted text
+  is_active boolean [not null, default: false]
+  confirmed_at timestamp
+  last_used_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (user_id, method) [unique]
+    (user_id, is_active)
+  }
+}
+
+Table anonymous_sessions {
+  id "bigint unsigned" [pk, increment]
+  public_uuid char(36) [not null, unique]
+  started_at timestamp [not null]
+  last_seen_at timestamp
+  expires_at timestamp
+  ended_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table stress_questions {
+  id "bigint unsigned" [pk, increment]
+  code varchar(50) [unique]
+  question_text text [not null]
+  dimension varchar(255)
+  help_text text
+  question_type varchar(255) [not null, default: 'scale']
+  position "int unsigned" [not null, default: 0]
+  is_required boolean [not null, default: true]
+  is_active boolean [not null, default: true]
+  is_sensitive boolean [not null, default: false]
+  created_by_user_id "bigint unsigned"
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (is_active, position)
+    created_by_user_id
+  }
+}
+
+Table question_options {
+  id "bigint unsigned" [pk, increment]
+  stress_question_id "bigint unsigned" [not null]
+  label varchar(255) [not null]
+  value varchar(255) [not null]
+  score int
+  position "int unsigned" [not null, default: 0]
+  is_active boolean [not null, default: true]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (stress_question_id, value) [unique]
+    (stress_question_id, is_active, position)
+  }
+}
+
+Table stress_score_bands {
+  id "bigint unsigned" [pk, increment]
+  code varchar(50) [not null, unique]
+  label varchar(100) [not null]
+  min_score int [not null]
+  max_score int [not null]
+  position "int unsigned" [not null, default: 0]
+  is_active boolean [not null, default: true]
+  created_by_user_id "bigint unsigned"
+  created_at timestamp
+  updated_at timestamp
+
+  checks {
+    `min_score <= max_score` [name: 'chk_score_band_range']
+  }
+}
+
+Table stress_assessments {
+  id "bigint unsigned" [pk, increment]
+  public_uuid char(36) [unique]
+  user_id "bigint unsigned"
+  anonymous_session_id "bigint unsigned"
+  stress_score_band_id "bigint unsigned"
+  assessment_type varchar(50) [not null, default: 'stress']
+  assessment_status varchar(20) [not null, default: 'in_progress']
+  total_score int
+  stress_level varchar(255) [note: 'Historical result-label snapshot; existing name preserved.']
+  started_at timestamp
+  completed_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  Note: 'Exactly one owner is required by Laravel at creation time. Both may later be NULL after approved anonymisation.'
+}
+
+Table stress_responses {
+  id "bigint unsigned" [pk, increment]
+  stress_assessment_id "bigint unsigned" [not null]
+  stress_question_id "bigint unsigned" [not null]
+  question_option_id "bigint unsigned"
+  numeric_value decimal(8,2)
+  answer_text text
+  score int
+  question_text_snapshot text
+  option_text_snapshot varchar(500)
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (stress_assessment_id, stress_question_id) [unique]
+    stress_question_id
+    question_option_id
+  }
+}
+
+Table interventions {
+  id "bigint unsigned" [pk, increment]
+  title varchar(255) [not null]
+  slug varchar(255) [unique]
+  description text
+  content_type varchar(255) [not null, default: 'activity']
+  stress_level varchar(255)
+  external_url text
+  instructions text
+  is_active boolean [not null, default: true]
+  created_by_user_id "bigint unsigned"
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table intervention_recommendations {
+  id "bigint unsigned" [pk, increment]
+  stress_score_band_id "bigint unsigned" [not null]
+  intervention_id "bigint unsigned" [not null]
+  priority "smallint unsigned" [not null, default: 0]
+  is_active boolean [not null, default: true]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (stress_score_band_id, intervention_id) [unique]
+    (stress_score_band_id, is_active, priority)
+  }
+}
+
+Table intervention_usages {
+  id "bigint unsigned" [pk, increment]
+  stress_assessment_id "bigint unsigned"
+  intervention_id "bigint unsigned" [not null]
+  user_id "bigint unsigned"
+  anonymous_session_id "bigint unsigned"
+  usage_status varchar(20) [not null, default: 'started']
+  mood_before "tinyint unsigned"
+  mood_after "tinyint unsigned"
+  started_at timestamp
+  completed_at timestamp
+  duration_seconds "int unsigned"
+  created_at timestamp
+  updated_at timestamp
+
+  checks {
+    `(mood_before IS NULL OR mood_before BETWEEN 1 AND 5)` [name: 'chk_mood_before']
+    `(mood_after IS NULL OR mood_after BETWEEN 1 AND 5)` [name: 'chk_mood_after']
+  }
+
+  Note: 'Exactly one owner is required by Laravel at creation time. Both may later be NULL after approved anonymisation.'
+}
+
+Table content_categories {
+  id "bigint unsigned" [pk, increment]
+  name varchar(100) [not null]
+  slug varchar(100) [not null, unique]
+  description text
+  is_active boolean [not null, default: true]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table intervention_content_categories {
+  id "bigint unsigned" [pk, increment]
+  intervention_id "bigint unsigned" [not null]
+  content_category_id "bigint unsigned" [not null]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (intervention_id, content_category_id) [unique]
+    content_category_id
+  }
+}
+
+Table tags {
+  id "bigint unsigned" [pk, increment]
+  name varchar(100) [not null]
+  slug varchar(100) [not null, unique]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table intervention_tags {
+  id "bigint unsigned" [pk, increment]
+  intervention_id "bigint unsigned" [not null]
+  tag_id "bigint unsigned" [not null]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (intervention_id, tag_id) [unique]
+    tag_id
+  }
+}
+
+Table chat_sessions {
+  id "bigint unsigned" [pk, increment]
+  public_uuid char(36) [not null, unique]
+  user_id "bigint unsigned"
+  anonymous_session_id "bigint unsigned"
+  assigned_support_user_id "bigint unsigned"
+  chat_mode varchar(30) [not null, default: 'chatbot']
+  chat_status varchar(20) [not null, default: 'open']
+  started_at timestamp [not null]
+  ended_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  Note: 'Exactly one owner is required by Laravel at creation time. Both may later be NULL after approved anonymisation.'
+}
+
+Table chat_messages {
+  id "bigint unsigned" [pk, increment]
+  chat_session_id "bigint unsigned" [not null]
+  sender_user_id "bigint unsigned"
+  sender_type varchar(30) [not null]
+  message_text longtext [not null]
+  is_flagged boolean [not null, default: false]
+  flag_reason varchar(255)
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table crisis_reports {
+  id "bigint unsigned" [pk, increment]
+  chat_session_id "bigint unsigned"
+  chat_message_id "bigint unsigned" [unique]
+  handled_by_user_id "bigint unsigned"
+  report_status varchar(20) [not null, default: 'open']
+  severity varchar(20)
+  summary text
+  reported_at timestamp [not null]
+  resolved_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table progress_entries {
+  id "bigint unsigned" [pk, increment]
+  user_id "bigint unsigned"
+  anonymous_session_id "bigint unsigned"
+  stress_assessment_id "bigint unsigned"
+  intervention_usage_id "bigint unsigned"
+  metric_type varchar(50) [not null]
+  metric_value decimal(10,2)
+  recorded_at timestamp [not null]
+  created_at timestamp
+  updated_at timestamp
+
+  Note: 'Exactly one owner is required by Laravel at creation time. Both may later be NULL after approved anonymisation.'
+}
+
+Ref: user_profiles.user_id > users.id [delete: cascade]
+Ref: user_roles.user_id > users.id [delete: cascade]
+Ref: user_roles.role_id > roles.id [delete: restrict]
+Ref: user_mfa_methods.user_id > users.id [delete: cascade]
+Ref: sessions.user_id > users.id [delete: cascade]
+Ref: stress_questions.created_by_user_id > users.id [delete: set null]
+Ref: question_options.stress_question_id > stress_questions.id [delete: restrict]
+Ref: stress_score_bands.created_by_user_id > users.id [delete: set null]
+Ref: stress_assessments.user_id > users.id [delete: set null]
+Ref: stress_assessments.anonymous_session_id > anonymous_sessions.id [delete: set null]
+Ref: stress_assessments.stress_score_band_id > stress_score_bands.id [delete: set null]
+Ref: stress_responses.stress_assessment_id > stress_assessments.id [delete: cascade]
+Ref: stress_responses.stress_question_id > stress_questions.id [delete: restrict]
+Ref: stress_responses.question_option_id > question_options.id [delete: restrict]
+Ref: interventions.created_by_user_id > users.id [delete: set null]
+Ref: intervention_recommendations.stress_score_band_id > stress_score_bands.id [delete: cascade]
+Ref: intervention_recommendations.intervention_id > interventions.id [delete: cascade]
+Ref: intervention_usages.intervention_id > interventions.id [delete: restrict]
+Ref: intervention_usages.user_id > users.id [delete: set null]
+Ref: intervention_usages.anonymous_session_id > anonymous_sessions.id [delete: set null]
+Ref: intervention_usages.stress_assessment_id > stress_assessments.id [delete: set null]
+Ref: intervention_content_categories.intervention_id > interventions.id [delete: cascade]
+Ref: intervention_content_categories.content_category_id > content_categories.id [delete: cascade]
+Ref: intervention_tags.intervention_id > interventions.id [delete: cascade]
+Ref: intervention_tags.tag_id > tags.id [delete: cascade]
+Ref: chat_sessions.user_id > users.id [delete: set null]
+Ref: chat_sessions.anonymous_session_id > anonymous_sessions.id [delete: set null]
+Ref: chat_sessions.assigned_support_user_id > users.id [delete: set null]
+Ref: chat_messages.chat_session_id > chat_sessions.id [delete: cascade]
+Ref: chat_messages.sender_user_id > users.id [delete: set null]
+Ref: crisis_reports.chat_session_id > chat_sessions.id [delete: set null]
+Ref: crisis_reports.chat_message_id > chat_messages.id [delete: set null]
+Ref: crisis_reports.handled_by_user_id > users.id [delete: set null]
+Ref: progress_entries.user_id > users.id [delete: set null]
+Ref: progress_entries.anonymous_session_id > anonymous_sessions.id [delete: set null]
+Ref: progress_entries.stress_assessment_id > stress_assessments.id [delete: set null]
+Ref: progress_entries.intervention_usage_id > intervention_usages.id [delete: set null]
