@@ -10,6 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $this->assertExistingSchemaIsCompatible();
         $this->extendInterventions();
         $this->ensureRecommendations();
         $this->extendUsages();
@@ -257,5 +258,156 @@ return new class extends Migration
             ->where('constraint_name', $constraint)
             ->where('constraint_type', 'CHECK')
             ->exists();
+    }
+
+    /**
+     * MySQL DDL is not transactional. A failed run can therefore leave objects behind
+     * without a migrations-table entry. Validate such objects before resuming so the
+     * conditional create logic never treats an incompatible definition as complete.
+     */
+    private function assertExistingSchemaIsCompatible(): void
+    {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
+        $this->assertColumns('interventions', [
+            'slug' => ['varchar', true],
+            'instructions' => ['text', true],
+            'created_by_user_id' => ['bigint', true, 'unsigned'],
+        ], allowMissing: true);
+        $this->assertColumns('intervention_recommendations', [
+            'id' => ['bigint', false, 'unsigned'],
+            'stress_score_band_id' => ['bigint', false, 'unsigned'],
+            'intervention_id' => ['bigint', false, 'unsigned'],
+            'priority' => ['smallint', false, 'unsigned'],
+            'is_active' => ['tinyint', false],
+            'created_at' => ['timestamp', true],
+            'updated_at' => ['timestamp', true],
+        ]);
+        $this->assertColumns('intervention_usages', [
+            'user_id' => ['bigint', true, 'unsigned'],
+            'usage_status' => ['varchar', false],
+            'mood_before' => ['tinyint', true, 'unsigned'],
+            'mood_after' => ['tinyint', true, 'unsigned'],
+            'duration_seconds' => ['int', true, 'unsigned'],
+        ], allowMissing: true);
+        $this->assertColumns('content_categories', [
+            'id' => ['bigint', false, 'unsigned'], 'name' => ['varchar', false],
+            'slug' => ['varchar', false], 'description' => ['text', true],
+            'is_active' => ['tinyint', false], 'created_at' => ['timestamp', true],
+            'updated_at' => ['timestamp', true],
+        ]);
+        $this->assertColumns('intervention_content_categories', [
+            'id' => ['bigint', false, 'unsigned'], 'intervention_id' => ['bigint', false, 'unsigned'],
+            'content_category_id' => ['bigint', false, 'unsigned'], 'created_at' => ['timestamp', true],
+            'updated_at' => ['timestamp', true],
+        ]);
+        $this->assertColumns('tags', [
+            'id' => ['bigint', false, 'unsigned'], 'name' => ['varchar', false],
+            'slug' => ['varchar', false], 'created_at' => ['timestamp', true],
+            'updated_at' => ['timestamp', true],
+        ]);
+        $this->assertColumns('intervention_tags', [
+            'id' => ['bigint', false, 'unsigned'], 'intervention_id' => ['bigint', false, 'unsigned'],
+            'tag_id' => ['bigint', false, 'unsigned'], 'created_at' => ['timestamp', true],
+            'updated_at' => ['timestamp', true],
+        ]);
+
+        foreach ([
+            ['interventions', 'interventions_slug_unique', ['slug'], true],
+            ['interventions', 'interventions_is_active_content_type_index', ['is_active', 'content_type'], false],
+            ['intervention_recommendations', 'uq_intervention_rec_band_intervention', ['stress_score_band_id', 'intervention_id'], true],
+            ['intervention_recommendations', 'idx_intervention_rec_band_active_priority', ['stress_score_band_id', 'is_active', 'priority'], false],
+        ] as [$table, $name, $columns, $unique]) {
+            $this->assertNamedIndexIfPresent($table, $name, $columns, $unique);
+        }
+
+        foreach ([
+            ['interventions', 'interventions_created_by_user_id_foreign', 'created_by_user_id', 'users', 'id', 'SET NULL'],
+            ['intervention_recommendations', 'intervention_recommendations_stress_score_band_id_foreign', 'stress_score_band_id', 'stress_score_bands', 'id', 'CASCADE'],
+            ['intervention_recommendations', 'intervention_recommendations_intervention_id_foreign', 'intervention_id', 'interventions', 'id', 'CASCADE'],
+            ['intervention_usages', 'intervention_usages_user_id_foreign', 'user_id', 'users', 'id', 'SET NULL'],
+        ] as $foreignKey) {
+            $this->assertForeignKeyIfPresent(...$foreignKey);
+        }
+    }
+
+    /** @param array<string, array{0: string, 1: bool, 2?: string}> $expected */
+    private function assertColumns(string $table, array $expected, bool $allowMissing = false): void
+    {
+        if (! Schema::hasTable($table)) {
+            return;
+        }
+
+        $actual = DB::table('information_schema.columns')
+            ->whereRaw('table_schema = DATABASE()')->where('table_name', $table)
+            ->get()->keyBy('COLUMN_NAME');
+
+        foreach ($expected as $column => $expectedDefinition) {
+            [$type, $nullable] = $expectedDefinition;
+            $attribute = $expectedDefinition[2] ?? null;
+            if (! $actual->has($column)) {
+                if ($allowMissing) {
+                    // Extension columns are intentionally added later in this migration.
+                    continue;
+                }
+                throw new RuntimeException("Existing {$table} is missing required column {$column} for migration 2026_08_19_000160.");
+            }
+            $definition = $actual->get($column);
+            $matches = strtolower($definition->DATA_TYPE) === $type
+                && ($definition->IS_NULLABLE === 'YES') === $nullable
+                && ($attribute !== 'unsigned' || str_contains(strtolower($definition->COLUMN_TYPE), 'unsigned'));
+
+            if (! $matches) {
+                throw new RuntimeException("Existing {$table}.{$column} is incompatible with migration 2026_08_19_000160.");
+            }
+        }
+    }
+
+    /** @param list<string> $columns */
+    private function assertNamedIndexIfPresent(string $table, string $name, array $columns, bool $unique): void
+    {
+        $rows = DB::table('information_schema.statistics')
+            ->whereRaw('table_schema = DATABASE()')->where('table_name', $table)->where('index_name', $name)
+            ->orderBy('seq_in_index')->get();
+        if ($rows->isEmpty()) {
+            return;
+        }
+
+        if ($rows->pluck('COLUMN_NAME')->all() !== $columns || ((int) $rows->first()->NON_UNIQUE === 0) !== $unique) {
+            throw new RuntimeException("Existing index {$name} is incompatible with migration 2026_08_19_000160.");
+        }
+    }
+
+    private function assertForeignKeyIfPresent(
+        string $table,
+        string $name,
+        string $column,
+        string $referencedTable,
+        string $referencedColumn,
+        string $deleteRule,
+    ): void {
+        $actual = DB::table('information_schema.key_column_usage as k')
+            ->join('information_schema.referential_constraints as r', function ($join): void {
+                $join->on('r.constraint_schema', '=', 'k.constraint_schema')
+                    ->on('r.constraint_name', '=', 'k.constraint_name');
+            })
+            ->whereRaw('k.table_schema = DATABASE()')->where('k.table_name', $table)
+            ->where('k.constraint_name', $name)
+            ->first([
+                'k.column_name as local_column',
+                'k.referenced_table_name as foreign_table',
+                'k.referenced_column_name as foreign_column',
+                'r.delete_rule as on_delete',
+            ]);
+        if ($actual === null) {
+            return;
+        }
+
+        if ($actual->local_column !== $column || $actual->foreign_table !== $referencedTable
+            || $actual->foreign_column !== $referencedColumn || strtoupper($actual->on_delete) !== $deleteRule) {
+            throw new RuntimeException("Existing foreign key {$name} is incompatible with migration 2026_08_19_000160.");
+        }
     }
 };
