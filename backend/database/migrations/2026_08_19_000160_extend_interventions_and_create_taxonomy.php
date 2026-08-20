@@ -10,106 +10,252 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('interventions', function (Blueprint $table): void {
-            $table->string('slug')->nullable()->unique()->after('title');
-            $table->text('instructions')->nullable()->after('external_url');
-            $table->foreignId('created_by_user_id')->nullable()->after('is_active')
-                ->constrained('users')->nullOnDelete();
-            $table->index(['is_active', 'content_type']);
-        });
-
-        DB::table('interventions')->orderBy('id')->eachById(
-            fn (object $intervention) => DB::table('interventions')->where('id', $intervention->id)->update([
-                'slug' => Str::slug($intervention->title).'-'.$intervention->id,
-            ])
-        );
-
-        Schema::create('intervention_recommendations', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignId('stress_score_band_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('intervention_id')->constrained()->cascadeOnDelete();
-            $table->unsignedSmallInteger('priority')->default(0);
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-            $table->unique(['stress_score_band_id', 'intervention_id']);
-            $table->index(['stress_score_band_id', 'is_active', 'priority']);
-        });
-
-        Schema::table('intervention_usages', function (Blueprint $table): void {
-            $table->foreignId('user_id')->nullable()->after('intervention_id')->constrained()->nullOnDelete();
-            $table->string('usage_status', 20)->default('started')->after('anonymous_session_fk');
-            $table->unsignedTinyInteger('mood_before')->nullable()->after('usage_status');
-            $table->unsignedTinyInteger('mood_after')->nullable()->after('mood_before');
-            $table->unsignedInteger('duration_seconds')->nullable()->after('completed_at');
-            $table->index(['user_id', 'started_at']);
-            $table->index(['anonymous_session_fk', 'started_at']);
-            $table->index(['intervention_id', 'started_at']);
-            $table->index('usage_status');
-        });
-
-        Schema::create('content_categories', function (Blueprint $table): void {
-            $table->id();
-            $table->string('name', 100);
-            $table->string('slug', 100)->unique();
-            $table->text('description')->nullable();
-            $table->boolean('is_active')->default(true)->index();
-            $table->timestamps();
-        });
-        Schema::create('intervention_content_categories', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignId('intervention_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('content_category_id')->constrained()->cascadeOnDelete();
-            $table->timestamps();
-            $table->unique(['intervention_id', 'content_category_id']);
-            $table->index('content_category_id');
-        });
-        Schema::create('tags', function (Blueprint $table): void {
-            $table->id();
-            $table->string('name', 100);
-            $table->string('slug', 100)->unique();
-            $table->timestamps();
-        });
-        Schema::create('intervention_tags', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignId('intervention_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('tag_id')->constrained()->cascadeOnDelete();
-            $table->timestamps();
-            $table->unique(['intervention_id', 'tag_id']);
-            $table->index('tag_id');
-        });
-
-        if (DB::getDriverName() === 'mysql') {
-            DB::statement('ALTER TABLE intervention_usages ADD CONSTRAINT chk_usage_at_most_one_owner CHECK (user_id IS NULL OR anonymous_session_fk IS NULL)');
-            DB::statement('ALTER TABLE intervention_usages ADD CONSTRAINT chk_mood_before CHECK (mood_before IS NULL OR mood_before BETWEEN 1 AND 5)');
-            DB::statement('ALTER TABLE intervention_usages ADD CONSTRAINT chk_mood_after CHECK (mood_after IS NULL OR mood_after BETWEEN 1 AND 5)');
-        }
+        $this->extendInterventions();
+        $this->ensureRecommendations();
+        $this->extendUsages();
+        $this->ensureTaxonomy();
+        $this->ensureMoodChecks();
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('intervention_tags');
-        Schema::dropIfExists('tags');
-        Schema::dropIfExists('intervention_content_categories');
-        Schema::dropIfExists('content_categories');
-        if (DB::getDriverName() === 'mysql') {
-            DB::statement('ALTER TABLE intervention_usages DROP CHECK chk_mood_after');
-            DB::statement('ALTER TABLE intervention_usages DROP CHECK chk_mood_before');
-            DB::statement('ALTER TABLE intervention_usages DROP CHECK chk_usage_at_most_one_owner');
+        foreach (['intervention_tags', 'tags'] as $table) {
+            if (Schema::hasTable($table)) {
+                Schema::drop($table);
+            }
         }
-        Schema::table('intervention_usages', function (Blueprint $table): void {
-            $table->dropIndex(['intervention_id', 'started_at']);
-            $table->dropIndex(['anonymous_session_fk', 'started_at']);
-            $table->dropIndex(['user_id', 'started_at']);
-            $table->dropIndex(['usage_status']);
-            $table->dropConstrainedForeignId('user_id');
-            $table->dropColumn(['usage_status', 'mood_before', 'mood_after', 'duration_seconds']);
-        });
-        Schema::dropIfExists('intervention_recommendations');
-        Schema::table('interventions', function (Blueprint $table): void {
-            $table->dropIndex(['is_active', 'content_type']);
-            $table->dropConstrainedForeignId('created_by_user_id');
-            $table->dropUnique(['slug']);
-            $table->dropColumn(['slug', 'instructions']);
-        });
+        if (Schema::hasTable('intervention_content_categories')) {
+            if (Schema::hasIndex('intervention_content_categories', 'uq_intervention_content_category')) {
+                Schema::table('intervention_content_categories', fn (Blueprint $table) => $table->dropUnique('uq_intervention_content_category'));
+            }
+            Schema::drop('intervention_content_categories');
+        }
+        if (Schema::hasTable('content_categories')) {
+            Schema::drop('content_categories');
+        }
+
+        if (Schema::hasTable('intervention_usages')) {
+            foreach (['chk_mood_after', 'chk_mood_before'] as $check) {
+                if ($this->hasCheckConstraint('intervention_usages', $check)) {
+                    DB::statement("ALTER TABLE intervention_usages DROP CHECK {$check}");
+                }
+            }
+            foreach ([
+                'intervention_usages_intervention_id_started_at_index',
+                'intervention_usages_anonymous_session_fk_started_at_index',
+                'intervention_usages_user_id_started_at_index',
+                'intervention_usages_usage_status_index',
+            ] as $index) {
+                if (Schema::hasIndex('intervention_usages', $index)) {
+                    Schema::table('intervention_usages', fn (Blueprint $table) => $table->dropIndex($index));
+                }
+            }
+            if (Schema::hasForeignKey('intervention_usages', 'intervention_usages_user_id_foreign')) {
+                Schema::table('intervention_usages', fn (Blueprint $table) => $table->dropForeign('intervention_usages_user_id_foreign'));
+            }
+            foreach (['user_id', 'usage_status', 'mood_before', 'mood_after', 'duration_seconds'] as $column) {
+                if (Schema::hasColumn('intervention_usages', $column)) {
+                    Schema::table('intervention_usages', fn (Blueprint $table) => $table->dropColumn($column));
+                }
+            }
+        }
+
+        if (Schema::hasTable('intervention_recommendations')) {
+            foreach (['idx_intervention_rec_band_active_priority', 'uq_intervention_rec_band_intervention'] as $index) {
+                if (Schema::hasIndex('intervention_recommendations', $index)) {
+                    Schema::table('intervention_recommendations', fn (Blueprint $table) => $table->dropIndex($index));
+                }
+            }
+            Schema::drop('intervention_recommendations');
+        }
+
+        if (Schema::hasTable('interventions')) {
+            if (Schema::hasIndex('interventions', 'interventions_is_active_content_type_index')) {
+                Schema::table('interventions', fn (Blueprint $table) => $table->dropIndex('interventions_is_active_content_type_index'));
+            }
+            if (Schema::hasForeignKey('interventions', 'interventions_created_by_user_id_foreign')) {
+                Schema::table('interventions', fn (Blueprint $table) => $table->dropForeign('interventions_created_by_user_id_foreign'));
+            }
+            if (Schema::hasIndex('interventions', 'interventions_slug_unique')) {
+                Schema::table('interventions', fn (Blueprint $table) => $table->dropUnique('interventions_slug_unique'));
+            }
+            foreach (['slug', 'instructions', 'created_by_user_id'] as $column) {
+                if (Schema::hasColumn('interventions', $column)) {
+                    Schema::table('interventions', fn (Blueprint $table) => $table->dropColumn($column));
+                }
+            }
+        }
+    }
+
+    private function extendInterventions(): void
+    {
+        if (! Schema::hasColumn('interventions', 'slug')) {
+            Schema::table('interventions', fn (Blueprint $table) => $table->string('slug')->nullable()->after('title'));
+        }
+        if (! Schema::hasIndex('interventions', 'interventions_slug_unique')) {
+            Schema::table('interventions', fn (Blueprint $table) => $table->unique('slug'));
+        }
+        if (! Schema::hasColumn('interventions', 'instructions')) {
+            Schema::table('interventions', fn (Blueprint $table) => $table->text('instructions')->nullable()->after('external_url'));
+        }
+        if (! Schema::hasColumn('interventions', 'created_by_user_id')) {
+            Schema::table('interventions', fn (Blueprint $table) => $table->foreignId('created_by_user_id')->nullable()->after('is_active'));
+        }
+        if (! Schema::hasForeignKey('interventions', 'interventions_created_by_user_id_foreign')) {
+            Schema::table('interventions', fn (Blueprint $table) => $table->foreign('created_by_user_id')->references('id')->on('users')->nullOnDelete());
+        }
+        if (! Schema::hasIndex('interventions', 'interventions_is_active_content_type_index')) {
+            Schema::table('interventions', fn (Blueprint $table) => $table->index(['is_active', 'content_type']));
+        }
+
+        DB::table('interventions')->whereNull('slug')->orderBy('id')->eachById(
+            fn (object $row) => DB::table('interventions')->where('id', $row->id)->update([
+                'slug' => Str::slug($row->title).'-'.$row->id,
+            ])
+        );
+    }
+
+    private function ensureRecommendations(): void
+    {
+        if (! Schema::hasTable('intervention_recommendations')) {
+            Schema::create('intervention_recommendations', function (Blueprint $table): void {
+                $table->id();
+                $table->foreignId('stress_score_band_id');
+                $table->foreignId('intervention_id');
+                $table->unsignedSmallInteger('priority')->default(0);
+                $table->boolean('is_active')->default(true);
+                $table->timestamps();
+            });
+        }
+        if (! Schema::hasForeignKey('intervention_recommendations', 'intervention_recommendations_stress_score_band_id_foreign')) {
+            Schema::table('intervention_recommendations', fn (Blueprint $table) => $table->foreign('stress_score_band_id')->references('id')->on('stress_score_bands')->cascadeOnDelete());
+        }
+        if (! Schema::hasForeignKey('intervention_recommendations', 'intervention_recommendations_intervention_id_foreign')) {
+            Schema::table('intervention_recommendations', fn (Blueprint $table) => $table->foreign('intervention_id')->references('id')->on('interventions')->cascadeOnDelete());
+        }
+        if (! Schema::hasIndex('intervention_recommendations', 'uq_intervention_rec_band_intervention')) {
+            Schema::table('intervention_recommendations', fn (Blueprint $table) => $table->unique(['stress_score_band_id', 'intervention_id'], 'uq_intervention_rec_band_intervention'));
+        }
+        if (! Schema::hasIndex('intervention_recommendations', 'idx_intervention_rec_band_active_priority')) {
+            Schema::table('intervention_recommendations', fn (Blueprint $table) => $table->index(['stress_score_band_id', 'is_active', 'priority'], 'idx_intervention_rec_band_active_priority'));
+        }
+    }
+
+    private function extendUsages(): void
+    {
+        if (! Schema::hasColumn('intervention_usages', 'user_id')) {
+            Schema::table('intervention_usages', fn (Blueprint $table) => $table->foreignId('user_id')->nullable()->after('intervention_id'));
+        }
+        if (! Schema::hasForeignKey('intervention_usages', 'intervention_usages_user_id_foreign')) {
+            Schema::table('intervention_usages', fn (Blueprint $table) => $table->foreign('user_id')->references('id')->on('users')->nullOnDelete());
+        }
+        if (! Schema::hasColumn('intervention_usages', 'usage_status')) {
+            Schema::table('intervention_usages', fn (Blueprint $table) => $table->string('usage_status', 20)->default('started')->after('anonymous_session_fk'));
+        }
+        if (! Schema::hasColumn('intervention_usages', 'mood_before')) {
+            Schema::table('intervention_usages', fn (Blueprint $table) => $table->unsignedTinyInteger('mood_before')->nullable()->after('usage_status'));
+        }
+        if (! Schema::hasColumn('intervention_usages', 'mood_after')) {
+            Schema::table('intervention_usages', fn (Blueprint $table) => $table->unsignedTinyInteger('mood_after')->nullable()->after('mood_before'));
+        }
+        if (! Schema::hasColumn('intervention_usages', 'duration_seconds')) {
+            Schema::table('intervention_usages', fn (Blueprint $table) => $table->unsignedInteger('duration_seconds')->nullable()->after('completed_at'));
+        }
+        foreach ([
+            'intervention_usages_user_id_started_at_index' => ['user_id', 'started_at'],
+            'intervention_usages_anonymous_session_fk_started_at_index' => ['anonymous_session_fk', 'started_at'],
+            'intervention_usages_intervention_id_started_at_index' => ['intervention_id', 'started_at'],
+            'intervention_usages_usage_status_index' => ['usage_status'],
+        ] as $name => $columns) {
+            if (! Schema::hasIndex('intervention_usages', $name)) {
+                Schema::table('intervention_usages', fn (Blueprint $table) => $table->index($columns, $name));
+            }
+        }
+    }
+
+    private function ensureTaxonomy(): void
+    {
+        if (! Schema::hasTable('content_categories')) {
+            Schema::create('content_categories', function (Blueprint $table): void {
+                $table->id();
+                $table->string('name', 100);
+                $table->string('slug', 100)->unique();
+                $table->text('description')->nullable();
+                $table->boolean('is_active')->default(true)->index();
+                $table->timestamps();
+            });
+        }
+        if (! Schema::hasTable('intervention_content_categories')) {
+            Schema::create('intervention_content_categories', function (Blueprint $table): void {
+                $table->id();
+                $table->foreignId('intervention_id');
+                $table->foreignId('content_category_id');
+                $table->timestamps();
+            });
+        }
+        if (! Schema::hasIndex('intervention_content_categories', 'uq_intervention_content_category')) {
+            Schema::table('intervention_content_categories', fn (Blueprint $table) => $table->unique(['intervention_id', 'content_category_id'], 'uq_intervention_content_category'));
+        }
+        if (! Schema::hasIndex('intervention_content_categories', ['content_category_id'])) {
+            Schema::table('intervention_content_categories', fn (Blueprint $table) => $table->index('content_category_id', 'idx_intervention_content_category'));
+        }
+        if (! Schema::hasForeignKey('intervention_content_categories', 'intervention_content_categories_intervention_id_foreign')) {
+            Schema::table('intervention_content_categories', fn (Blueprint $table) => $table->foreign('intervention_id')->references('id')->on('interventions')->cascadeOnDelete());
+        }
+        if (! Schema::hasForeignKey('intervention_content_categories', 'intervention_content_categories_content_category_id_foreign')) {
+            Schema::table('intervention_content_categories', fn (Blueprint $table) => $table->foreign('content_category_id')->references('id')->on('content_categories')->cascadeOnDelete());
+        }
+
+        if (! Schema::hasTable('tags')) {
+            Schema::create('tags', function (Blueprint $table): void {
+                $table->id();
+                $table->string('name', 100);
+                $table->string('slug', 100)->unique();
+                $table->timestamps();
+            });
+        }
+        if (! Schema::hasTable('intervention_tags')) {
+            Schema::create('intervention_tags', function (Blueprint $table): void {
+                $table->id();
+                $table->foreignId('intervention_id');
+                $table->foreignId('tag_id');
+                $table->timestamps();
+            });
+        }
+        if (! Schema::hasIndex('intervention_tags', 'intervention_tags_intervention_id_tag_id_unique')) {
+            Schema::table('intervention_tags', fn (Blueprint $table) => $table->unique(['intervention_id', 'tag_id']));
+        }
+        if (! Schema::hasIndex('intervention_tags', ['tag_id'])) {
+            Schema::table('intervention_tags', fn (Blueprint $table) => $table->index('tag_id'));
+        }
+        if (! Schema::hasForeignKey('intervention_tags', 'intervention_tags_intervention_id_foreign')) {
+            Schema::table('intervention_tags', fn (Blueprint $table) => $table->foreign('intervention_id')->references('id')->on('interventions')->cascadeOnDelete());
+        }
+        if (! Schema::hasForeignKey('intervention_tags', 'intervention_tags_tag_id_foreign')) {
+            Schema::table('intervention_tags', fn (Blueprint $table) => $table->foreign('tag_id')->references('id')->on('tags')->cascadeOnDelete());
+        }
+    }
+
+    private function ensureMoodChecks(): void
+    {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+        if (! $this->hasCheckConstraint('intervention_usages', 'chk_mood_before')) {
+            DB::statement('ALTER TABLE intervention_usages ADD CONSTRAINT chk_mood_before CHECK (mood_before IS NULL OR mood_before BETWEEN 1 AND 5)');
+        }
+        if (! $this->hasCheckConstraint('intervention_usages', 'chk_mood_after')) {
+            DB::statement('ALTER TABLE intervention_usages ADD CONSTRAINT chk_mood_after CHECK (mood_after IS NULL OR mood_after BETWEEN 1 AND 5)');
+        }
+    }
+
+    private function hasCheckConstraint(string $table, string $constraint): bool
+    {
+        return DB::getDriverName() === 'mysql' && DB::table('information_schema.table_constraints')
+            ->whereRaw('constraint_schema = DATABASE()')
+            ->where('table_name', $table)
+            ->where('constraint_name', $constraint)
+            ->where('constraint_type', 'CHECK')
+            ->exists();
     }
 };

@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RequiresExactlyOneOwner;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class InterventionUsage extends Model
 {
+    use RequiresExactlyOneOwner;
+
     protected $fillable = [
         'stress_assessment_id',
         'intervention_id',
@@ -50,5 +53,10 @@ class InterventionUsage extends Model
     public function anonymousSession(): BelongsTo
     {
         return $this->belongsTo(AnonymousSession::class, 'anonymous_session_fk');
+    }
+
+    protected function anonymousOwnerColumns(): array
+    {
+        return ['anonymous_session_fk', 'anonymous_session_id'];
     }
 }

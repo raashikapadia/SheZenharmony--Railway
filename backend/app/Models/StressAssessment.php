@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RequiresExactlyOneOwner;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,8 @@ use Illuminate\Support\Str;
 
 class StressAssessment extends Model
 {
+    use RequiresExactlyOneOwner;
+
     protected static function booted(): void
     {
         static::creating(function (StressAssessment $assessment): void {
@@ -58,5 +61,10 @@ class StressAssessment extends Model
     public function scoreBand(): BelongsTo
     {
         return $this->belongsTo(StressScoreBand::class, 'stress_score_band_id');
+    }
+
+    protected function anonymousOwnerColumns(): array
+    {
+        return ['anonymous_session_fk', 'anonymous_session_id'];
     }
 }

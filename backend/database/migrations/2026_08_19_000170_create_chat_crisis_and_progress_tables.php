@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -69,10 +68,6 @@ return new class extends Migration
             $table->index(['metric_type', 'recorded_at']);
         });
 
-        if (DB::getDriverName() === 'mysql') {
-            DB::statement('ALTER TABLE chat_sessions ADD CONSTRAINT chk_chat_at_most_one_owner CHECK (user_id IS NULL OR anonymous_session_id IS NULL)');
-            DB::statement('ALTER TABLE progress_entries ADD CONSTRAINT chk_progress_at_most_one_owner CHECK (user_id IS NULL OR anonymous_session_id IS NULL)');
-        }
     }
 
     public function down(): void

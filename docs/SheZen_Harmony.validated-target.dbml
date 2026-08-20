@@ -200,9 +200,7 @@ Table stress_assessments {
   created_at timestamp
   updated_at timestamp
 
-  checks {
-    `(user_id IS NULL OR anonymous_session_id IS NULL)` [name: 'chk_assessment_at_most_one_owner']
-  }
+  Note: 'Exactly one owner is required by Laravel at creation time. Both may later be NULL after approved anonymisation.'
 }
 
 Table stress_responses {
@@ -271,10 +269,11 @@ Table intervention_usages {
   updated_at timestamp
 
   checks {
-    `(user_id IS NULL OR anonymous_session_id IS NULL)` [name: 'chk_usage_at_most_one_owner']
     `(mood_before IS NULL OR mood_before BETWEEN 1 AND 5)` [name: 'chk_mood_before']
     `(mood_after IS NULL OR mood_after BETWEEN 1 AND 5)` [name: 'chk_mood_after']
   }
+
+  Note: 'Exactly one owner is required by Laravel at creation time. Both may later be NULL after approved anonymisation.'
 }
 
 Table content_categories {
@@ -334,9 +333,7 @@ Table chat_sessions {
   created_at timestamp
   updated_at timestamp
 
-  checks {
-    `(user_id IS NULL OR anonymous_session_id IS NULL)` [name: 'chk_chat_at_most_one_owner']
-  }
+  Note: 'Exactly one owner is required by Laravel at creation time. Both may later be NULL after approved anonymisation.'
 }
 
 Table chat_messages {
@@ -377,9 +374,7 @@ Table progress_entries {
   created_at timestamp
   updated_at timestamp
 
-  checks {
-    `(user_id IS NULL OR anonymous_session_id IS NULL)` [name: 'chk_progress_at_most_one_owner']
-  }
+  Note: 'Exactly one owner is required by Laravel at creation time. Both may later be NULL after approved anonymisation.'
 }
 
 Ref: user_profiles.user_id > users.id [delete: cascade]
