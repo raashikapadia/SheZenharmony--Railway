@@ -11,7 +11,7 @@ class QuestionController extends Controller
     public function index(): JsonResponse
     {
         $questions = StressQuestion::query()
-            ->with(['options' => fn ($query) => $query->orderBy('position')])
+            ->with(['options' => fn ($query) => $query->where('is_active', true)->orderBy('position')])
             ->where('is_active', true)
             ->orderBy('position')
             ->get();

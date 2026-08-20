@@ -5,7 +5,7 @@
 @section('body')
 <div class="shell">
     <header class="topbar">
-        <nav class="nav"><span class="brand">SheZen Harmony Admin</span><a href="{{ route('admin.questions.index') }}">Questions</a><a href="{{ route('admin.interventions.index') }}">Interventions</a></nav>
+        <nav class="nav"><span class="brand">SheZen Harmony Admin</span><a href="{{ route('admin.questionnaires.index') }}">Questionnaires</a><a href="{{ route('admin.questions.index') }}">Questions</a><a href="{{ route('admin.interventions.index') }}">Interventions</a></nav>
         <form method="POST" action="{{ route('admin.logout') }}">
             @csrf
             <button class="button button-link" type="submit">Sign out</button>

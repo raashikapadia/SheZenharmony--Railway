@@ -22,6 +22,7 @@ class StressAssessment extends Model
 
     protected $fillable = [
         'user_id',
+        'questionnaire_id',
         'anonymous_session_id',
         'anonymous_session_fk',
         'public_uuid',
@@ -46,6 +47,11 @@ class StressAssessment extends Model
     public function responses(): HasMany
     {
         return $this->hasMany(StressResponse::class);
+    }
+
+    public function questionnaire(): BelongsTo
+    {
+        return $this->belongsTo(Questionnaire::class);
     }
 
     public function user(): BelongsTo

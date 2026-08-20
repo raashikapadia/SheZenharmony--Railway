@@ -92,6 +92,11 @@ class User extends Authenticatable
         return $this->hasMany(StressAssessment::class);
     }
 
+    public function createdQuestionnaires(): HasMany
+    {
+        return $this->hasMany(Questionnaire::class, 'created_by_user_id');
+    }
+
     public function interventionUsages(): HasMany
     {
         return $this->hasMany(InterventionUsage::class);

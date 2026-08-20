@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class StressQuestion extends Model
 {
@@ -44,5 +45,11 @@ class StressQuestion extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function questionnaires(): BelongsToMany
+    {
+        return $this->belongsToMany(Questionnaire::class, 'questionnaire_questions')
+            ->withPivot(['position', 'is_required'])->withTimestamps();
     }
 }

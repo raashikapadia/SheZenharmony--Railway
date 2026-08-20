@@ -53,7 +53,10 @@ class AdminQuestionController extends Controller
             return back()->with('status', 'Question has response history and was deactivated instead of deleted.');
         }
 
-        $question->delete();
+        DB::transaction(function () use ($question): void {
+            $question->options()->delete();
+            $question->delete();
+        });
 
         return back()->with('status', 'Question deleted.');
     }
@@ -69,6 +72,7 @@ class AdminQuestionController extends Controller
             'is_sensitive' => ['nullable', 'boolean'],
             'options' => ['required', 'array', 'min:2', 'max:20'],
             'options.*.label' => ['required', 'string', 'max:255'],
+            'options.*.id' => ['nullable', 'integer'],
             'options.*.value' => ['required', 'string', 'max:100', 'distinct'],
             'options.*.score' => ['nullable', 'integer', 'min:-1000', 'max:1000'],
         ]);
@@ -85,9 +89,21 @@ class AdminQuestionController extends Controller
             'is_sensitive' => (bool) ($data['is_sensitive'] ?? false),
         ])->save();
 
-        $question->options()->delete();
+        $retainedIds = [];
         foreach (array_values($data['options']) as $position => $option) {
-            $question->options()->create($option + ['position' => $position + 1]);
+            $optionId = $option['id'] ?? null;
+            unset($option['id']);
+            $values = $option + ['position' => $position + 1, 'is_active' => true];
+
+            if ($optionId !== null) {
+                $existing = $question->options()->whereKey($optionId)->firstOrFail();
+                $existing->update($values);
+                $retainedIds[] = $existing->id;
+            } else {
+                $retainedIds[] = $question->options()->create($values)->id;
+            }
         }
+
+        $question->options()->whereNotIn('id', $retainedIds)->update(['is_active' => false]);
     }
 }

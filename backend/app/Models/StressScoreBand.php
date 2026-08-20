@@ -20,6 +20,11 @@ class StressScoreBand extends Model
         return $this->belongsTo(User::class, 'created_by_user_id');
     }
 
+    public function questionnaire(): BelongsTo
+    {
+        return $this->belongsTo(Questionnaire::class);
+    }
+
     public function assessments(): HasMany
     {
         return $this->hasMany(StressAssessment::class);
