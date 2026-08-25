@@ -1,14 +1,3 @@
-$ErrorActionPreference = "Stop"
-$Root = Split-Path -Parent $PSScriptRoot
-$Frontend = Join-Path $Root "frontend"
-
-if (-not (Test-Path (Join-Path $Frontend "pubspec.yaml"))) {
-    throw "Frontend not found. Follow the Flutter Setup steps in README.md first."
-}
-
-Push-Location $Frontend
-flutter devices
-Write-Host ""
-Write-Host "Starting Flutter using the Android-emulator API address..." -ForegroundColor Cyan
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api
-Pop-Location
+# Kept as a compatibility entry point for developers using the old command.
+& (Join-Path $PSScriptRoot "run-mobile.ps1") @args
+exit $LASTEXITCODE

@@ -1,21 +1,48 @@
-// This is a basic Flutter widget test.
+// Smoke tests for app startup and the sign-in screen.
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// The real app bootstrap checks secure storage for a cached session before
+// deciding what to show (AuthProvider.restoreSession). Secure storage has no
+// platform implementation in the widget-test harness, so its exact async
+// timing there is unreliable — the first test only asserts the app builds
+// without throwing. LoginScreen's actual content is verified separately, in
+// isolation, which sidesteps that async dependency entirely.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
+import 'package:shezen_harmony/features/auth/application/auth_provider.dart';
+import 'package:shezen_harmony/features/auth/presentation/login_screen.dart';
 import 'package:shezen_harmony/main.dart';
 
 void main() {
-  testWidgets('renders the SheZen starter home screen', (
+  testWidgets('app builds without throwing on a fresh launch', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const SheZenApp());
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 11));
+
+    // Whatever AuthProvider has resolved to by this point (loading spinner,
+    // or already past it), the widget tree should be in a valid state with
+    // no uncaught exceptions.
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('LoginScreen renders its sign-in form', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => AuthProvider(),
+        child: const MaterialApp(home: LoginScreen()),
+      ),
+    );
+    await tester.pump();
 
     expect(find.text('SheZen Harmony'), findsOneWidget);
-    expect(find.text('Test API connection'), findsOneWidget);
+    expect(find.text('Sign in'), findsWidgets);
+    expect(find.text('New to SheZen?'), findsOneWidget);
+    expect(find.text('Create account'), findsOneWidget);
   });
 }

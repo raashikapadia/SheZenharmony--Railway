@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../../../core/config/api_config.dart';
 import '../../../core/network/api_service.dart';
+import '../../assessment/data/assessment_result.dart';
+import '../../assessment/presentation/questionnaire_screen.dart';
+import '../../auth/application/auth_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,40 +14,243 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final ApiService _api = ApiService();
+  int _selectedIndex = 0;
 
-  bool _checkingApi = false;
-  String? _apiMessage;
-  bool? _apiConnected;
+  @override
+  Widget build(BuildContext context) {
+    final pages = [
+      const _DashboardPage(),
+      const _WellbeingPage(),
+      const _ProgressPage(),
+      const _ProfilePage(),
+    ];
+    final titles = ['Home', 'Wellbeing', 'Progress', 'Profile'];
 
-  Future<void> _checkApi() async {
-    setState(() {
-      _checkingApi = true;
-      _apiMessage = null;
-      _apiConnected = null;
-    });
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          titles[_selectedIndex],
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        actions: _selectedIndex == 0
+            ? [
+                IconButton(
+                  tooltip: 'Notifications',
+                  onPressed: () => _showComingSoon(context, 'Notifications'),
+                  icon: const Icon(Icons.notifications_none_rounded),
+                ),
+              ]
+            : null,
+      ),
+      body: SafeArea(
+        child: IndexedStack(index: _selectedIndex, children: pages),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) =>
+            setState(() => _selectedIndex = index),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.spa_outlined),
+            selectedIcon: Icon(Icons.spa_rounded),
+            label: 'Wellbeing',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.insights_outlined),
+            selectedIcon: Icon(Icons.insights_rounded),
+            label: 'Progress',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person_rounded),
+            label: 'Profile',
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-    try {
-      final result = await _api.health();
-      if (!mounted) return;
+class _DashboardPage extends StatelessWidget {
+  const _DashboardPage();
 
-      setState(() {
-        _apiConnected = true;
-        _apiMessage = result['message']?.toString() ?? 'Backend connected.';
-      });
-    } catch (error) {
-      if (!mounted) return;
+  @override
+  Widget build(BuildContext context) {
+    final session = context.watch<AuthProvider>().session;
+    final firstName = (session?.name.trim().isNotEmpty ?? false)
+        ? session!.name.trim().split(' ').first
+        : 'there';
+    final colors = Theme.of(context).colorScheme;
 
-      setState(() {
-        _apiConnected = false;
-        _apiMessage =
-            'Connection failed. Make sure Laravel is running on port 8000.\n$error';
-      });
-    } finally {
-      if (mounted) {
-        setState(() => _checkingApi = false);
-      }
-    }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+      children: [
+        Text(
+          'Hi, $firstName',
+          style: Theme.of(
+            context,
+          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'How are you feeling today?',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(color: colors.onSurfaceVariant),
+        ),
+        const SizedBox(height: 24),
+        Card(
+          color: colors.primaryContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.favorite_outline_rounded, color: colors.primary),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Your wellbeing check-in',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Your baseline check-in is complete.',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Check in again whenever you want to reflect on how you\'re doing.',
+                  style: TextStyle(color: colors.onPrimaryContainer),
+                ),
+                const SizedBox(height: 18),
+                FilledButton.tonalIcon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const QuestionnaireScreen(mandatory: false),
+                    ),
+                  ),
+                  icon: const Icon(Icons.monitor_heart_outlined),
+                  label: const Text('Start a check-in'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 26),
+        const _SectionHeading(
+          title: 'Support your day',
+          subtitle: 'Small moments can make a difference.',
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _QuickCard(
+                icon: Icons.air_rounded,
+                title: 'Breathe',
+                color: const Color(0xFFE8F2EE),
+                onTap: () => _showComingSoon(context, 'Breathing activities'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _QuickCard(
+                icon: Icons.menu_book_outlined,
+                title: 'Reflect',
+                color: const Color(0xFFF3EAF6),
+                onTap: () => _showComingSoon(context, 'Reflection journal'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 26),
+        const _SectionHeading(title: 'Academic wellbeing'),
+        const SizedBox(height: 12),
+        _InfoCard(
+          icon: Icons.event_note_outlined,
+          title: 'Study reminders',
+          description:
+              'Planning and reminder tools are coming in a future update.',
+          trailing: const _ComingSoonBadge(),
+          onTap: () => _showComingSoon(context, 'Study reminders'),
+        ),
+      ],
+    );
+  }
+}
+
+class _WellbeingPage extends StatelessWidget {
+  const _WellbeingPage();
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+    children: [
+      const _SectionHeading(
+        title: 'Wellbeing tools',
+        subtitle: 'Explore gentle ways to pause, reset, and reflect.',
+      ),
+      const SizedBox(height: 20),
+      _InfoCard(
+        icon: Icons.air_rounded,
+        title: 'Breathing exercises',
+        description: 'Guided breathing activities.',
+        trailing: const _ComingSoonBadge(),
+        onTap: () => _showComingSoon(context, 'Breathing exercises'),
+      ),
+      const SizedBox(height: 12),
+      _InfoCard(
+        icon: Icons.self_improvement_rounded,
+        title: 'Grounding activities',
+        description: 'Simple prompts to help you reconnect with the present.',
+        trailing: const _ComingSoonBadge(),
+        onTap: () => _showComingSoon(context, 'Grounding activities'),
+      ),
+      const SizedBox(height: 12),
+      _InfoCard(
+        icon: Icons.auto_stories_outlined,
+        title: 'Reflection journal',
+        description: 'A private space for guided reflection.',
+        trailing: const _ComingSoonBadge(),
+        onTap: () => _showComingSoon(context, 'Reflection journal'),
+      ),
+    ],
+  );
+}
+
+class _ProgressPage extends StatefulWidget {
+  const _ProgressPage();
+
+  @override
+  State<_ProgressPage> createState() => _ProgressPageState();
+}
+
+class _ProgressPageState extends State<_ProgressPage> {
+  late final ApiService _api;
+  late Future<List<AssessmentSummary>> _history;
+
+  @override
+  void initState() {
+    super.initState();
+    _api = ApiService();
+    _load();
+  }
+
+  void _load() {
+    final token = context.read<AuthProvider>().session!.token;
+    _history = _api.myAssessments(token);
   }
 
   @override
@@ -54,167 +260,310 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+  Widget build(BuildContext context) => FutureBuilder<List<AssessmentSummary>>(
+    future: _history,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (snapshot.hasError) {
+        return _CenteredState(
+          icon: Icons.cloud_off_outlined,
+          title: 'Couldn\'t load your progress',
+          message: 'Check your connection and try again.',
+          actionLabel: 'Try again',
+          onAction: () => setState(_load),
+        );
+      }
+      final history = snapshot.data ?? const [];
+      if (history.isEmpty) {
+        return const _CenteredState(
+          icon: Icons.insights_outlined,
+          title: 'No check-ins yet',
+          message: 'Your completed wellbeing check-ins will appear here.',
+        );
+      }
+      return ListView.separated(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        itemCount: history.length + 1,
+        separatorBuilder: (_, index) => SizedBox(height: index == 0 ? 18 : 12),
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return const _SectionHeading(
+              title: 'Your check-in history',
+              subtitle:
+                  'Results shown here come directly from your completed assessments.',
+            );
+          }
+          final item = history[index - 1];
+          final date = item.completedAt?.toLocal();
+          final dateText = date == null
+              ? 'Completed'
+              : '${date.day}/${date.month}/${date.year}';
+          return _InfoCard(
+            icon: Icons.monitor_heart_outlined,
+            title: item.bandLabel?.isNotEmpty == true
+                ? item.bandLabel!
+                : 'Completed check-in',
+            description:
+                '${item.questionnaireTitle ?? 'Stress check-in'} • $dateText',
+            trailing: Text(
+              '${item.totalScore}',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('SheZen Harmony'),
-        centerTitle: false,
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Text(
-              'A calmer space for your wellbeing.',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Development starter — assessment questions, scoring and '
-              'referral rules must be replaced with the client-approved framework.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 24),
-            _FeatureCard(
-              icon: Icons.monitor_heart_outlined,
-              title: 'Check your stress',
-              description: 'Stress assessment module placeholder',
-              onTap: () => _showPlaceholder(context, 'Stress assessment'),
-            ),
-            const SizedBox(height: 12),
-            _FeatureCard(
-              icon: Icons.spa_outlined,
-              title: 'Activities',
-              description: 'Breathing, reflection and configured interventions',
-              onTap: () => _showPlaceholder(context, 'Activities'),
-            ),
-            const SizedBox(height: 12),
-            _FeatureCard(
-              icon: Icons.auto_stories_outlined,
-              title: 'Journal',
-              description: 'Personal reflection module placeholder',
-              onTap: () => _showPlaceholder(context, 'Journal'),
-            ),
-            const SizedBox(height: 28),
-            Card(
-              color: colors.surfaceContainerHighest,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Development connection',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'API: ${ApiConfig.baseUrl}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: _checkingApi ? null : _checkApi,
-                      icon: _checkingApi
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.link),
-                      label: Text(
-                        _checkingApi ? 'Checking...' : 'Test API connection',
-                      ),
-                    ),
-                    if (_apiMessage != null) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            _apiConnected == true
-                                ? Icons.check_circle_outline
-                                : Icons.error_outline,
-                            color: _apiConnected == true
-                                ? colors.primary
-                                : colors.error,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(_apiMessage!)),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
+class _ProfilePage extends StatelessWidget {
+  const _ProfilePage();
+
+  @override
+  Widget build(BuildContext context) {
+    final session = context.watch<AuthProvider>().session;
+    final colors = Theme.of(context).colorScheme;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+      children: [
+        Center(
+          child: CircleAvatar(
+            radius: 42,
+            backgroundColor: colors.primaryContainer,
+            child: Text(
+              session?.name.trim().isNotEmpty == true
+                  ? session!.name.trim()[0].toUpperCase()
+                  : 'S',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                color: colors.primary,
+                fontWeight: FontWeight.w800,
               ),
             ),
-          ],
+          ),
         ),
-      ),
-    );
-  }
-
-  static void _showPlaceholder(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature is ready for the next development phase.'),
-      ),
+        const SizedBox(height: 14),
+        Text(
+          session?.name ?? 'Student',
+          textAlign: TextAlign.center,
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          session?.email ?? '',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: colors.onSurfaceVariant),
+        ),
+        const SizedBox(height: 28),
+        _InfoCard(
+          icon: Icons.shield_outlined,
+          title: 'Privacy',
+          description: 'Your wellbeing information is kept with your account.',
+          onTap: () => _showComingSoon(context, 'Privacy information'),
+        ),
+        const SizedBox(height: 12),
+        _InfoCard(
+          icon: Icons.help_outline_rounded,
+          title: 'Help and support',
+          description: 'Support information will be available here.',
+          trailing: const _ComingSoonBadge(),
+          onTap: () => _showComingSoon(context, 'Help and support'),
+        ),
+        const SizedBox(height: 24),
+        OutlinedButton.icon(
+          onPressed: () => context.read<AuthProvider>().logout(),
+          icon: const Icon(Icons.logout_rounded),
+          label: const Text('Sign out'),
+        ),
+      ],
     );
   }
 }
 
-class _FeatureCard extends StatelessWidget {
-  const _FeatureCard({
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading({required this.title, this.subtitle});
+  final String title;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: Theme.of(
+          context,
+        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+      ),
+      if (subtitle != null) ...[
+        const SizedBox(height: 4),
+        Text(
+          subtitle!,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ],
+  );
+}
+
+class _QuickCard extends StatelessWidget {
+  const _QuickCard({
     required this.icon,
     required this.title,
-    required this.description,
+    required this.color,
     required this.onTap,
   });
-
   final IconData icon;
   final String title;
-  final String description;
+  final Color color;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(
-            children: [
-              CircleAvatar(
-                child: Icon(icon),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(description),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right),
-            ],
-          ),
+  Widget build(BuildContext context) => Card(
+    color: color,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 30),
+            const SizedBox(height: 22),
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    this.trailing,
+    this.onTap,
+  });
+  final IconData icon;
+  final String title;
+  final String description;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            CircleAvatar(child: Icon(icon)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (trailing != null) ...[const SizedBox(width: 10), trailing!],
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _ComingSoonBadge extends StatelessWidget {
+  const _ComingSoonBadge();
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.secondaryContainer,
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: const Text(
+      'Soon',
+      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+    ),
+  );
+}
+
+class _CenteredState extends StatelessWidget {
+  const _CenteredState({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+  });
+  final IconData icon;
+  final String title;
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 48, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(message, textAlign: TextAlign.center),
+          if (onAction != null) ...[
+            const SizedBox(height: 18),
+            FilledButton(onPressed: onAction, child: Text(actionLabel!)),
+          ],
+        ],
+      ),
+    ),
+  );
+}
+
+void _showComingSoon(BuildContext context, String feature) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('$feature is coming in a future update.')),
+  );
 }

@@ -23,8 +23,10 @@ class QuestionnaireArchitectureTest extends TestCase
     public function test_admin_can_create_questionnaire_with_ordered_questions_and_bands(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
-        [$first] = $this->questionWithOptions('First');
-        [$second] = $this->questionWithOptions('Second');
+        [$first, , $firstSecondOption] = $this->questionWithOptions('First');
+        [$second, , $secondSecondOption] = $this->questionWithOptions('Second');
+        $firstSecondOption->update(['is_active' => true]);
+        $secondSecondOption->update(['is_active' => true]);
 
         $this->actingAs($admin)->post('/admin/questionnaires', [
             'title' => 'Stress check', 'type' => 'stress', 'version' => 1,
@@ -34,8 +36,8 @@ class QuestionnaireArchitectureTest extends TestCase
                 ['id' => $first->id, 'position' => 2, 'is_required' => '1'],
             ],
             'bands' => [
-                ['code' => 'low', 'label' => 'Low', 'min_score' => 0, 'max_score' => 4, 'position' => 1, 'is_active' => '1'],
-                ['code' => 'high', 'label' => 'High', 'min_score' => 5, 'max_score' => 10, 'position' => 2, 'is_active' => '1'],
+                ['code' => 'low', 'label' => 'Low', 'min_score' => 2, 'max_score' => 3, 'position' => 1, 'is_active' => '1'],
+                ['code' => 'high', 'label' => 'High', 'min_score' => 4, 'max_score' => 4, 'position' => 2, 'is_active' => '1'],
             ],
         ])->assertRedirect(route('admin.questionnaires.index'));
 

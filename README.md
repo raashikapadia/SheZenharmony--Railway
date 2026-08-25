@@ -83,6 +83,18 @@ Create the first administrator account without storing its password in source:
 php artisan shezen:create-admin
 ```
 
+For repeatable local demo data, run the development-only seeder explicitly:
+
+```powershell
+php artisan db:seed --class=DevelopmentSeeder
+```
+
+This creates `admin.demo@shezen.local` / `Admin1234!` and
+`student.demo@shezen.local` / `Student1234!`, plus a complete development-only
+stress questionnaire. These credentials are fake, local-only test credentials;
+never use them in production. The seeder refuses to run outside the `local` and
+`testing` environments and is safe to run repeatedly.
+
 ## Run Laravel
 
 ```powershell
@@ -108,47 +120,32 @@ cd frontend
 flutter pub get
 ```
 
-Launch emulator:
-
-```powershell
-flutter emulators
-flutter emulators --launch Pixel_8
-flutter devices
-```
-
-Run:
-
-```powershell
-flutter run
-```
+Create/import an Android Virtual Device named `Pixel_8` once in Android Studio
+Device Manager. After that, the repository launcher starts it (when needed),
+waits for Android to finish booting, and selects its actual device ID.
 
 The Android emulator communicates with the Windows host through:
 
 http://10.0.2.2:8000/api
 
-If you use a different backend port, run Flutter with the device ID shown by `flutter devices`:
-
-```powershell
-flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8001/api
-```
-
-Replace `emulator-5554` with the actual device ID from your machine.
-
 ## Normal Development Workflow
 
-Terminal 1:
+Terminal 1 - Backend:
 
 ```powershell
 cd backend
-php artisan serve --host=0.0.0.0 --port=8000
+php artisan serve
 ```
 
-Terminal 2:
+Terminal 2 - Mobile app (from the repository root):
 
 ```powershell
-cd frontend
-flutter run
+.\scripts\run-mobile.ps1
 ```
+
+The launcher reuses a running Android emulator or starts `Pixel_8`, waits up to
+three minutes for both Android and Flutter to report it ready, and then supplies
+the emulator API address automatically. It never wipes or recreates an AVD.
 
 Flutter shortcuts:
 - `r` = hot reload

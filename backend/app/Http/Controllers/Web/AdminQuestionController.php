@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Enums\QuestionType;
 use App\Http\Controllers\Controller;
 use App\Models\StressQuestion;
 use Illuminate\Http\RedirectResponse;
@@ -66,7 +67,7 @@ class AdminQuestionController extends Controller
         return $request->validate([
             'question_text' => ['required', 'string', 'max:2000'],
             'dimension' => ['nullable', 'string', 'max:100'],
-            'question_type' => ['required', Rule::in(['scale'])],
+            'question_type' => ['required', Rule::in(QuestionType::values())],
             'position' => ['required', 'integer', 'min:0', 'max:10000'],
             'is_active' => ['nullable', 'boolean'],
             'is_sensitive' => ['nullable', 'boolean'],

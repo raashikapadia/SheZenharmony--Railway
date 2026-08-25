@@ -31,7 +31,8 @@ class AdminAccessTest extends TestCase
 
         $this->get('/admin')
             ->assertOk()
-            ->assertSee('SheZen Harmony Admin');
+            ->assertSee('SheZen Harmony')
+            ->assertSee('Administration');
     }
 
     public function test_student_cannot_view_admin_dashboard(): void

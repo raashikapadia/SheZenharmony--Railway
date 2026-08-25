@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Questionnaire extends Model
 {
     protected $fillable = [
-        'title', 'description', 'type', 'version', 'status', 'is_active',
+        'title', 'description', 'period', 'type', 'version', 'status', 'is_active',
         'created_by_user_id', 'published_at',
     ];
 
