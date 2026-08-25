@@ -15,6 +15,8 @@ class QuestionnaireResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'description' => $this->description,
+            'period' => $this->period,
+            'version' => $this->version,
             'status' => $this->status,
             'is_active' => $this->is_active,
             'question_count' => $this->whenCounted('questions'),

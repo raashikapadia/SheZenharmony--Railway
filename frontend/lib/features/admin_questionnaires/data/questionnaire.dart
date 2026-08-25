@@ -6,6 +6,8 @@ class Questionnaire {
     required this.id,
     required this.title,
     this.description,
+    this.period,
+    required this.version,
     required this.status,
     required this.isActive,
     required this.questionCount,
@@ -19,6 +21,8 @@ class Questionnaire {
   final int id;
   final String title;
   final String? description;
+  final String? period;
+  final int version;
   final String status;
   final bool isActive;
   final int questionCount;
@@ -35,6 +39,8 @@ class Questionnaire {
       id: json['id'] as int,
       title: json['title'] as String? ?? '',
       description: json['description'] as String?,
+      period: json['period'] as String?,
+      version: json['version'] as int? ?? 1,
       status: json['status'] as String? ?? 'draft',
       isActive: json['is_active'] as bool? ?? false,
       questionCount: json['question_count'] as int? ?? 0,

@@ -35,6 +35,7 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/questionnaires/{questionnaire}', [AdminQuestionnaireController::class, 'destroy']);
         Route::patch('/questionnaires/{questionnaire}/activate', [AdminQuestionnaireController::class, 'activate']);
         Route::patch('/questionnaires/{questionnaire}/deactivate', [AdminQuestionnaireController::class, 'deactivate']);
+        Route::post('/questionnaires/{questionnaire}/new-version', [AdminQuestionnaireController::class, 'createNewVersion']);
 
         Route::patch('/questionnaires/{questionnaire}/questions/reorder', [AdminQuestionController::class, 'reorder']);
         Route::post('/questionnaires/{questionnaire}/questions', [AdminQuestionController::class, 'store']);

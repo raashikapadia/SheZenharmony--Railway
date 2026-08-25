@@ -26,6 +26,7 @@ class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
+  late final TextEditingController _periodController;
   late String _status;
   late bool _isActive;
   bool _isSaving = false;
@@ -39,11 +40,13 @@ class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
     final q = widget.questionnaire;
     _titleController = TextEditingController(text: q?.title ?? '');
     _descriptionController = TextEditingController(text: q?.description ?? '');
+    _periodController = TextEditingController(text: q?.period ?? '');
     _status = q?.status ?? 'draft';
     _isActive = q?.isActive ?? false;
 
     _titleController.addListener(_markDirty);
     _descriptionController.addListener(_markDirty);
+    _periodController.addListener(_markDirty);
   }
 
   void _markDirty() {
@@ -54,6 +57,7 @@ class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _periodController.dispose();
     super.dispose();
   }
 
@@ -69,12 +73,14 @@ class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
     final provider = context.read<QuestionnaireListProvider>();
     final title = _titleController.text.trim();
     final description = _descriptionController.text.trim();
+    final period = _periodController.text.trim();
 
     if (widget.isEditing) {
       final ok = await provider.updateQuestionnaire(
         widget.questionnaire!.id,
         title: title,
         description: description.isEmpty ? null : description,
+        period: period.isEmpty ? null : period,
         status: _status,
         isActive: _isActive,
       );
@@ -93,6 +99,7 @@ class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
       final createdId = await provider.createQuestionnaire(
         title: title,
         description: description.isEmpty ? null : description,
+        period: period.isEmpty ? null : period,
         status: _status,
       );
       if (!mounted) return;
@@ -174,6 +181,17 @@ class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
                     if (value != null && value.length > 5000) return 'Description is too long.';
                     return null;
                   },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _periodController,
+                  maxLength: 100,
+                  decoration: const InputDecoration(
+                    labelText: 'Period (optional)',
+                    hintText: 'e.g. Semester 1 2026',
+                    border: OutlineInputBorder(),
+                    helperText: 'Which term/cohort this version is for — for your own organization.',
+                  ),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(

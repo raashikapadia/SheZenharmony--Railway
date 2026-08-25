@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreQuestionnaireRequest;
 use App\Http\Requests\Admin\UpdateQuestionnaireRequest;
 use App\Http\Resources\Admin\QuestionnaireResource;
 use App\Models\Questionnaire;
+use App\Models\StressQuestion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -59,6 +60,7 @@ class QuestionnaireController extends Controller
             return Questionnaire::query()->create([
                 'title' => $data['title'],
                 'description' => $data['description'] ?? null,
+                'period' => $data['period'] ?? null,
                 'type' => self::QUESTIONNAIRE_TYPE,
                 'version' => $nextVersion,
                 'status' => $data['status'] ?? 'draft',
@@ -90,9 +92,13 @@ class QuestionnaireController extends Controller
     {
         $data = $request->validated();
 
+        // Title/description/period are labelling, not measurement structure —
+        // always safe to edit in place, live or not, per the "fix an error
+        // without replacing the thing entirely" admin privilege.
         $questionnaire->update([
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
+            'period' => $data['period'] ?? null,
             'status' => $data['status'],
             'is_active' => (bool) ($data['is_active'] ?? false),
         ]);
@@ -115,15 +121,28 @@ class QuestionnaireController extends Controller
 
     public function activate(Questionnaire $questionnaire): JsonResponse
     {
-        $questionnaire->update([
-            'is_active' => true,
-            'status' => 'published',
-            'published_at' => $questionnaire->published_at ?? now(),
-        ]);
+        DB::transaction(function () use ($questionnaire): void {
+            // Only one version of a given type is ever "live" at a time —
+            // this is what makes publishing a new version the batch
+            // boundary: a user who already loaded the prior version can
+            // still submit against it, but anyone loading the questionnaire
+            // from this point on gets the new one.
+            Questionnaire::query()
+                ->where('type', $questionnaire->type)
+                ->where('id', '!=', $questionnaire->id)
+                ->where('is_active', true)
+                ->update(['is_active' => false, 'status' => 'archived']);
+
+            $questionnaire->update([
+                'is_active' => true,
+                'status' => 'published',
+                'published_at' => $questionnaire->published_at ?? now(),
+            ]);
+        });
 
         return response()->json([
             'data' => new QuestionnaireResource($questionnaire->fresh()),
-            'message' => 'Questionnaire activated.',
+            'message' => 'Questionnaire activated. Any previously live version of this questionnaire has been archived.',
         ]);
     }
 
@@ -135,5 +154,89 @@ class QuestionnaireController extends Controller
             'data' => new QuestionnaireResource($questionnaire->fresh()),
             'message' => 'Questionnaire deactivated.',
         ]);
+    }
+
+    /**
+     * Clones this questionnaire — including independent copies of its
+     * questions, options, and score bands — into a new draft version. Used
+     * whenever an admin needs to make a structural change (add/remove a
+     * question, change scores) to a questionnaire that already has
+     * assessment history: editing that history's source in place is
+     * blocked, so this is the sanctioned way to make the change instead.
+     * The clone is fully independent — editing it later never affects the
+     * original version or any assessment already recorded against it.
+     */
+    public function createNewVersion(Questionnaire $questionnaire, Request $request): JsonResponse
+    {
+        $questionnaire->load(['questions.options', 'scoreBands']);
+
+        $clone = DB::transaction(function () use ($questionnaire, $request): Questionnaire {
+            $nextVersion = (int) Questionnaire::query()->where('type', $questionnaire->type)->max('version') + 1;
+
+            $clone = Questionnaire::query()->create([
+                'title' => $questionnaire->title,
+                'description' => $questionnaire->description,
+                'period' => $questionnaire->period,
+                'type' => $questionnaire->type,
+                'version' => $nextVersion,
+                'status' => 'draft',
+                'is_active' => false,
+                'created_by_user_id' => $request->user()->id,
+            ]);
+
+            foreach ($questionnaire->questions as $question) {
+                $newQuestion = StressQuestion::query()->create([
+                    'question_text' => $question->question_text,
+                    'dimension' => $question->dimension,
+                    'help_text' => $question->help_text,
+                    'question_type' => $question->question_type,
+                    'position' => $question->position,
+                    'is_active' => true,
+                    'is_sensitive' => $question->is_sensitive,
+                    'created_by_user_id' => $request->user()->id,
+                ]);
+
+                foreach ($question->options as $option) {
+                    $newQuestion->options()->create([
+                        'label' => $option->label,
+                        'value' => $option->value,
+                        'score' => $option->score,
+                        'position' => $option->position,
+                        'is_active' => true,
+                    ]);
+                }
+
+                $clone->questions()->attach($newQuestion->id, [
+                    'position' => $question->pivot->position,
+                    'is_required' => $question->pivot->is_required,
+                ]);
+            }
+
+            foreach ($questionnaire->scoreBands as $band) {
+                $clone->scoreBands()->create([
+                    'code' => $band->code,
+                    'label' => $band->label,
+                    'min_score' => $band->min_score,
+                    'max_score' => $band->max_score,
+                    'position' => $band->position,
+                    'is_active' => $band->is_active,
+                    'created_by_user_id' => $request->user()->id,
+                ]);
+            }
+
+            return $clone;
+        });
+
+        $clone->loadCount('questions')->load([
+            'questions' => fn ($query) => $query->orderBy('questionnaire_questions.position')
+                ->with(['options' => fn ($options) => $options->orderBy('position')]),
+            'scoreBands' => fn ($query) => $query->orderBy('position'),
+        ]);
+
+        return response()->json([
+            'data' => new QuestionnaireResource($clone),
+            'message' => 'New draft version created. Edit it freely, then activate it when ready — the '
+                .'original version and its history are untouched.',
+        ], 201);
     }
 }

@@ -138,6 +138,34 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
     );
   }
 
+  Future<void> _createNewVersion() async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Create a new version?',
+      message: 'This clones the questionnaire — including its questions, options, and score ranges — into a '
+          'new draft you can edit freely. The current version and its assessment history are untouched. '
+          'When you publish the new draft, it becomes what new users take.',
+      confirmLabel: 'Create Draft',
+      destructive: false,
+    );
+    if (!confirmed || !mounted) return;
+
+    final provider = context.read<QuestionnaireBuilderProvider>();
+    final newId = await provider.createNewVersion();
+    if (!mounted) return;
+
+    if (newId != null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('New draft version created.')));
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => QuestionnaireBuilderScreen(questionnaireId: newId)),
+      );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(provider.actionError ?? 'Failed to create a new version.')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<QuestionnaireBuilderProvider>();
@@ -146,6 +174,15 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
     return Scaffold(
       appBar: AppBar(
         title: Text(provider.questionnaire?.title ?? 'Questionnaire Builder'),
+        actions: loaded
+            ? [
+                IconButton(
+                  tooltip: 'Create New Version',
+                  icon: const Icon(Icons.fork_right),
+                  onPressed: provider.isMutating ? null : _createNewVersion,
+                ),
+              ]
+            : null,
         bottom: loaded
             ? TabBar(
                 controller: _tabController,
@@ -199,6 +236,8 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
                   ],
                   const SizedBox(height: 4),
                   Text(
+                    'v${questionnaire.version}'
+                    '${(questionnaire.period ?? '').isNotEmpty ? ' · ${questionnaire.period}' : ''} · '
                     'Status: ${questionnaire.status} · ${questionnaire.questionCount} question(s) · '
                     '${questionnaire.scoreBands.length} score range(s)',
                     style: Theme.of(context).textTheme.bodySmall,

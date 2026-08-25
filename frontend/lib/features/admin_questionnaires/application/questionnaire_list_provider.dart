@@ -99,6 +99,7 @@ class QuestionnaireListProvider extends ChangeNotifier {
   Future<int?> createQuestionnaire({
     required String title,
     String? description,
+    String? period,
     required String status,
   }) async {
     _actionError = null;
@@ -108,6 +109,7 @@ class QuestionnaireListProvider extends ChangeNotifier {
         _token,
         title: title,
         description: description,
+        period: period,
         status: status,
       );
       await load();
@@ -124,6 +126,7 @@ class QuestionnaireListProvider extends ChangeNotifier {
     int id, {
     required String title,
     String? description,
+    String? period,
     required String status,
     required bool isActive,
   }) async {
@@ -135,6 +138,7 @@ class QuestionnaireListProvider extends ChangeNotifier {
         id,
         title: title,
         description: description,
+        period: period,
         status: status,
         isActive: isActive,
       );

@@ -18,6 +18,7 @@ class StoreQuestionnaireRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
+            'period' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', Rule::in(['draft', 'published', 'archived'])],
             'is_active' => ['nullable', 'boolean'],
         ];

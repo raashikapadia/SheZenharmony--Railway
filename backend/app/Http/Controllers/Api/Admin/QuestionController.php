@@ -14,8 +14,14 @@ use Illuminate\Support\Facades\DB;
 
 class QuestionController extends Controller
 {
+    private const STRUCTURAL_CHANGE_MESSAGE = 'This questionnaire already has assessment history, so its '
+        .'structure (questions, options, or scores) can\'t change in place. Use "Create New Version" instead — '
+        .'your edits there won\'t affect this history, and new assessments will start using it once published.';
+
     public function store(StoreQuestionRequest $request, Questionnaire $questionnaire): JsonResponse
     {
+        $this->ensureNotStructurallyLocked($questionnaire);
+
         $data = $request->validated();
 
         $question = DB::transaction(function () use ($data, $questionnaire, $request): StressQuestion {
@@ -64,6 +70,10 @@ class QuestionController extends Controller
         $this->ensureBelongsToQuestionnaire($questionnaire, $question);
 
         $data = $request->validated();
+
+        if ($questionnaire->assessments()->exists() && $this->isStructuralOptionChange($question, $data['options'])) {
+            abort(409, self::STRUCTURAL_CHANGE_MESSAGE);
+        }
 
         DB::transaction(function () use ($data, $questionnaire, $question): void {
             $question->fill([
@@ -114,6 +124,7 @@ class QuestionController extends Controller
     public function destroy(Questionnaire $questionnaire, StressQuestion $question): JsonResponse
     {
         $this->ensureBelongsToQuestionnaire($questionnaire, $question);
+        $this->ensureNotStructurallyLocked($questionnaire);
 
         return DB::transaction(function () use ($questionnaire, $question): JsonResponse {
             $questionnaire->questions()->detach($question->id);
@@ -140,6 +151,8 @@ class QuestionController extends Controller
 
     public function reorder(ReorderQuestionsRequest $request, Questionnaire $questionnaire): JsonResponse
     {
+        $this->ensureNotStructurallyLocked($questionnaire);
+
         $items = collect($request->validated('questions'));
         $attachedIds = $questionnaire->questions()->pluck('stress_questions.id');
 
@@ -175,5 +188,57 @@ class QuestionController extends Controller
             404,
             'Question not found in this questionnaire.',
         );
+    }
+
+    /**
+     * Adding, removing, or reordering questions changes what a total score
+     * even means for this questionnaire — once real assessments exist
+     * against it, that has to go through a new version instead of an
+     * in-place edit. Wording-only edits (see isStructuralOptionChange) stay
+     * allowed regardless, since they don't change the measurement.
+     */
+    private function ensureNotStructurallyLocked(Questionnaire $questionnaire): void
+    {
+        abort_if($questionnaire->assessments()->exists(), 409, self::STRUCTURAL_CHANGE_MESSAGE);
+    }
+
+    /**
+     * True if the submitted option set would change the question's scoring
+     * structure (an option added, removed, or its score changed) rather
+     * than just wording (label/value text). Used to allow typo fixes on a
+     * question with assessment history while still blocking anything that
+     * would make historical scores mean something different.
+     *
+     * @param array<int, array<string, mixed>> $submittedOptions
+     */
+    private function isStructuralOptionChange(StressQuestion $question, array $submittedOptions): bool
+    {
+        $existing = $question->options()->get()->keyBy('id');
+        $submittedIds = collect($submittedOptions)->pluck('id')->filter()->values();
+
+        if ($existing->keys()->diff($submittedIds)->isNotEmpty()) {
+            return true;
+        }
+
+        foreach ($submittedOptions as $option) {
+            $id = $option['id'] ?? null;
+            if ($id === null) {
+                return true;
+            }
+
+            $current = $existing->get($id);
+            if ($current === null) {
+                return true;
+            }
+
+            $submittedScore = array_key_exists('score', $option) && $option['score'] !== null
+                ? (int) $option['score']
+                : null;
+            if ($current->score !== $submittedScore) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -172,6 +172,25 @@ class QuestionnaireBuilderProvider extends ChangeNotifier {
     }
   }
 
+  /// Clones this questionnaire into a new draft version. Returns the new
+  /// version's id on success so the caller can navigate straight to it.
+  Future<int?> createNewVersion() async {
+    _isMutating = true;
+    _actionError = null;
+    notifyListeners();
+
+    try {
+      final clone = await _apiService.adminCreateNewVersion(_token, questionnaireId);
+      return clone.id;
+    } on ApiException catch (e) {
+      _actionError = e.message;
+      return null;
+    } finally {
+      _isMutating = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> _mutate(Future<void> Function() operation, {required String successMessage}) async {
     _isMutating = true;
     _actionError = null;

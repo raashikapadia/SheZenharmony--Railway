@@ -263,6 +263,9 @@ class _QuestionnaireCard extends StatelessWidget {
                 spacing: 12,
                 runSpacing: 4,
                 children: [
+                  Text('v${questionnaire.version}', style: Theme.of(context).textTheme.bodySmall),
+                  if ((questionnaire.period ?? '').isNotEmpty)
+                    Text(questionnaire.period!, style: Theme.of(context).textTheme.bodySmall),
                   Text('${questionnaire.questionCount} question(s)', style: Theme.of(context).textTheme.bodySmall),
                   Text('Status: ${questionnaire.status}', style: Theme.of(context).textTheme.bodySmall),
                   if (dateFormat != null)

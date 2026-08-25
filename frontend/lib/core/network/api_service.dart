@@ -229,13 +229,14 @@ class ApiService {
     String token, {
     required String title,
     String? description,
+    String? period,
     String status = 'draft',
   }) async {
     final body = await _sendJson(
       'POST',
       Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires'),
       token,
-      {'title': title, 'description': description, 'status': status},
+      {'title': title, 'description': description, 'period': period, 'status': status},
     );
     return Questionnaire.fromJson(body['data'] as Map<String, dynamic>);
   }
@@ -245,6 +246,7 @@ class ApiService {
     int id, {
     required String title,
     String? description,
+    String? period,
     required String status,
     required bool isActive,
   }) async {
@@ -252,13 +254,26 @@ class ApiService {
       'PUT',
       Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$id'),
       token,
-      {'title': title, 'description': description, 'status': status, 'is_active': isActive},
+      {'title': title, 'description': description, 'period': period, 'status': status, 'is_active': isActive},
     );
     return Questionnaire.fromJson(body['data'] as Map<String, dynamic>);
   }
 
   Future<void> adminDeleteQuestionnaire(String token, int id) async {
     await _sendJson('DELETE', Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$id'), token, null);
+  }
+
+  /// Clones the questionnaire into a new draft version with independent
+  /// copies of its questions/options/score bands — the sanctioned way to
+  /// make structural changes once a questionnaire has assessment history.
+  Future<Questionnaire> adminCreateNewVersion(String token, int id) async {
+    final body = await _sendJson(
+      'POST',
+      Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$id/new-version'),
+      token,
+      null,
+    );
+    return Questionnaire.fromJson(body['data'] as Map<String, dynamic>);
   }
 
   Future<Questionnaire> adminActivateQuestionnaire(String token, int id) async {
