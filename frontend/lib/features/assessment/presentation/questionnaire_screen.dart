@@ -49,6 +49,10 @@ class _QuestionnaireView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Title reflects whatever the admin actually named this questionnaire —
+    // falls back to a generic label only while it's loading or unavailable.
+    final loadedTitle = context.select<AssessmentProvider, String?>((p) => p.questionnaire?.title);
+
     return PopScope(
       canPop: !mandatory,
       onPopInvokedWithResult: (didPop, result) {
@@ -59,7 +63,7 @@ class _QuestionnaireView extends StatelessWidget {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Stress Check-In'),
+          title: Text((loadedTitle == null || loadedTitle.isEmpty) ? 'Stress Check-In' : loadedTitle),
           automaticallyImplyLeading: !mandatory,
         ),
         body: Consumer<AssessmentProvider>(
