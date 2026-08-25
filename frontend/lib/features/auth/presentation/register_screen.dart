@@ -28,8 +28,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _submit() async {
+    FocusScope.of(context).unfocus();
     if (!(_formKey.currentState?.validate() ?? false)) return;
-
     final auth = context.read<AuthProvider>();
     final success = await auth.register(
       name: _nameController.text.trim(),
@@ -37,17 +37,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       password: _passwordController.text,
       passwordConfirmation: _confirmController.text,
     );
-
     if (!mounted) return;
     if (success) {
-      // A fresh account has no completed assessment yet, so the root
-      // widget will automatically present the mandatory questionnaire —
-      // just leave this screen.
       Navigator.of(context).pop();
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(auth.error ?? 'Registration failed.')));
+    } else if (auth.fieldErrors == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('We couldn\'t create your account. Please try again.'),
+        ),
+      );
     }
   }
 
@@ -55,87 +53,128 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final fieldErrors = auth.fieldErrors;
-
+    final colors = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('Create account')),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('Join SheZen Harmony', style: Theme.of(context).textTheme.headlineSmall),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Right after you sign up, we\'ll ask a short stress check-in to get started.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
-                    validator: (value) =>
-                        (value == null || value.trim().isEmpty) ? 'Name is required.' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      border: const OutlineInputBorder(),
-                      errorText: fieldErrors?['email']?.first,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 430),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Join SheZen Harmony',
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.w800),
                     ),
-                    validator: (value) =>
-                        (value == null || value.trim().isEmpty) ? 'Email is required.' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      border: const OutlineInputBorder(),
-                      errorText: fieldErrors?['password']?.first,
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Create your student account. A short wellbeing check-in will help you get started.',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) return 'Password is required.';
-                      if (value.length < 8) return 'Password must be at least 8 characters.';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _confirmController,
-                    obscureText: _obscurePassword,
-                    decoration: const InputDecoration(
-                      labelText: 'Confirm password',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 28),
+                    _Field(
+                      controller: _nameController,
+                      label: 'Name',
+                      icon: Icons.person_outline_rounded,
+                      errorText: fieldErrors?['name']?.first,
+                      textCapitalization: TextCapitalization.words,
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                          ? 'Enter your name.'
+                          : null,
                     ),
-                    validator: (value) =>
-                        value != _passwordController.text ? 'Passwords do not match.' : null,
-                    onFieldSubmitted: (_) => _submit(),
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: auth.isLoading ? null : _submit,
-                    child: auth.isLoading
-                        ? const SizedBox.square(
-                            dimension: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Create account'),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    _Field(
+                      controller: _emailController,
+                      label: 'University email',
+                      icon: Icons.mail_outline_rounded,
+                      errorText: fieldErrors?['email']?.first,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        final email = value?.trim() ?? '';
+                        if (email.isEmpty) return 'Enter your email address.';
+                        if (!email.contains('@')) {
+                          return 'Enter a valid email address.';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.next,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        helperText: 'Use at least 8 characters',
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        errorText: fieldErrors?['password']?.first,
+                        suffixIcon: IconButton(
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Enter a password.';
+                        }
+                        if (value.length < 8) {
+                          return 'Use at least 8 characters.';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _confirmController,
+                      obscureText: _obscurePassword,
+                      onFieldSubmitted: auth.isLoading
+                          ? null
+                          : (_) => _submit(),
+                      decoration: const InputDecoration(
+                        labelText: 'Confirm password',
+                        prefixIcon: Icon(Icons.verified_user_outlined),
+                      ),
+                      validator: (value) => value != _passwordController.text
+                          ? 'Passwords do not match.'
+                          : null,
+                    ),
+                    const SizedBox(height: 26),
+                    FilledButton(
+                      onPressed: auth.isLoading ? null : _submit,
+                      child: auth.isLoading
+                          ? const SizedBox.square(
+                              dimension: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Create account'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: auth.isLoading
+                          ? null
+                          : () => Navigator.of(context).pop(),
+                      child: const Text('Already have an account? Sign in'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -143,4 +182,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
+}
+
+class _Field extends StatelessWidget {
+  const _Field({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    required this.validator,
+    this.errorText,
+    this.keyboardType,
+    this.textCapitalization = TextCapitalization.none,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final FormFieldValidator<String> validator;
+  final String? errorText;
+  final TextInputType? keyboardType;
+  final TextCapitalization textCapitalization;
+
+  @override
+  Widget build(BuildContext context) => TextFormField(
+    controller: controller,
+    keyboardType: keyboardType,
+    textCapitalization: textCapitalization,
+    textInputAction: TextInputAction.next,
+    decoration: InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon),
+      errorText: errorText,
+    ),
+    validator: validator,
+  );
 }

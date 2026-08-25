@@ -21,6 +21,7 @@ void main() {
   ) async {
     await tester.pumpWidget(const SheZenApp());
     await tester.pump();
+    await tester.pump(const Duration(seconds: 11));
 
     // Whatever AuthProvider has resolved to by this point (loading spinner,
     // or already past it), the widget tree should be in a valid state with
@@ -41,6 +42,7 @@ void main() {
 
     expect(find.text('SheZen Harmony'), findsOneWidget);
     expect(find.text('Sign in'), findsWidgets);
-    expect(find.text('Don\'t have an account? Create one'), findsOneWidget);
+    expect(find.text('New to SheZen?'), findsOneWidget);
+    expect(find.text('Create account'), findsOneWidget);
   });
 }

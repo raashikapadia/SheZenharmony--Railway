@@ -6,10 +6,6 @@ import '../../auth/application/auth_provider.dart';
 import '../application/assessment_provider.dart';
 import 'assessment_result_screen.dart';
 
-/// The single questionnaire-taking experience used for both the mandatory
-/// post-registration assessment and the optional in-app check-in — same
-/// widget, same data source, so there is exactly one place that renders
-/// questionnaire content.
 class QuestionnaireScreen extends StatelessWidget {
   const QuestionnaireScreen({super.key, required this.mandatory});
 
@@ -19,7 +15,8 @@ class QuestionnaireScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final token = context.read<AuthProvider>().session!.token;
     return ChangeNotifierProvider(
-      create: (_) => AssessmentProvider(apiService: ApiService(), token: token)..load(),
+      create: (_) =>
+          AssessmentProvider(apiService: ApiService(), token: token)..load(),
       child: _QuestionnaireView(mandatory: mandatory),
     );
   }
@@ -32,128 +29,69 @@ class _QuestionnaireView extends StatelessWidget {
 
   Future<void> _submit(BuildContext context) async {
     final provider = context.read<AssessmentProvider>();
-    final ok = await provider.submit();
-    if (!context.mounted) return;
+    if (!await provider.submit() || !context.mounted) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'We couldn\'t submit your check-in. Please try again.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
 
-    if (ok) {
-      context.read<AuthProvider>().markAssessmentCompleted();
-      Navigator.of(
+    final resultScreen = AssessmentResultScreen(
+      result: provider.result!,
+      mandatory: mandatory,
+    );
+    if (mandatory) {
+      await Navigator.of(
         context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => AssessmentResultScreen(result: provider.result!)));
+      ).push(MaterialPageRoute(builder: (_) => resultScreen));
     } else {
-      ScaffoldMessenger.of(
+      context.read<AuthProvider>().markAssessmentCompleted();
+      await Navigator.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(provider.submitError ?? 'Failed to submit. Please try again.')));
+      ).pushReplacement(MaterialPageRoute(builder: (_) => resultScreen));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Title reflects whatever the admin actually named this questionnaire —
-    // falls back to a generic label only while it's loading or unavailable.
-    final loadedTitle = context.select<AssessmentProvider, String?>((p) => p.questionnaire?.title);
+    final loadedTitle = context.select<AssessmentProvider, String?>(
+      (provider) => provider.questionnaire?.title,
+    );
 
     return PopScope(
       canPop: !mandatory,
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please complete the stress check-in to continue.')),
-        );
+        if (!didPop) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Complete this check-in to continue to SheZen.'),
+            ),
+          );
+        }
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text((loadedTitle == null || loadedTitle.isEmpty) ? 'Stress Check-In' : loadedTitle),
+          title: Text(mandatory ? 'Your first check-in' : 'Stress check-in'),
           automaticallyImplyLeading: !mandatory,
         ),
         body: Consumer<AssessmentProvider>(
           builder: (context, provider, _) {
-            switch (provider.state) {
-              case AssessmentLoadState.loading:
-                return const Center(child: CircularProgressIndicator());
-              case AssessmentLoadState.error:
-                return _ErrorView(
-                  message: provider.errorMessage ?? 'Unable to load the questionnaire. Please try again.',
-                  onRetry: provider.load,
-                );
-              case AssessmentLoadState.loaded:
-                final question = provider.currentQuestion;
-                if (question == null) {
-                  return const Center(child: Text('This questionnaire has no questions yet.'));
-                }
-                final progress = (provider.currentIndex + 1) / provider.questionCount;
-
-                return SafeArea(
-                  child: Column(
-                    children: [
-                      LinearProgressIndicator(value: progress, minHeight: 4),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Question ${provider.currentIndex + 1} of ${provider.questionCount}',
-                                style: Theme.of(
-                                  context,
-                                ).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.primary),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(question.text, style: Theme.of(context).textTheme.headlineSmall),
-                              const SizedBox(height: 24),
-                              ...question.options.map(
-                                (option) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: _AnswerTile(
-                                    label: option.label,
-                                    selected: provider.selectedOptionFor(question.id) == option.id,
-                                    onTap: () => provider.selectAnswer(question.id, option.id),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                        child: Row(
-                          children: [
-                            if (!provider.isFirstQuestion)
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: provider.goPrevious,
-                                  child: const Text('Previous'),
-                                ),
-                              ),
-                            if (!provider.isFirstQuestion) const SizedBox(width: 12),
-                            Expanded(
-                              flex: 2,
-                              child: provider.isLastQuestion
-                                  ? FilledButton(
-                                      onPressed: provider.allRequiredAnswered && !provider.isSubmitting
-                                          ? () => _submit(context)
-                                          : null,
-                                      child: provider.isSubmitting
-                                          ? const SizedBox.square(
-                                              dimension: 20,
-                                              child: CircularProgressIndicator(strokeWidth: 2),
-                                            )
-                                          : const Text('Submit Questionnaire'),
-                                    )
-                                  : FilledButton(
-                                      onPressed: provider.canGoNext ? provider.goNext : null,
-                                      child: const Text('Next'),
-                                    ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-            }
+            return switch (provider.state) {
+              AssessmentLoadState.loading => const _LoadingView(),
+              AssessmentLoadState.error => _ErrorView(onRetry: provider.load),
+              AssessmentLoadState.loaded => _LoadedQuestionnaire(
+                provider: provider,
+                title: loadedTitle,
+                mandatory: mandatory,
+                onSubmit: () => _submit(context),
+              ),
+            };
           },
         ),
       ),
@@ -161,33 +99,243 @@ class _QuestionnaireView extends StatelessWidget {
   }
 }
 
-class _AnswerTile extends StatelessWidget {
-  const _AnswerTile({required this.label, required this.selected, required this.onTap});
+class _LoadedQuestionnaire extends StatelessWidget {
+  const _LoadedQuestionnaire({
+    required this.provider,
+    required this.title,
+    required this.mandatory,
+    required this.onSubmit,
+  });
 
+  final AssessmentProvider provider;
+  final String? title;
+  final bool mandatory;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    final question = provider.currentQuestion;
+    if (question == null) {
+      return const _CenteredMessage(
+        icon: Icons.assignment_outlined,
+        message: 'No questions are available right now.',
+      );
+    }
+    final colors = Theme.of(context).colorScheme;
+    final currentNumber = provider.currentIndex + 1;
+    final progress = currentNumber / provider.questionCount;
+
+    return SafeArea(
+      child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 620),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (provider.currentIndex == 0) ...[
+                      Text(
+                        title?.isNotEmpty == true
+                            ? title!
+                            : 'Wellbeing check-in',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        mandatory
+                            ? 'Take a quiet moment and choose the answer that feels most true for you.'
+                            : 'Choose the answer that best reflects how you feel today.',
+                        style: TextStyle(color: colors.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 22),
+                    ],
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Question $currentNumber of ${provider.questionCount}',
+                          style: TextStyle(
+                            color: colors.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          '${(progress * 100).round()}%',
+                          style: TextStyle(color: colors.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 8,
+                        backgroundColor: colors.surfaceContainerHighest,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(22),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              question.text,
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.25,
+                                  ),
+                            ),
+                            const SizedBox(height: 22),
+                            for (final option in question.options)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: _AnswerTile(
+                                  label: option.label,
+                                  selected:
+                                      provider.selectedOptionFor(question.id) ==
+                                      option.id,
+                                  onTap: provider.isSubmitting
+                                      ? null
+                                      : () => provider.selectAnswer(
+                                          question.id,
+                                          option.id,
+                                        ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (provider.submitError != null) ...[
+                      const SizedBox(height: 14),
+                      _InlineError(
+                        message:
+                            'Your check-in wasn\'t submitted. Please try again.',
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x10000000),
+                  blurRadius: 14,
+                  offset: Offset(0, -3),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                if (!provider.isFirstQuestion) ...[
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: provider.isSubmitting
+                          ? null
+                          : provider.goPrevious,
+                      child: const Text('Previous'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  flex: provider.isFirstQuestion ? 1 : 2,
+                  child: provider.isLastQuestion
+                      ? FilledButton(
+                          onPressed:
+                              provider.allRequiredAnswered &&
+                                  !provider.isSubmitting
+                              ? onSubmit
+                              : null,
+                          child: provider.isSubmitting
+                              ? const SizedBox.square(
+                                  dimension: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Submit check-in'),
+                        )
+                      : FilledButton(
+                          onPressed: provider.canGoNext
+                              ? provider.goNext
+                              : null,
+                          child: const Text('Next'),
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnswerTile extends StatelessWidget {
+  const _AnswerTile({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
   final String label;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Material(
-      color: selected ? colors.primaryContainer : colors.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Icon(
-                selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                color: selected ? colors.primary : colors.outline,
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyLarge)),
-            ],
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: Material(
+        color: selected ? colors.primaryContainer : colors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: selected ? colors.primary : colors.outlineVariant,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Icon(
+                  selected
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: selected ? colors.primary : colors.outline,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontWeight: selected ? FontWeight.w600 : null,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -195,28 +343,83 @@ class _AnswerTile extends StatelessWidget {
   }
 }
 
-class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
+class _LoadingView extends StatelessWidget {
+  const _LoadingView();
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            FilledButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh), label: const Text('Retry')),
-          ],
-        ),
+  Widget build(BuildContext context) => const _CenteredMessage(
+    icon: Icons.favorite_outline,
+    message: 'Preparing your check-in…',
+    loading: true,
+  );
+}
+
+class _ErrorView extends StatelessWidget {
+  const _ErrorView({required this.onRetry});
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) => _CenteredMessage(
+    icon: Icons.cloud_off_outlined,
+    message:
+        'We couldn\'t load your check-in. Check your connection and try again.',
+    action: FilledButton.icon(
+      onPressed: onRetry,
+      icon: const Icon(Icons.refresh),
+      label: const Text('Try again'),
+    ),
+  );
+}
+
+class _CenteredMessage extends StatelessWidget {
+  const _CenteredMessage({
+    required this.icon,
+    required this.message,
+    this.loading = false,
+    this.action,
+  });
+  final IconData icon;
+  final String message;
+  final bool loading;
+  final Widget? action;
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (loading)
+            const CircularProgressIndicator()
+          else
+            Icon(icon, size: 50, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(height: 18),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          if (action != null) ...[const SizedBox(height: 20), action!],
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+class _InlineError extends StatelessWidget {
+  const _InlineError({required this.message});
+  final String message;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.errorContainer,
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.error_outline),
+        const SizedBox(width: 10),
+        Expanded(child: Text(message)),
+      ],
+    ),
+  );
 }
