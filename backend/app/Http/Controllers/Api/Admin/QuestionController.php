@@ -70,8 +70,12 @@ class QuestionController extends Controller
         $this->ensureBelongsToQuestionnaire($questionnaire, $question);
 
         $data = $request->validated();
+        $membership = $questionnaire->questions()->whereKey($question->id)->firstOrFail();
 
-        if ($questionnaire->assessments()->exists() && $this->isStructuralOptionChange($question, $data['options'])) {
+        if (($questionnaire->is_active || $questionnaire->assessments()->exists())
+            && ($this->isStructuralOptionChange($question, $data['options'])
+                || $question->question_type !== $data['question_type']
+                || (bool) $membership->pivot->is_required !== (bool) ($data['is_required'] ?? true))) {
             abort(409, self::STRUCTURAL_CHANGE_MESSAGE);
         }
 
@@ -199,7 +203,7 @@ class QuestionController extends Controller
      */
     private function ensureNotStructurallyLocked(Questionnaire $questionnaire): void
     {
-        abort_if($questionnaire->assessments()->exists(), 409, self::STRUCTURAL_CHANGE_MESSAGE);
+        abort_if($questionnaire->is_active || $questionnaire->assessments()->exists(), 409, self::STRUCTURAL_CHANGE_MESSAGE);
     }
 
     /**

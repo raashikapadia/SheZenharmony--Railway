@@ -51,20 +51,14 @@ class AuthController extends Controller
             ]);
         }
 
-        $ability = match (true) {
-            $user->isAdmin() => 'admin',
-            $user->isStudent() => 'student',
-            default => null,
-        };
-
-        if ($ability === null) {
+        if (! $user->isStudent() || $user->account_status !== 'active') {
             throw ValidationException::withMessages([
-                'email' => ['This account type cannot sign in here.'],
+                'email' => ['This account cannot sign in to the student application.'],
             ]);
         }
 
         return response()->json([
-            'token' => $user->createToken($credentials['device_name'], [$ability])->plainTextToken,
+            'token' => $user->createToken($credentials['device_name'], ['student'])->plainTextToken,
             'user' => $this->userPayload($user),
         ]);
     }

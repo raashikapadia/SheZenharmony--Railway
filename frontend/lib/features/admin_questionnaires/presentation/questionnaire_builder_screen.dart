@@ -260,7 +260,7 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
                       : ReorderableListView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
                           itemCount: questionnaire.questions.length,
-                          onReorder: (oldIndex, newIndex) =>
+                           onReorderItem: (oldIndex, newIndex) =>
                               _reorder(questionnaire.questions, oldIndex, newIndex),
                           itemBuilder: (context, index) {
                             final question = questionnaire.questions[index];

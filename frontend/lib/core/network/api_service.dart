@@ -1,5 +1,5 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -154,7 +154,9 @@ class ApiService {
     final http.Response response;
     try {
       response = await _client.get(uri, headers: const {'Accept': 'application/json'});
-    } on SocketException {
+    } on http.ClientException {
+      throw const ApiException('Network error — check your connection and that the server is reachable.');
+    } on TimeoutException {
       throw const ApiException('Network error — check your connection and that the server is reachable.');
     }
     final body = _handleResponse(response);
@@ -438,7 +440,9 @@ class ApiService {
     final http.Response response;
     try {
       response = await _client.get(uri, headers: _authorizedHeaders(token));
-    } on SocketException {
+    } on http.ClientException {
+      throw const ApiException('Network error — check your connection and that the server is reachable.');
+    } on TimeoutException {
       throw const ApiException('Network error — check your connection and that the server is reachable.');
     }
     return _handleResponse(response);
@@ -462,7 +466,9 @@ class ApiService {
         default:
           throw ArgumentError('Unsupported method: $method');
       }
-    } on SocketException {
+    } on http.ClientException {
+      throw const ApiException('Network error — check your connection and that the server is reachable.');
+    } on TimeoutException {
       throw const ApiException('Network error — check your connection and that the server is reachable.');
     }
     return _handleResponse(response);

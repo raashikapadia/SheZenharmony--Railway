@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\UpdateQuestionnaireRequest;
 use App\Http\Resources\Admin\QuestionnaireResource;
 use App\Models\Questionnaire;
 use App\Models\StressQuestion;
+use App\Services\QuestionnaireActivationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -50,7 +51,7 @@ class QuestionnaireController extends Controller
         ]);
     }
 
-    public function store(StoreQuestionnaireRequest $request): JsonResponse
+    public function store(StoreQuestionnaireRequest $request, QuestionnaireActivationService $activationService): JsonResponse
     {
         $data = $request->validated();
 
@@ -63,11 +64,17 @@ class QuestionnaireController extends Controller
                 'period' => $data['period'] ?? null,
                 'type' => self::QUESTIONNAIRE_TYPE,
                 'version' => $nextVersion,
-                'status' => $data['status'] ?? 'draft',
-                'is_active' => (bool) ($data['is_active'] ?? false),
+                'status' => 'draft',
+                'is_active' => false,
                 'created_by_user_id' => $request->user()->id,
             ]);
         });
+
+        if (($data['status'] ?? 'draft') === 'published' || ($data['is_active'] ?? false)) {
+            $questionnaire = $activationService->activate($questionnaire);
+        } elseif (($data['status'] ?? 'draft') === 'archived') {
+            $questionnaire->update(['status' => 'archived']);
+        }
 
         return response()->json([
             'data' => new QuestionnaireResource($questionnaire),
@@ -88,7 +95,7 @@ class QuestionnaireController extends Controller
         return response()->json(['data' => new QuestionnaireResource($questionnaire)]);
     }
 
-    public function update(UpdateQuestionnaireRequest $request, Questionnaire $questionnaire): JsonResponse
+    public function update(UpdateQuestionnaireRequest $request, Questionnaire $questionnaire, QuestionnaireActivationService $activationService): JsonResponse
     {
         $data = $request->validated();
 
@@ -99,9 +106,13 @@ class QuestionnaireController extends Controller
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
             'period' => $data['period'] ?? null,
-            'status' => $data['status'],
-            'is_active' => (bool) ($data['is_active'] ?? false),
         ]);
+
+        if ($data['status'] === 'published' || ($data['is_active'] ?? false)) {
+            $questionnaire = $activationService->activate($questionnaire);
+        } else {
+            $questionnaire->update(['status' => $data['status'], 'is_active' => false]);
+        }
 
         return response()->json([
             'data' => new QuestionnaireResource($questionnaire->fresh()),
@@ -119,26 +130,9 @@ class QuestionnaireController extends Controller
         return response()->json(['message' => 'Questionnaire archived.']);
     }
 
-    public function activate(Questionnaire $questionnaire): JsonResponse
+    public function activate(Questionnaire $questionnaire, QuestionnaireActivationService $activationService): JsonResponse
     {
-        DB::transaction(function () use ($questionnaire): void {
-            // Only one version of a given type is ever "live" at a time —
-            // this is what makes publishing a new version the batch
-            // boundary: a user who already loaded the prior version can
-            // still submit against it, but anyone loading the questionnaire
-            // from this point on gets the new one.
-            Questionnaire::query()
-                ->where('type', $questionnaire->type)
-                ->where('id', '!=', $questionnaire->id)
-                ->where('is_active', true)
-                ->update(['is_active' => false, 'status' => 'archived']);
-
-            $questionnaire->update([
-                'is_active' => true,
-                'status' => 'published',
-                'published_at' => $questionnaire->published_at ?? now(),
-            ]);
-        });
+        $questionnaire = $activationService->activate($questionnaire);
 
         return response()->json([
             'data' => new QuestionnaireResource($questionnaire->fresh()),
@@ -148,7 +142,7 @@ class QuestionnaireController extends Controller
 
     public function deactivate(Questionnaire $questionnaire): JsonResponse
     {
-        $questionnaire->update(['is_active' => false]);
+        $questionnaire->update(['is_active' => false, 'status' => 'archived']);
 
         return response()->json([
             'data' => new QuestionnaireResource($questionnaire->fresh()),

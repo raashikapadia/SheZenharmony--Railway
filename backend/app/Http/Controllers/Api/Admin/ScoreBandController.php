@@ -15,6 +15,7 @@ class ScoreBandController extends Controller
 {
     public function store(StoreScoreBandRequest $request, Questionnaire $questionnaire, ScaleBandValidator $validator): JsonResponse
     {
+        $this->ensureStructurallyEditable($questionnaire);
         $data = $request->validated();
         $data['is_active'] = (bool) ($data['is_active'] ?? true);
 
@@ -34,6 +35,7 @@ class ScoreBandController extends Controller
     public function update(UpdateScoreBandRequest $request, Questionnaire $questionnaire, StressScoreBand $band, ScaleBandValidator $validator): JsonResponse
     {
         $this->ensureBelongsToQuestionnaire($questionnaire, $band);
+        $this->ensureStructurallyEditable($questionnaire);
 
         $data = $request->validated();
         $data['is_active'] = (bool) ($data['is_active'] ?? true);
@@ -51,6 +53,7 @@ class ScoreBandController extends Controller
     public function destroy(Questionnaire $questionnaire, StressScoreBand $band): JsonResponse
     {
         $this->ensureBelongsToQuestionnaire($questionnaire, $band);
+        $this->ensureStructurallyEditable($questionnaire);
 
         if ($band->assessments()->exists()) {
             $band->update(['is_active' => false]);
@@ -68,5 +71,14 @@ class ScoreBandController extends Controller
     private function ensureBelongsToQuestionnaire(Questionnaire $questionnaire, StressScoreBand $band): void
     {
         abort_unless($band->questionnaire_id === $questionnaire->id, 404, 'Score range not found in this questionnaire.');
+    }
+
+    private function ensureStructurallyEditable(Questionnaire $questionnaire): void
+    {
+        abort_if(
+            $questionnaire->is_active || $questionnaire->assessments()->exists(),
+            409,
+            'Deactivate this questionnaire or create a new version before changing its score ranges.',
+        );
     }
 }

@@ -106,7 +106,7 @@ class _ScoreBandFormScreenState extends State<ScoreBandFormScreen> {
       canPop: !_dirty,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        if (await _confirmDiscard() && mounted) {
+        if (await _confirmDiscard() && context.mounted) {
           Navigator.of(context).pop();
         }
       },

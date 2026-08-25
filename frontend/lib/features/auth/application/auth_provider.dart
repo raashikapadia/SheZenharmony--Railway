@@ -46,20 +46,14 @@ class AuthProvider extends ChangeNotifier {
     try {
       _session = await _apiService.me(stored['token']!);
       await _persist(_session!);
-    } on ApiException {
-      // Offline, or the token expired server-side. Trust the cached
-      // identity but default completion to false rather than guessing —
-      // the worst case is an already-completed user briefly re-sees the
-      // gate while offline, which self-corrects once the network call
-      // above succeeds; guessing true could let someone skip it entirely.
-      _session = AuthSession(
-        token: stored['token']!,
-        userId: int.parse(stored['userId']!),
-        name: stored['name']!,
-        email: stored['email']!,
-        role: stored['role']!,
-        hasCompletedRequiredAssessment: false,
-      );
+    } on ApiException catch (error) {
+      _session = null;
+      _status = AuthStatus.signedOut;
+      if (error.statusCode == 401) {
+        await _storage.clear();
+      }
+      notifyListeners();
+      return;
     }
 
     _status = AuthStatus.signedIn;

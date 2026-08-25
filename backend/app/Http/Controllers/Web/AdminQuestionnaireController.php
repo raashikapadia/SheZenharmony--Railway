@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Questionnaire;
 use App\Models\StressQuestion;
+use App\Services\QuestionnaireActivationService;
 use App\Services\ScaleBandValidator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,12 +25,24 @@ class AdminQuestionnaireController extends Controller
         return $this->form(new Questionnaire);
     }
 
-    public function store(Request $request, ScaleBandValidator $bandValidator): RedirectResponse
+    public function store(Request $request, ScaleBandValidator $bandValidator, QuestionnaireActivationService $activationService): RedirectResponse
     {
         $data = $this->validated($request);
-        DB::transaction(function () use ($request, $data, $bandValidator): void {
-            $questionnaire = Questionnaire::query()->create($data['questionnaire'] + ['created_by_user_id' => $request->user()->id]);
+        DB::transaction(function () use ($request, $data, $bandValidator, $activationService): void {
+            $requested = $data['questionnaire'];
+            $questionnaire = Questionnaire::query()->create(
+                collect($requested)->except(['status', 'is_active'])->all() + [
+                    'status' => 'draft',
+                    'is_active' => false,
+                    'created_by_user_id' => $request->user()->id,
+                ],
+            );
             $this->syncConfiguration($questionnaire, $data, $bandValidator);
+            if ($requested['status'] === 'published' || $requested['is_active']) {
+                $activationService->activate($questionnaire);
+            } elseif ($requested['status'] === 'archived') {
+                $questionnaire->update(['status' => 'archived']);
+            }
         });
 
         return redirect()->route('admin.questionnaires.index')->with('status', 'Questionnaire created.');
@@ -40,12 +53,18 @@ class AdminQuestionnaireController extends Controller
         return $this->form($questionnaire->load(['questions', 'scoreBands']));
     }
 
-    public function update(Request $request, Questionnaire $questionnaire, ScaleBandValidator $bandValidator): RedirectResponse
+    public function update(Request $request, Questionnaire $questionnaire, ScaleBandValidator $bandValidator, QuestionnaireActivationService $activationService): RedirectResponse
     {
         $data = $this->validated($request, $questionnaire);
-        DB::transaction(function () use ($questionnaire, $data, $bandValidator): void {
-            $questionnaire->update($data['questionnaire']);
+        DB::transaction(function () use ($questionnaire, $data, $bandValidator, $activationService): void {
+            $requested = $data['questionnaire'];
+            $questionnaire->update(collect($requested)->except(['status', 'is_active'])->all());
             $this->syncConfiguration($questionnaire, $data, $bandValidator);
+            if ($requested['status'] === 'published' || $requested['is_active']) {
+                $activationService->activate($questionnaire);
+            } else {
+                $questionnaire->update(['status' => $requested['status'], 'is_active' => false]);
+            }
         });
 
         return redirect()->route('admin.questionnaires.index')->with('status', 'Questionnaire updated.');
