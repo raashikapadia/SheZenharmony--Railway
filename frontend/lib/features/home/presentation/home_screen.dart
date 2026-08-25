@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/config/api_config.dart';
 import '../../../core/network/api_service.dart';
+import '../../admin_questionnaires/presentation/questionnaire_list_screen.dart';
+import '../../assessment/presentation/questionnaire_screen.dart';
+import '../../auth/application/auth_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -56,11 +60,19 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final auth = context.watch<AuthProvider>();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('SheZen Harmony'),
         centerTitle: false,
+        actions: [
+          IconButton(
+            tooltip: 'Sign out',
+            icon: const Icon(Icons.logout),
+            onPressed: () => context.read<AuthProvider>().logout(),
+          ),
+        ],
       ),
       body: SafeArea(
         child: ListView(
@@ -79,11 +91,24 @@ class _HomeScreenState extends State<HomeScreen> {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 24),
+            if (auth.isAdmin) ...[
+              _FeatureCard(
+                icon: Icons.admin_panel_settings_outlined,
+                title: 'Manage Questionnaires',
+                description: 'Create, edit and organise assessment questionnaires',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const QuestionnaireListScreen()),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             _FeatureCard(
               icon: Icons.monitor_heart_outlined,
-              title: 'Check your stress',
-              description: 'Stress assessment module placeholder',
-              onTap: () => _showPlaceholder(context, 'Stress assessment'),
+              title: 'Stress Check-In',
+              description: 'Take the stress questionnaire whenever you\'d like',
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const QuestionnaireScreen(mandatory: false))),
             ),
             const SizedBox(height: 12),
             _FeatureCard(
