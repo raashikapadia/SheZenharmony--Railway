@@ -5,6 +5,7 @@ use App\Http\Controllers\Web\AdminDashboardController;
 use App\Http\Controllers\Web\AdminInterventionController;
 use App\Http\Controllers\Web\AdminQuestionController;
 use App\Http\Controllers\Web\AdminQuestionnaireController;
+use App\Http\Controllers\Web\AdminStudentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -18,6 +19,7 @@ Route::middleware('guest')->group(function (): void {
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/', AdminDashboardController::class)->name('dashboard');
+    Route::get('/students', [AdminStudentController::class, 'index'])->name('students.index');
     Route::resource('questions', AdminQuestionController::class)->except(['show']);
     Route::resource('questionnaires', AdminQuestionnaireController::class)->except(['show']);
     Route::resource('interventions', AdminInterventionController::class)->except(['show']);

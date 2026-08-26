@@ -15,28 +15,24 @@ class SecureTokenStorage {
   final FlutterSecureStorage _storage;
 
   static const _tokenKey = 'auth_token';
-  static const _userIdKey = 'auth_user_id';
-  static const _nameKey = 'auth_name';
-  static const _emailKey = 'auth_email';
   static const _roleKey = 'auth_role';
 
-  Future<void> save({
-    required String token,
-    required int userId,
-    required String name,
-    required String email,
-    required String role,
-  }) async {
+  Future<void> save({required String token, required String role}) async {
     try {
+      // Remove legacy cached PII/internal IDs before writing the minimal session.
+      await Future.wait([
+        _storage.delete(key: 'auth_user_id'),
+        _storage.delete(key: 'auth_name'),
+        _storage.delete(key: 'auth_email'),
+      ]);
       await Future.wait([
         _storage.write(key: _tokenKey, value: token),
-        _storage.write(key: _userIdKey, value: userId.toString()),
-        _storage.write(key: _nameKey, value: name),
-        _storage.write(key: _emailKey, value: email),
         _storage.write(key: _roleKey, value: role),
       ]);
     } catch (error) {
-      debugPrint('SecureTokenStorage.save failed, session will not persist across restarts: $error');
+      debugPrint(
+        'SecureTokenStorage.save failed, session will not persist across restarts: $error',
+      );
     }
   }
 
@@ -44,31 +40,21 @@ class SecureTokenStorage {
     try {
       final values = await Future.wait([
         _storage.read(key: _tokenKey),
-        _storage.read(key: _userIdKey),
-        _storage.read(key: _nameKey),
-        _storage.read(key: _emailKey),
         _storage.read(key: _roleKey),
       ]);
 
       final token = values[0];
-      final userId = values[1];
-      final name = values[2];
-      final email = values[3];
-      final role = values[4];
+      final role = values[1];
 
-      if (token == null || userId == null || name == null || email == null || role == null) {
+      if (token == null || role == null) {
         return null;
       }
 
-      return {
-        'token': token,
-        'userId': userId,
-        'name': name,
-        'email': email,
-        'role': role,
-      };
+      return {'token': token, 'role': role};
     } catch (error) {
-      debugPrint('SecureTokenStorage.read failed, treating as signed out: $error');
+      debugPrint(
+        'SecureTokenStorage.read failed, treating as signed out: $error',
+      );
       return null;
     }
   }

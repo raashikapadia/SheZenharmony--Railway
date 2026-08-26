@@ -4,8 +4,8 @@ namespace App\Models;
 
 use App\Models\Concerns\RequiresExactlyOneOwner;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class StressAssessment extends Model
@@ -22,6 +22,7 @@ class StressAssessment extends Model
 
     protected $fillable = [
         'user_id',
+        'student_identity_id',
         'questionnaire_id',
         'anonymous_session_id',
         'anonymous_session_fk',
@@ -57,6 +58,11 @@ class StressAssessment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function studentIdentity(): BelongsTo
+    {
+        return $this->belongsTo(StudentIdentity::class);
     }
 
     public function anonymousSession(): BelongsTo

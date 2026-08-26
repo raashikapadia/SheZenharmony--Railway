@@ -3,12 +3,12 @@
 use App\Http\Controllers\Api\Admin\QuestionController as AdminQuestionController;
 use App\Http\Controllers\Api\Admin\QuestionnaireController as AdminQuestionnaireController;
 use App\Http\Controllers\Api\Admin\ScoreBandController as AdminScoreBandController;
+use App\Http\Controllers\Api\AssessmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\InterventionController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\QuestionnaireController;
-use App\Http\Controllers\Api\AssessmentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', HealthController::class);
@@ -25,6 +25,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/assessments', [AssessmentController::class, 'store']);
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
+        Route::delete('/auth/account', [AuthController::class, 'destroy']);
     });
 
     Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->name('api.admin.')->group(function (): void {

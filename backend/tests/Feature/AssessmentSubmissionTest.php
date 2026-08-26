@@ -47,7 +47,9 @@ class AssessmentSubmissionTest extends TestCase
         $this->assertDatabaseCount('stress_assessments', 1);
         $this->assertDatabaseCount('stress_responses', 3);
         $this->assertDatabaseHas('stress_assessments', [
-            'id' => $assessmentId, 'user_id' => $student->id, 'questionnaire_id' => $questionnaire->id,
+            'id' => $assessmentId, 'user_id' => null,
+            'student_identity_id' => $student->studentIdentity->id,
+            'questionnaire_id' => $questionnaire->id,
             'total_score' => 6, 'stress_score_band_id' => $band->id,
             'assessment_status' => 'completed', 'stress_level' => 'Moderate',
         ]);

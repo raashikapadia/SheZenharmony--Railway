@@ -95,10 +95,11 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> register({
-    required String name,
     required String email,
     required String password,
     required String passwordConfirmation,
+    required Map<String, dynamic> demographics,
+    required bool privacyConsent,
   }) async {
     _isLoading = true;
     _error = null;
@@ -107,10 +108,11 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final session = await _apiService.register(
-        name: name,
         email: email,
         password: password,
         passwordConfirmation: passwordConfirmation,
+        demographics: demographics,
+        privacyConsent: privacyConsent,
       );
       _session = session;
       _status = AuthStatus.signedIn;
@@ -173,13 +175,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _persist(AuthSession session) {
-    return _storage.save(
-      token: session.token,
-      userId: session.userId,
-      name: session.name,
-      email: session.email,
-      role: session.role,
-    );
+    return _storage.save(token: session.token, role: session.role);
   }
 
   @override

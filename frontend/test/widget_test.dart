@@ -40,9 +40,9 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('SheZen Harmony'), findsOneWidget);
-    expect(find.text('Sign in'), findsWidgets);
-    expect(find.text('New to SheZen?'), findsOneWidget);
-    expect(find.text('Create account'), findsOneWidget);
+    expect(find.text('Welcome to SheZen\nHarmony'), findsOneWidget);
+    expect(find.text('Login'), findsOneWidget);
+    expect(find.text('Forgot Password?'), findsOneWidget);
+    expect(find.text('Create Account'), findsOneWidget);
   });
 }

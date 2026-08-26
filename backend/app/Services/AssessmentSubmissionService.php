@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Questionnaire;
 use App\Models\StressAssessment;
+use App\Models\StressScoreBand;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -13,8 +14,8 @@ class AssessmentSubmissionService
     public function __construct(private readonly AssessmentScoringService $scoringService) {}
 
     /**
-     * @param list<array{question_id: int, option_id: int}> $submittedAnswers
-     * @return array{assessment: StressAssessment, score_band: \App\Models\StressScoreBand}
+     * @param  list<array{question_id: int, option_id: int}>  $submittedAnswers
+     * @return array{assessment: StressAssessment, score_band: StressScoreBand}
      */
     public function submit(User $user, int $questionnaireId, array $submittedAnswers): array
     {
@@ -41,7 +42,7 @@ class AssessmentSubmissionService
             $completedAt = now();
             $assessment = StressAssessment::query()->create([
                 'questionnaire_id' => $questionnaire->id,
-                'user_id' => $user->id,
+                'student_identity_id' => $user->studentIdentity()->firstOrFail()->id,
                 'stress_score_band_id' => $scored['score_band']->id,
                 'assessment_type' => $questionnaire->type,
                 'assessment_status' => 'completed',

@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use App\Models\Questionnaire;
 use App\Models\StressAssessment;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -32,7 +32,11 @@ class MobileAuthTest extends TestCase
         $this->withToken($token)
             ->getJson('/api/v1/auth/me')
             ->assertOk()
-            ->assertJsonPath('user.id', $student->id);
+            ->assertJsonPath('user.role', User::ROLE_STUDENT)
+            ->assertJsonMissingPath('user.id')
+            ->assertJsonMissingPath('user.name')
+            ->assertJsonMissingPath('user.email')
+            ->assertJsonMissingPath('user.pseudonymous_uuid');
 
         $this->withToken($token)
             ->postJson('/api/v1/auth/logout')
@@ -101,17 +105,98 @@ class MobileAuthTest extends TestCase
     public function test_registration_creates_an_active_student_with_student_token(): void
     {
         $response = $this->postJson('/api/v1/auth/register', [
-            'name' => 'New Student',
-            'email' => 'new.student@example.test',
+            'email' => 's12345678@student.usp.ac.fj',
             'password' => 'safe-password',
             'password_confirmation' => 'safe-password',
             'device_name' => 'test device',
+            'demographics' => $this->demographics(),
+            'privacy_consent' => true,
         ])->assertCreated()->assertJsonPath('user.role', User::ROLE_STUDENT);
 
-        $student = User::query()->where('email', 'new.student@example.test')->firstOrFail();
+        $student = User::query()->where('email', 's12345678@student.usp.ac.fj')->firstOrFail();
         $this->assertTrue($student->hasRole(User::ROLE_STUDENT));
         $this->assertSame('active', $student->account_status);
+        $this->assertNotNull($student->studentIdentity);
+        $this->assertSame($student->pseudonymous_uuid, $student->studentIdentity->pseudonymous_uuid);
+        $this->assertNull($student->name);
+        $this->assertSame('Fiji', $student->studentIdentity->profile->country);
+        $this->assertNull($student->studentIdentity->profile->preferred_language);
+        $this->assertNull($student->studentIdentity->profile->user_id);
+        $this->assertDatabaseHas('student_consents', [
+            'student_identity_id' => $student->studentIdentity->id,
+            'policy_version' => 'shezen-privacy-notice-v1-draft',
+        ]);
+        $response->assertJsonMissingPath('user.id')
+            ->assertJsonMissingPath('user.name')
+            ->assertJsonMissingPath('user.email')
+            ->assertJsonMissingPath('user.pseudonymous_uuid')
+            ->assertJsonPath('user.shezen_id', $student->studentIdentity->displayId())
+            ->assertJsonPath('user.has_completed_required_assessment', false);
         $this->assertNotEmpty($response->json('token'));
+    }
+
+    public function test_complete_registration_logout_login_and_me_lifecycle(): void
+    {
+        $email = 's87654321@student.usp.ac.fj';
+        $password = 'safe-password';
+        $registration = $this->postJson('/api/v1/auth/register', [
+            'email' => $email,
+            'password' => $password,
+            'password_confirmation' => $password,
+            'device_name' => 'registration device',
+            'demographics' => $this->demographics(),
+            'privacy_consent' => true,
+        ])->assertCreated();
+
+        $student = User::query()->where('email', $email)->firstOrFail();
+        $identityId = $student->studentIdentity->id;
+        $uuid = $student->studentIdentity->pseudonymous_uuid;
+
+        $this->withToken($registration->json('token'))
+            ->postJson('/api/v1/auth/logout')
+            ->assertOk();
+
+        $login = $this->postJson('/api/v1/auth/login', [
+            'email' => strtoupper($email),
+            'password' => $password,
+            'device_name' => 'login device',
+        ])->assertOk()
+            ->assertJsonPath('user.shezen_id', $student->studentIdentity->displayId())
+            ->assertJsonPath('user.has_completed_required_assessment', false);
+
+        $this->withToken($login->json('token'))->getJson('/api/v1/auth/me')
+            ->assertOk()
+            ->assertJsonPath('user.role', User::ROLE_STUDENT)
+            ->assertJsonPath('user.shezen_id', $student->studentIdentity->displayId())
+            ->assertJsonPath('user.has_completed_required_assessment', false);
+
+        $student->refresh();
+        $this->assertSame($identityId, $student->studentIdentity->id);
+        $this->assertSame($uuid, $student->studentIdentity->pseudonymous_uuid);
+        $this->assertDatabaseCount('student_identities', 1);
+    }
+
+    public function test_duplicate_email_and_weak_password_are_validation_errors(): void
+    {
+        User::factory()->create(['email' => 's11111111@student.usp.ac.fj']);
+
+        $duplicate = [
+            'email' => ' S11111111@STUDENT.USP.AC.FJ ',
+            'password' => 'safe-password',
+            'password_confirmation' => 'safe-password',
+            'device_name' => 'test device',
+            'demographics' => $this->demographics(),
+            'privacy_consent' => true,
+        ];
+        $this->postJson('/api/v1/auth/register', $duplicate)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('email');
+
+        $this->postJson('/api/v1/auth/register', array_merge($duplicate, [
+            'email' => 's22222222@student.usp.ac.fj',
+            'password' => 'short',
+            'password_confirmation' => 'short',
+        ]))->assertUnprocessable()->assertJsonValidationErrors('password');
     }
 
     public function test_assessment_history_only_returns_the_authenticated_students_completed_rows(): void
@@ -124,16 +209,16 @@ class MobileAuthTest extends TestCase
         ]);
 
         StressAssessment::query()->create([
-            'user_id' => $student->id, 'questionnaire_id' => $questionnaire->id,
+            'student_identity_id' => $student->studentIdentity->id, 'questionnaire_id' => $questionnaire->id,
             'assessment_type' => 'stress', 'assessment_status' => 'completed',
             'total_score' => 3, 'stress_level' => 'Low', 'completed_at' => now(),
         ]);
         StressAssessment::query()->create([
-            'user_id' => $student->id, 'questionnaire_id' => $questionnaire->id,
+            'student_identity_id' => $student->studentIdentity->id, 'questionnaire_id' => $questionnaire->id,
             'assessment_type' => 'stress', 'assessment_status' => 'started',
         ]);
         StressAssessment::query()->create([
-            'user_id' => $other->id, 'questionnaire_id' => $questionnaire->id,
+            'student_identity_id' => $other->studentIdentity->id, 'questionnaire_id' => $questionnaire->id,
             'assessment_type' => 'stress', 'assessment_status' => 'completed',
             'total_score' => 9, 'stress_level' => 'High', 'completed_at' => now(),
         ]);
@@ -143,5 +228,17 @@ class MobileAuthTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.total_score', 3);
+    }
+
+    private function demographics(): array
+    {
+        return [
+            'gender' => 'Woman',
+            'country' => 'Fiji',
+            'employment_status' => 'Student',
+            'relationship_status' => 'Single',
+            'has_children' => false,
+            'living_situation' => 'With family',
+        ];
     }
 }

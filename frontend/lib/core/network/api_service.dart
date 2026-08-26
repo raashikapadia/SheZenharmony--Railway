@@ -17,26 +17,37 @@ class ApiService {
   final http.Client _client;
 
   Future<AuthSession> register({
-    required String name,
     required String email,
     required String password,
     required String passwordConfirmation,
+    required Map<String, dynamic> demographics,
+    required bool privacyConsent,
     String deviceName = 'SheZen mobile app',
   }) async {
-    final response = await _client.post(
-      Uri.parse('${ApiConfig.baseUrl}/v1/auth/register'),
-      headers: const {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'name': name,
-        'email': email,
-        'password': password,
-        'password_confirmation': passwordConfirmation,
-        'device_name': deviceName,
-      }),
-    );
+    final http.Response response;
+    try {
+      response = await _client
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}/v1/auth/register'),
+            headers: const {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'email': email,
+              'password': password,
+              'password_confirmation': passwordConfirmation,
+              'device_name': deviceName,
+              'demographics': demographics,
+              'privacy_consent': privacyConsent,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+    } on http.ClientException {
+      throw const ApiException('Unable to connect to SheZen. Please try again.');
+    } on TimeoutException {
+      throw const ApiException('Unable to connect to SheZen. Please try again.');
+    }
 
     final body = _decodeObject(response);
     if (response.statusCode != 201) {
@@ -59,18 +70,27 @@ class ApiService {
     required String password,
     String deviceName = 'SheZen mobile app',
   }) async {
-    final response = await _client.post(
-      Uri.parse('${ApiConfig.baseUrl}/v1/auth/login'),
-      headers: const {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-        'device_name': deviceName,
-      }),
-    );
+    final http.Response response;
+    try {
+      response = await _client
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}/v1/auth/login'),
+            headers: const {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'email': email,
+              'password': password,
+              'device_name': deviceName,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+    } on http.ClientException {
+      throw const ApiException('Unable to connect to SheZen. Please try again.');
+    } on TimeoutException {
+      throw const ApiException('Unable to connect to SheZen. Please try again.');
+    }
 
     final body = _decodeObject(response);
     if (response.statusCode != 200) {

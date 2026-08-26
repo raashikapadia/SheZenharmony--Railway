@@ -27,8 +27,28 @@ class ChatSession extends Model
         return ['started_at' => 'datetime', 'ended_at' => 'datetime'];
     }
 
-    public function user(): BelongsTo { return $this->belongsTo(User::class); }
-    public function anonymousSession(): BelongsTo { return $this->belongsTo(AnonymousSession::class); }
-    public function assignedSupportUser(): BelongsTo { return $this->belongsTo(User::class, 'assigned_support_user_id'); }
-    public function messages(): HasMany { return $this->hasMany(ChatMessage::class); }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function studentIdentity(): BelongsTo
+    {
+        return $this->belongsTo(StudentIdentity::class);
+    }
+
+    public function anonymousSession(): BelongsTo
+    {
+        return $this->belongsTo(AnonymousSession::class);
+    }
+
+    public function assignedSupportUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_support_user_id');
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(ChatMessage::class);
+    }
 }

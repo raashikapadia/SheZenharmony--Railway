@@ -6,15 +6,16 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Str;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password', 'role', 'pseudonymous_uuid', 'account_status'])]
@@ -32,6 +33,14 @@ class User extends Authenticatable
     {
         static::creating(function (User $user): void {
             $user->pseudonymous_uuid ??= (string) Str::uuid();
+        });
+
+        static::created(function (User $user): void {
+            if ($user->role === self::ROLE_STUDENT && Schema::hasTable('student_identities')) {
+                $user->studentIdentity()->firstOrCreate([], [
+                    'pseudonymous_uuid' => $user->pseudonymous_uuid,
+                ]);
+            }
         });
     }
 
@@ -75,6 +84,11 @@ class User extends Authenticatable
     public function profile(): HasOne
     {
         return $this->hasOne(UserProfile::class);
+    }
+
+    public function studentIdentity(): HasOne
+    {
+        return $this->hasOne(StudentIdentity::class);
     }
 
     public function roles(): BelongsToMany

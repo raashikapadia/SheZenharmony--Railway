@@ -4,6 +4,11 @@ import 'package:provider/provider.dart';
 import '../application/auth_provider.dart';
 import 'register_screen.dart';
 
+const _teal = Color(0xFF157A76);
+const _ink = Color(0xFF173D3C);
+const _muted = Color(0xFF6E7775);
+const _cream = Color(0xFFFFFCF6);
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -44,14 +49,14 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final colors = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: _cream,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            padding: const EdgeInsets.fromLTRB(32, 42, 32, 32),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
+              constraints: const BoxConstraints(maxWidth: 390),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -59,54 +64,44 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Align(
                       child: Container(
-                        width: 76,
-                        height: 76,
-                        decoration: BoxDecoration(
-                          color: colors.primaryContainer,
+                        width: 58,
+                        height: 58,
+                        decoration: const BoxDecoration(
+                          color: _teal,
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(
-                          Icons.spa_rounded,
-                          size: 38,
-                          color: colors.primary,
+                        child: const Icon(
+                          Icons.self_improvement_rounded,
+                          size: 31,
+                          color: Colors.white,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 24),
                     Text(
-                      'SheZen Harmony',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: colors.primary,
-                          ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Welcome back',
+                      'Welcome to SheZen\nHarmony',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                          ?.copyWith(
+                            height: 1.18,
+                            fontFamily: 'serif',
+                            fontWeight: FontWeight.w700,
+                            color: _ink,
+                          ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'A calm space to check in with yourself and support your wellbeing.',
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Sign in with your USP student account',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: colors.onSurfaceVariant,
-                      ),
+                      style: TextStyle(color: _muted),
                     ),
-                    const SizedBox(height: 32),
-                    TextFormField(
+                    const SizedBox(height: 34),
+                    _LoginField(
                       controller: _emailController,
+                      label: 'Student Email / Student Login',
                       keyboardType: TextInputType.emailAddress,
                       autofillHints: const [AutofillHints.email],
                       textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'University email',
-                        prefixIcon: Icon(Icons.mail_outline_rounded),
-                      ),
                       validator: (value) {
                         final email = value?.trim() ?? '';
                         if (email.isEmpty) return 'Enter your email address.';
@@ -116,37 +111,39 @@ class _LoginScreenState extends State<LoginScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
+                    const SizedBox(height: 18),
+                    _LoginField(
                       controller: _passwordController,
+                      label: 'Password',
                       obscureText: _obscurePassword,
                       autofillHints: const [AutofillHints.password],
                       onFieldSubmitted: auth.isLoading
                           ? null
                           : (_) => _submit(),
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline_rounded),
-                        suffixIcon: IconButton(
-                          tooltip: _obscurePassword
-                              ? 'Show password'
-                              : 'Hide password',
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                          ),
+                      suffixIcon: IconButton(
+                        tooltip: _obscurePassword
+                            ? 'Show password'
+                            : 'Hide password',
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: 19,
                         ),
                       ),
                       validator: (value) => value == null || value.isEmpty
                           ? 'Enter your password.'
                           : null,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 18),
                     FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _teal,
+                        minimumSize: const Size.fromHeight(48),
+                      ),
                       onPressed: auth.isLoading ? null : _submit,
                       child: auth.isLoading
                           ? const SizedBox.square(
@@ -156,27 +153,58 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Sign in'),
+                          : const Text('Login'),
+                    ),
+                    TextButton(
+                      onPressed: auth.isLoading
+                          ? null
+                          : () => ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Password recovery is not available yet.',
+                                ),
+                              ),
+                            ),
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(color: _muted),
+                      ),
+                    ),
+                    const Row(
+                      children: [
+                        Expanded(child: Divider()),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 14),
+                          child: Text('or', style: TextStyle(color: _muted)),
+                        ),
+                        Expanded(child: Divider()),
+                      ],
                     ),
                     const SizedBox(height: 18),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'New to SheZen?',
-                          style: TextStyle(color: colors.onSurfaceVariant),
-                        ),
-                        TextButton(
-                          onPressed: auth.isLoading
-                              ? null
-                              : () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const RegisterScreen(),
-                                  ),
-                                ),
-                          child: const Text('Create account'),
-                        ),
-                      ],
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _ink,
+                        minimumSize: const Size.fromHeight(48),
+                        side: const BorderSide(color: Color(0xFFD4DDDA)),
+                      ),
+                      onPressed: auth.isLoading
+                          ? null
+                          : () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const RegisterScreen(),
+                              ),
+                            ),
+                      child: const Text('Create Account'),
+                    ),
+                    const SizedBox(height: 26),
+                    const Text(
+                      'Your university login is used only to verify that you are an enrolled student. Inside SheZen you are represented by a pseudonymous SheZen ID.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _muted,
+                        height: 1.55,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -187,4 +215,66 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+}
+
+class _LoginField extends StatelessWidget {
+  const _LoginField({
+    required this.controller,
+    required this.label,
+    required this.validator,
+    this.keyboardType,
+    this.autofillHints,
+    this.textInputAction,
+    this.obscureText = false,
+    this.onFieldSubmitted,
+    this.suffixIcon,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final FormFieldValidator<String> validator;
+  final TextInputType? keyboardType;
+  final Iterable<String>? autofillHints;
+  final TextInputAction? textInputAction;
+  final bool obscureText;
+  final ValueChanged<String>? onFieldSubmitted;
+  final Widget? suffixIcon;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(left: 2, bottom: 7),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: _ink,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        autofillHints: autofillHints,
+        textInputAction: textInputAction,
+        obscureText: obscureText,
+        onFieldSubmitted: onFieldSubmitted,
+        validator: validator,
+        decoration: InputDecoration(
+          hintText: label,
+          suffixIcon: suffixIcon,
+          isDense: true,
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 13,
+          ),
+        ),
+      ),
+    ],
+  );
 }

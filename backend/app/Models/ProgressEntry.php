@@ -12,9 +12,33 @@ class ProgressEntry extends Model
 
     protected $guarded = ['id'];
 
-    protected function casts(): array { return ['metric_value' => 'decimal:2', 'recorded_at' => 'datetime']; }
-    public function user(): BelongsTo { return $this->belongsTo(User::class); }
-    public function anonymousSession(): BelongsTo { return $this->belongsTo(AnonymousSession::class); }
-    public function assessment(): BelongsTo { return $this->belongsTo(StressAssessment::class, 'stress_assessment_id'); }
-    public function interventionUsage(): BelongsTo { return $this->belongsTo(InterventionUsage::class); }
+    protected function casts(): array
+    {
+        return ['metric_value' => 'decimal:2', 'recorded_at' => 'datetime'];
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function studentIdentity(): BelongsTo
+    {
+        return $this->belongsTo(StudentIdentity::class);
+    }
+
+    public function anonymousSession(): BelongsTo
+    {
+        return $this->belongsTo(AnonymousSession::class);
+    }
+
+    public function assessment(): BelongsTo
+    {
+        return $this->belongsTo(StressAssessment::class, 'stress_assessment_id');
+    }
+
+    public function interventionUsage(): BelongsTo
+    {
+        return $this->belongsTo(InterventionUsage::class);
+    }
 }

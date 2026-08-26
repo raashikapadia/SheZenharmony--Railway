@@ -81,17 +81,13 @@ class _DashboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final session = context.watch<AuthProvider>().session;
-    final firstName = (session?.name.trim().isNotEmpty ?? false)
-        ? session!.name.trim().split(' ').first
-        : 'there';
     final colors = Theme.of(context).colorScheme;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
       children: [
         Text(
-          'Hi, $firstName',
+          'Welcome back',
           style: Theme.of(
             context,
           ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -325,8 +321,8 @@ class _ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final session = context.watch<AuthProvider>().session;
     final colors = Theme.of(context).colorScheme;
+    final shezenId = context.watch<AuthProvider>().session?.shezenId;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       children: [
@@ -335,9 +331,7 @@ class _ProfilePage extends StatelessWidget {
             radius: 42,
             backgroundColor: colors.primaryContainer,
             child: Text(
-              session?.name.trim().isNotEmpty == true
-                  ? session!.name.trim()[0].toUpperCase()
-                  : 'S',
+              'S',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 color: colors.primary,
                 fontWeight: FontWeight.w800,
@@ -347,18 +341,24 @@ class _ProfilePage extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         Text(
-          session?.name ?? 'Student',
+          'Student account',
           textAlign: TextAlign.center,
           style: Theme.of(
             context,
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 4),
-        Text(
-          session?.email ?? '',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: colors.onSurfaceVariant),
-        ),
+        if (shezenId != null) ...[
+          const SizedBox(height: 8),
+          SelectableText(
+            shezenId,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: colors.primary,
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
         const SizedBox(height: 28),
         _InfoCard(
           icon: Icons.shield_outlined,

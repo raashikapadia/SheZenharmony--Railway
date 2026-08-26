@@ -12,7 +12,7 @@ class AssessmentController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $assessments = $request->user()->stressAssessments()
+        $assessments = $request->user()->studentIdentity()->firstOrFail()->assessments()
             ->where('assessment_status', 'completed')
             ->with(['questionnaire', 'scoreBand'])
             ->orderByDesc('completed_at')

@@ -32,7 +32,7 @@ class AdminAuthController extends Controller
                 ->onlyInput('email');
         }
 
-        if (! Auth::user()?->isAdmin()) {
+        if (! Auth::user()?->isAdmin() || Auth::user()?->account_status !== 'active') {
             Auth::logout();
 
             return back()

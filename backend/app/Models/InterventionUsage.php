@@ -14,6 +14,7 @@ class InterventionUsage extends Model
         'stress_assessment_id',
         'intervention_id',
         'user_id',
+        'student_identity_id',
         'anonymous_session_id',
         'anonymous_session_fk',
         'usage_status',
@@ -48,6 +49,11 @@ class InterventionUsage extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function studentIdentity(): BelongsTo
+    {
+        return $this->belongsTo(StudentIdentity::class);
     }
 
     public function anonymousSession(): BelongsTo
