@@ -161,6 +161,13 @@ Flutter shortcuts:
 - `backend/database/seeders/` = development seed data
 - `docs/` = technical documentation
 
+Architecture references:
+
+- `docs/ARCHITECTURE.md` = runtime and privacy boundaries
+- `docs/PROJECT_STRUCTURE.md` = source ownership and folder conventions
+- `docs/API_STARTER.md` = current API overview
+- `docs/REQUIREMENTS_AUDIT.md` = implemented, partial, and missing MVP scope
+
 ## Important Security Notes
 
 - Never commit `backend/.env`

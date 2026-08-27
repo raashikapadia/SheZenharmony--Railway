@@ -19,7 +19,8 @@ class QuestionnaireFormScreen extends StatefulWidget {
   bool get isEditing => questionnaire != null;
 
   @override
-  State<QuestionnaireFormScreen> createState() => _QuestionnaireFormScreenState();
+  State<QuestionnaireFormScreen> createState() =>
+      _QuestionnaireFormScreenState();
 }
 
 class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
@@ -91,9 +92,13 @@ class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
         Navigator.of(context).pop();
       } else {
         _applyFieldErrors(provider.actionFieldErrors);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(provider.actionError ?? 'Failed to update questionnaire.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              provider.actionError ?? 'Failed to update questionnaire.',
+            ),
+          ),
+        );
       }
     } else {
       final createdId = await provider.createQuestionnaire(
@@ -109,9 +114,13 @@ class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
         Navigator.of(context).pop(createdId);
       } else {
         _applyFieldErrors(provider.actionFieldErrors);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(provider.actionError ?? 'Failed to create questionnaire.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              provider.actionError ?? 'Failed to create questionnaire.',
+            ),
+          ),
+        );
       }
     }
   }
@@ -145,7 +154,11 @@ class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(title: Text(widget.isEditing ? 'Edit Questionnaire' : 'Create Questionnaire')),
+        appBar: AppBar(
+          title: Text(
+            widget.isEditing ? 'Edit Questionnaire' : 'Create Questionnaire',
+          ),
+        ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Form(
@@ -162,8 +175,12 @@ class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
                     errorText: _titleError,
                   ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) return 'Title is required.';
-                    if (value.length > 255) return 'Title must be 255 characters or fewer.';
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Title is required.';
+                    }
+                    if (value.length > 255) {
+                      return 'Title must be 255 characters or fewer.';
+                    }
                     return null;
                   },
                 ),
@@ -178,7 +195,9 @@ class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
                     errorText: _descriptionError,
                   ),
                   validator: (value) {
-                    if (value != null && value.length > 5000) return 'Description is too long.';
+                    if (value != null && value.length > 5000) {
+                      return 'Description is too long.';
+                    }
                     return null;
                   },
                 ),
@@ -190,15 +209,24 @@ class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
                     labelText: 'Period (optional)',
                     hintText: 'e.g. Semester 1 2026',
                     border: OutlineInputBorder(),
-                    helperText: 'Which term/cohort this version is for — for your own organization.',
+                    helperText:
+                        'Which term/cohort this version is for — for your own organization.',
                   ),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   initialValue: _status,
-                  decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
                   items: _statusOptions
-                      .map((s) => DropdownMenuItem(value: s, child: Text(_statusLabel(s))))
+                      .map(
+                        (s) => DropdownMenuItem(
+                          value: s,
+                          child: Text(_statusLabel(s)),
+                        ),
+                      )
                       .toList(),
                   onChanged: (value) {
                     if (value == null) return;
@@ -213,7 +241,9 @@ class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Active'),
-                    subtitle: const Text('Visible to students when published and active.'),
+                    subtitle: const Text(
+                      'Visible to students when published and active.',
+                    ),
                     value: _isActive,
                     onChanged: (value) => setState(() {
                       _isActive = value;
@@ -225,8 +255,15 @@ class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
                 FilledButton(
                   onPressed: _isSaving ? null : _submit,
                   child: _isSaving
-                      ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                      : Text(widget.isEditing ? 'Save Changes' : 'Create Questionnaire'),
+                      ? const SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(
+                          widget.isEditing
+                              ? 'Save Changes'
+                              : 'Create Questionnaire',
+                        ),
                 ),
               ],
             ),
@@ -236,7 +273,8 @@ class _QuestionnaireFormScreenState extends State<QuestionnaireFormScreen> {
     );
   }
 
-  String _statusLabel(String status) => status[0].toUpperCase() + status.substring(1);
+  String _statusLabel(String status) =>
+      status[0].toUpperCase() + status.substring(1);
 }
 
 extension _FirstOrNull<T> on List<T> {

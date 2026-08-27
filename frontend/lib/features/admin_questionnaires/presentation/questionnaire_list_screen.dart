@@ -18,7 +18,9 @@ class QuestionnaireListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final token = context.read<AuthProvider>().session!.token;
     return ChangeNotifierProvider(
-      create: (_) => QuestionnaireListProvider(apiService: ApiService(), token: token)..load(),
+      create: (_) =>
+          QuestionnaireListProvider(apiService: ApiService(), token: token)
+            ..load(),
       child: const _QuestionnaireListView(),
     );
   }
@@ -49,20 +51,24 @@ class _QuestionnaireListViewState extends State<_QuestionnaireListView> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
       context.read<QuestionnaireListProvider>().loadMore();
     }
   }
 
   Future<void> _createQuestionnaire() async {
-    final createdId = await Navigator.of(
-      context,
-    ).push<int>(MaterialPageRoute(builder: (_) => const QuestionnaireFormScreen()));
+    final createdId = await Navigator.of(context).push<int>(
+      MaterialPageRoute(builder: (_) => const QuestionnaireFormScreen()),
+    );
 
     if (createdId != null && mounted) {
-      await Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => QuestionnaireBuilderScreen(questionnaireId: createdId)));
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              QuestionnaireBuilderScreen(questionnaireId: createdId),
+        ),
+      );
       if (mounted) context.read<QuestionnaireListProvider>().load();
     }
   }
@@ -82,18 +88,27 @@ class _QuestionnaireListViewState extends State<_QuestionnaireListView> {
     final ok = await provider.deleteQuestionnaire(questionnaire.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(ok ? 'Questionnaire archived.' : (provider.actionError ?? 'Failed to archive.'))),
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Questionnaire archived.'
+              : (provider.actionError ?? 'Failed to archive.'),
+        ),
+      ),
     );
   }
 
   Future<void> _toggleActive(Questionnaire questionnaire) async {
     final provider = context.read<QuestionnaireListProvider>();
-    final ok = await provider.setActive(questionnaire.id, !questionnaire.isActive);
+    final ok = await provider.setActive(
+      questionnaire.id,
+      !questionnaire.isActive,
+    );
     if (!mounted) return;
     if (!ok) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(provider.actionError ?? 'Action failed.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(provider.actionError ?? 'Action failed.')),
+      );
     }
   }
 
@@ -124,22 +139,38 @@ class _QuestionnaireListViewState extends State<_QuestionnaireListView> {
                         icon: const Icon(Icons.clear),
                         onPressed: () {
                           _searchController.clear();
-                          context.read<QuestionnaireListProvider>().setSearch('');
+                          context.read<QuestionnaireListProvider>().setSearch(
+                            '',
+                          );
                         },
                       ),
               ),
-              onSubmitted: (value) => context.read<QuestionnaireListProvider>().setSearch(value.trim()),
+              onSubmitted: (value) => context
+                  .read<QuestionnaireListProvider>()
+                  .setSearch(value.trim()),
             ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                _FilterChip(label: 'All', value: 'all', current: provider.filter),
+                _FilterChip(
+                  label: 'All',
+                  value: 'all',
+                  current: provider.filter,
+                ),
                 const SizedBox(width: 8),
-                _FilterChip(label: 'Active', value: 'active', current: provider.filter),
+                _FilterChip(
+                  label: 'Active',
+                  value: 'active',
+                  current: provider.filter,
+                ),
                 const SizedBox(width: 8),
-                _FilterChip(label: 'Inactive', value: 'inactive', current: provider.filter),
+                _FilterChip(
+                  label: 'Inactive',
+                  value: 'inactive',
+                  current: provider.filter,
+                ),
               ],
             ),
           ),
@@ -156,7 +187,9 @@ class _QuestionnaireListViewState extends State<_QuestionnaireListView> {
         return const LoadingState();
       case ListLoadState.error:
         return ErrorStateView(
-          message: provider.errorMessage ?? 'Unable to load questionnaires. Please try again.',
+          message:
+              provider.errorMessage ??
+              'Unable to load questionnaires. Please try again.',
           onRetry: provider.load,
         );
       case ListLoadState.loaded:
@@ -178,7 +211,9 @@ class _QuestionnaireListViewState extends State<_QuestionnaireListView> {
               if (index >= provider.items.length) {
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 );
               }
               final questionnaire = provider.items[index];
@@ -195,7 +230,11 @@ class _QuestionnaireListViewState extends State<_QuestionnaireListView> {
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, required this.value, required this.current});
+  const _FilterChip({
+    required this.label,
+    required this.value,
+    required this.current,
+  });
 
   final String label;
   final String value;
@@ -206,7 +245,8 @@ class _FilterChip extends StatelessWidget {
     return ChoiceChip(
       label: Text(label),
       selected: current == value,
-      onSelected: (_) => context.read<QuestionnaireListProvider>().setFilter(value),
+      onSelected: (_) =>
+          context.read<QuestionnaireListProvider>().setFilter(value),
     );
   }
 }
@@ -230,7 +270,10 @@ class _QuestionnaireCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => QuestionnaireBuilderScreen(questionnaireId: questionnaire.id)),
+          MaterialPageRoute(
+            builder: (_) =>
+                QuestionnaireBuilderScreen(questionnaireId: questionnaire.id),
+          ),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -263,13 +306,28 @@ class _QuestionnaireCard extends StatelessWidget {
                 spacing: 12,
                 runSpacing: 4,
                 children: [
-                  Text('v${questionnaire.version}', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    'v${questionnaire.version}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   if ((questionnaire.period ?? '').isNotEmpty)
-                    Text(questionnaire.period!, style: Theme.of(context).textTheme.bodySmall),
-                  Text('${questionnaire.questionCount} question(s)', style: Theme.of(context).textTheme.bodySmall),
-                  Text('Status: ${questionnaire.status}', style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                      questionnaire.period!,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  Text(
+                    '${questionnaire.questionCount} question(s)',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Text(
+                    'Status: ${questionnaire.status}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   if (dateFormat != null)
-                    Text('Updated ${_formatDate(dateFormat)}', style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                      'Updated ${_formatDate(dateFormat)}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                 ],
               ),
               const SizedBox(height: 4),
@@ -280,12 +338,20 @@ class _QuestionnaireCard extends StatelessWidget {
                     tooltip: 'Edit',
                     icon: const Icon(Icons.edit_outlined),
                     onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => QuestionnaireFormScreen(questionnaire: questionnaire)),
+                      MaterialPageRoute(
+                        builder: (_) => QuestionnaireFormScreen(
+                          questionnaire: questionnaire,
+                        ),
+                      ),
                     ),
                   ),
                   IconButton(
                     tooltip: questionnaire.isActive ? 'Deactivate' : 'Activate',
-                    icon: Icon(questionnaire.isActive ? Icons.toggle_on : Icons.toggle_off),
+                    icon: Icon(
+                      questionnaire.isActive
+                          ? Icons.toggle_on
+                          : Icons.toggle_off,
+                    ),
                     onPressed: onToggleActive,
                   ),
                   IconButton(

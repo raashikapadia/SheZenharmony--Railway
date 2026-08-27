@@ -1,75 +1,80 @@
 # SheZen Harmony requirements audit
 
-Audit date: 2026-08-13
+Audit refreshed: 2026-08-27
 
-## Scope and limitation
+## Scope
 
-No numbered FR/NFR specification is present in this repository. This matrix therefore covers only the requirements explicitly named in the review request. It must not be treated as a complete traceability matrix until the approved specification (including every FR and NFR, scoring rules, crisis protocol, privacy policy, and acceptance criteria) is supplied.
+This is a repository-evidence audit, not a substitute for the approved capstone
+FR/NFR specification. Clinical content, crisis wording, referral rules,
+accessibility targets, retention periods, and acceptance criteria still require
+formal approval before production claims can be made.
 
-Status meanings: **Implemented** works end-to-end; **Partially Implemented** has working foundations but not the complete user flow; **Missing** has no working implementation; **Needs Clarification** cannot be implemented safely without an approved rule or policy.
+Status meanings: **Implemented** has a connected code path and automated coverage;
+**Partial** has a working foundation or prototype but not the full requested MVP
+flow; **Missing** has no active implementation; **Decision required** must not be
+completed safely without an approved product/privacy rule.
 
-## Functional requirements checklist
+## Current functional baseline
 
-| Requirement supplied in review request | Status | Repository evidence / conflict |
+| Capability | Status | Repository evidence / limitation |
 |---|---|---|
-| Student registration | Needs Clarification | No registration route or Flutter screen. `docs/ARCHITECTURE.md` deliberately blocks public registration pending cohort verification and enrolment rules. Required identity fields, eligibility, verification, consent, and duplicate-account handling are unspecified. |
-| Student login | Partially Implemented | Sanctum login, profile, logout, throttling, role restriction, and backend tests exist in `AuthController`, `routes/api.php`, and `MobileAuthTest.php`; Flutter has API methods but no login UI or secure token persistence. |
-| Anonymous access | Partially Implemented | Questions and interventions are public. There is no anonymous-session creation, lifecycle, client persistence, ownership proof, or anonymous assessment API. |
-| Anonymous user IDs | Partially Implemented | Nullable UUID columns exist on assessments and intervention usage, but nothing generates, validates, binds, rotates, or authorizes them. Both `user_id` and `anonymous_session_id` can be null or simultaneously populated. |
-| Stress assessments | Partially Implemented | Question/option schema and read API exist. Assessment/response tables exist. No submission API, server-side scoring, completion transaction, Flutter questionnaire flow, or approved production questionnaire exists. |
-| Stress history | Missing | No history endpoint or Flutter history UI. Ownership/anonymous access rules and retention rules are unspecified. |
-| Intervention recommendations | Partially Implemented | Active interventions can be filtered by caller-supplied `stress_level`; there is no assessment-to-recommendation workflow and the API does not validate allowed levels. Approved thresholds are missing. |
-| Rule-based Chat Buddy | Missing | No schema, rules engine, routes, services, or UI. Conversation scope, allowed responses, escalation triggers, and retention/logging rules need clarification. |
-| Crisis-support handling | Needs Clarification | `is_sensitive` exists on questions, but there is no detection or response workflow. The repository explicitly says sensitive/suicide-ideation handling and referrals await approval. Emergency contacts, wording, triggers, jurisdiction, and human escalation must be supplied. |
-| Wellbeing activities | Partially Implemented | Intervention records and a public listing API exist with demo breathing/journaling content. Flutter only shows placeholders; completion tracking has schema but no API/UI. |
-| Notifications | Missing | Laravel's framework notification trait/queue tables are not a feature implementation. There are no preferences, schedules, device tokens, notification classes, jobs, or Flutter integration. Timing, channels, consent, and quiet-hour rules need clarification. |
-| Admin dashboard | Partially Implemented | Secure role-gated login and aggregate counts work. The dashboard now links to questionnaire and intervention management. Full reporting requirements are unavailable. |
-| Admin content management | Partially Implemented | Admin CRUD now manages intervention records dynamically. Other configurable content types named by a complete specification are unknown. Historical intervention records are deactivated rather than deleted when used. |
-| Admin questionnaire management | Implemented | Authenticated admins can create, list, edit, activate/deactivate, and delete questions/options. Questions with response history are deactivated instead of deleted. Only the currently supported `scale` type is allowed; additional required types need specification. |
-| Analytics | Partially Implemented | Dashboard exposes only aggregate counts, not student-level sensitive answers. Required measures, date filters, anonymisation thresholds, exports, and retention are unspecified. |
-| Privacy | Partially Implemented | Passwords and remember tokens are hidden; dashboard uses aggregate counts. However there is no consent record, retention/deletion workflow, privacy notice, purpose limitation, anonymous ownership model, audit log, or analytics suppression policy. Laravel database sessions store IP address and user agent by default; whether this is permitted needs clarification. |
-| Security | Partially Implemented | Password hashing, Sanctum tokens, admin RBAC, CSRF-protected web forms, login throttling, validation, hidden credentials, and environment-secret guidance exist. API questions/interventions are intentionally public. Missing areas include production HTTPS enforcement/configuration, token expiry policy, registration rate limits, password reset/verification, security headers, audit logs, and authorization tests for future private records. |
-| Account management | Missing | No registration, profile editing, password change/reset, email verification, session/device management, account deletion, or Flutter account UI. Exact privacy and deletion semantics need clarification. |
+| Student registration | Implemented | USP-domain validation, password confirmation, demographics, consent, Sanctum token creation, Flutter onboarding, and tests exist. Email verification/cohort verification is not implemented. |
+| Student login/session/logout | Implemented | Student-only Sanctum login, minimal `/auth/me` response, revocable logout, secure Flutter token persistence, restoration handling, and tests exist. |
+| Anonymous guest access | Intentionally unavailable | The Flutter root gate requires an authenticated student. Compatibility schema for anonymous sessions is retained but is not an active guest flow. |
+| SheZen Anonymous ID | Implemented | A stable `student_identities` record is created and only the formatted `shezen_id` is returned to Flutter. Mobile payloads omit user ID, name, email, and raw UUID. |
+| Privacy consent | Implemented (draft policy) | Registration requires acceptance and stores a versioned consent against `student_identity_id`. Final policy wording/version and analytics consent remain product decisions. |
+| Demographics | Implemented | Approved current fields are collected during registration and stored behind the student identity boundary. Final approved field list requires confirmation. |
+| Baseline stress assessment | Implemented foundation | The first-login gate uses the active dynamic questionnaire; answers are submitted and scored server-side. Seed questions are development content, not an approved final instrument. |
+| Stress history/check-ins | Implemented foundation | Authenticated students can repeat the active check-in and view their completed assessment summaries. Clinical interpretation and production content remain unapproved. |
+| Mood tracking | Missing | No distinct mood model, API, or active screen. Dashboard entry is a labelled future feature. |
+| Wellbeing activities | Partial | Intervention schema, public listing endpoint, admin CRUD, and foundations for recommendations/usage exist. Student activity screens and completion tracking API are not complete. |
+| Rule-based Chat Buddy | Partial foundation | Chat/session/message/crisis schema models exist, but no approved conversation tree, API, or Flutter flow is active. It must remain menu/path driven rather than unrestricted AI. |
+| Resources/categories | Partial foundation | Content category/tag relationships exist around interventions. A dedicated student resources experience and complete admin management are not active. |
+| Academic support | Missing | Dashboard placeholder only; courses, deadlines, and reminder persistence are not implemented. |
+| Notifications | Missing | No preferences, device-token integration, scheduled delivery, or notification UI exists. |
+| Student profile | Partial | Anonymous ID, privacy/help placeholders, progress, and logout are available. Account deletion exists in the API but is not exposed in the Flutter profile. |
+| Admin authentication/RBAC | Implemented | Laravel session login, CSRF, admin middleware, command-created admins, and access tests exist. |
+| Admin questionnaires | Implemented foundation | Blade CRUD and protected JSON management cover questionnaires, versions, questions/options, ordering, activation, and score bands. |
+| Admin interventions | Implemented foundation | Blade management exists; broader content/resource workflows remain incomplete. |
+| Admin privacy-safe analytics | Partial | Aggregate dashboard and pseudonymous student listing exist. Full approved metrics, suppression thresholds, filters, and exports are not defined. |
+| Firebase/GA4 analytics | Deliberately deferred | No analytics SDK is configured. Only privacy-safe, non-sensitive usage events may be added after core flows and consent requirements are stable. |
 
-## Non-functional requirements checklist
+## Confirmed architectural protections
 
-Every formal NFR is **Needs Clarification** because no NFR specification or measurable acceptance targets were supplied. The codebase has useful foundations—Flutter cross-platform structure, Laravel validation/testing, MySQL migrations, environment configuration, and basic responsive admin markup—but compliance cannot be asserted without targets for performance, availability, scalability, accessibility, usability, compatibility, reliability, backup/recovery, observability, privacy, and security.
+1. Mobile authentication responses exclude email, name, database user ID, and raw
+   pseudonymous UUID.
+2. Flutter persists only the token and role and deletes legacy locally cached PII
+   keys.
+3. Student demographics, consent, assessments, intervention usage, progress, and
+   chat foundations use `student_identity_id` where implemented.
+4. Assessment score calculation and required-answer checks run on Laravel, not on
+   trusted client-provided scores.
+5. Administrator web routes use session authentication, CSRF protection, and role
+   middleware; administrator JSON routes use Sanctum plus the admin middleware.
+6. Applied migration history is retained and guarded by schema/privacy tests.
 
-## Confirmed code conflicts and risks
+## Decisions still required
 
-1. `stress_assessments` permits records with neither or both identity fields; this conflicts with a reliable registered-or-anonymous ownership model.
-2. `intervention_usages` has an anonymous UUID but no `user_id`; registered-user activity can only be associated indirectly through an optional assessment.
-3. `InterventionController` accepts an arbitrary unvalidated stress-level filter and does not produce recommendations from an assessment result.
-4. Flutter labels major features as ready for a future phase and exposes a development API connection panel; this is not a production user flow.
-5. Mobile authentication returns standard user fields and the client keeps tokens only in memory; production secure storage is absent.
-6. Demo questions and scores must not be used as an approved clinical/wellbeing assessment.
-7. Public APIs return `is_sensitive`, option scores, and internal timestamps. Whether clients should receive scoring configuration is a privacy/integrity decision; clarify before changing the response contract.
-8. Logs and compiled runtime artifacts exist locally. No application code currently logs student answers, but a formal redaction and retention policy is absent.
+- Approved stress and mood instruments, dimensions, options, thresholds, and
+  interpretation language.
+- Crisis detection, emergency wording, referral contacts, human escalation, and
+  retention policy.
+- Final privacy notice, analytics consent model, deletion/retention semantics, and
+  aggregate-reporting thresholds.
+- Rule-based Chat Buddy paths and approved responses.
+- Academic data source and notification channel/quiet-hour requirements.
+- Whether the retained Flutter questionnaire-admin prototype should be connected,
+  separated into another client, or retired in favour of Blade after explicit
+  team approval.
 
-## Recommended implementation order
+## Recommended delivery order after Phase 1
 
-1. Approve the FR/NFR specification and resolve identity, consent, privacy/retention, scoring, crisis, referral, and notification rules.
-2. Implement the registered-or-anonymous identity model with database constraints and authorization tests.
-3. Implement transactional assessment submission, approved server-side scoring, history access, and crisis handling.
-4. Connect the Flutter onboarding/login/anonymous flow, assessment flow, results, recommendations, history, and secure local session storage.
-5. Complete intervention/activity usage and rule-based Chat Buddy using admin-configurable approved rules/content.
-6. Add account management and notification consent/preferences/delivery.
-7. Expand privacy-preserving admin analytics and remaining configurable content management.
-8. Verify every formal NFR with measurable automated/manual acceptance tests and production configuration review.
-
-## Files expected to need modification next
-
-- `backend/routes/api.php`
-- `backend/app/Http/Controllers/Api/AuthController.php`
-- New API controllers, request validators, policies, services, and resources under `backend/app/Http/`
-- Models under `backend/app/Models/`
-- New migrations under `backend/database/migrations/`
-- Admin routes/controllers/views under `backend/routes/web.php`, `backend/app/Http/Controllers/Web/`, and `backend/resources/views/admin/`
-- Feature tests under `backend/tests/Feature/`
-- `frontend/pubspec.yaml`
-- `frontend/lib/main.dart`
-- `frontend/lib/core/network/api_service.dart`
-- `frontend/lib/features/auth/` and new feature modules for assessment, history, activities, Chat Buddy, crisis support, notifications, and account management
-- Flutter tests under `frontend/test/`
-
-The exact set depends on the approved requirements and must be updated when those documents are provided.
+1. Fix verified implementation/integration defects without changing established
+   privacy contracts.
+2. Add student account deletion UI and complete intervention/resource usage paths.
+3. Implement approved mood tracking and rule-based Chat Buddy content.
+4. Add simple academic and notification prototype flows.
+5. Complete missing admin content workflows and agreed aggregate analytics.
+6. Perform UI/accessibility/device testing.
+7. Add privacy-safe Firebase/GA4 events only after consent and event governance are
+   approved.

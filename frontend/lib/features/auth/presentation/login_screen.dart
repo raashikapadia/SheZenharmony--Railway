@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../application/auth_provider.dart';
 import 'register_screen.dart';
 
-const _teal = Color(0xFF157A76);
-const _ink = Color(0xFF173D3C);
-const _muted = Color(0xFF6E7775);
-const _cream = Color(0xFFFFFCF6);
+const _teal = AppColors.primary;
+const _ink = AppColors.ink;
+const _muted = AppColors.muted;
+const _cream = AppColors.background;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -54,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(32, 42, 32, 32),
+            padding: const EdgeInsets.fromLTRB(24, 36, 24, 28),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 390),
               child: Form(
@@ -84,7 +85,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(
                             height: 1.18,
-                            fontFamily: 'serif',
                             fontWeight: FontWeight.w700,
                             color: _ink,
                           ),

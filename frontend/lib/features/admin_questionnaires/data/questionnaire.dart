@@ -46,12 +46,15 @@ class Questionnaire {
       questionCount: json['question_count'] as int? ?? 0,
       questions: rawQuestions is List
           ? rawQuestions
-              .whereType<Map<String, dynamic>>()
-              .map(StressQuestion.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(StressQuestion.fromJson)
+                .toList()
           : const [],
       scoreBands: rawBands is List
-          ? rawBands.whereType<Map<String, dynamic>>().map(ScoreBand.fromJson).toList()
+          ? rawBands
+                .whereType<Map<String, dynamic>>()
+                .map(ScoreBand.fromJson)
+                .toList()
           : const [],
       createdAt: _parseDate(json['created_at']),
       updatedAt: _parseDate(json['updated_at']),

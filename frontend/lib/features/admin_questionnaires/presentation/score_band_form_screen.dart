@@ -8,7 +8,11 @@ import 'widgets/confirm_dialog.dart';
 /// what determines the stress level shown to the user for a given total
 /// score, fully admin-editable rather than hardcoded thresholds.
 class ScoreBandFormScreen extends StatefulWidget {
-  const ScoreBandFormScreen({super.key, required this.builderProvider, this.band});
+  const ScoreBandFormScreen({
+    super.key,
+    required this.builderProvider,
+    this.band,
+  });
 
   final QuestionnaireBuilderProvider builderProvider;
   final ScoreBand? band;
@@ -35,11 +39,20 @@ class _ScoreBandFormScreenState extends State<ScoreBandFormScreen> {
     final band = widget.band;
     _labelController = TextEditingController(text: band?.label ?? '');
     _codeController = TextEditingController(text: band?.code ?? '');
-    _minController = TextEditingController(text: band?.minScore.toString() ?? '');
-    _maxController = TextEditingController(text: band?.maxScore.toString() ?? '');
+    _minController = TextEditingController(
+      text: band?.minScore.toString() ?? '',
+    );
+    _maxController = TextEditingController(
+      text: band?.maxScore.toString() ?? '',
+    );
     _isActive = band?.isActive ?? true;
 
-    for (final controller in [_labelController, _codeController, _minController, _maxController]) {
+    for (final controller in [
+      _labelController,
+      _codeController,
+      _minController,
+      _maxController,
+    ]) {
       controller.addListener(_markDirty);
     }
   }
@@ -75,7 +88,12 @@ class _ScoreBandFormScreenState extends State<ScoreBandFormScreen> {
             maxScore: max,
             isActive: _isActive,
           )
-        : await widget.builderProvider.addScoreBand(code: code, label: label, minScore: min, maxScore: max);
+        : await widget.builderProvider.addScoreBand(
+            code: code,
+            label: label,
+            minScore: min,
+            maxScore: max,
+          );
 
     if (!mounted) return;
     setState(() => _isSaving = false);
@@ -85,7 +103,11 @@ class _ScoreBandFormScreenState extends State<ScoreBandFormScreen> {
       Navigator.of(context).pop();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.builderProvider.actionError ?? 'Failed to save score range.')),
+        SnackBar(
+          content: Text(
+            widget.builderProvider.actionError ?? 'Failed to save score range.',
+          ),
+        ),
       );
     }
   }
@@ -111,7 +133,11 @@ class _ScoreBandFormScreenState extends State<ScoreBandFormScreen> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(title: Text(widget.isEditing ? 'Edit Score Range' : 'Add Score Range')),
+        appBar: AppBar(
+          title: Text(
+            widget.isEditing ? 'Edit Score Range' : 'Add Score Range',
+          ),
+        ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Form(
@@ -127,8 +153,9 @@ class _ScoreBandFormScreenState extends State<ScoreBandFormScreen> {
                     hintText: 'e.g. Low, Moderate, High',
                     border: OutlineInputBorder(),
                   ),
-                  validator: (value) =>
-                      (value == null || value.trim().isEmpty) ? 'A label is required.' : null,
+                  validator: (value) => (value == null || value.trim().isEmpty)
+                      ? 'A label is required.'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -136,11 +163,13 @@ class _ScoreBandFormScreenState extends State<ScoreBandFormScreen> {
                   maxLength: 50,
                   decoration: const InputDecoration(
                     labelText: 'Code *',
-                    hintText: 'e.g. low, moderate, high — unique within this questionnaire',
+                    hintText:
+                        'e.g. low, moderate, high — unique within this questionnaire',
                     border: OutlineInputBorder(),
                   ),
-                  validator: (value) =>
-                      (value == null || value.trim().isEmpty) ? 'A code is required.' : null,
+                  validator: (value) => (value == null || value.trim().isEmpty)
+                      ? 'A code is required.'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -149,8 +178,13 @@ class _ScoreBandFormScreenState extends State<ScoreBandFormScreen> {
                       child: TextFormField(
                         controller: _minController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Min score *', border: OutlineInputBorder()),
-                        validator: (value) => int.tryParse(value ?? '') == null ? 'Enter a whole number.' : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Min score *',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) => int.tryParse(value ?? '') == null
+                            ? 'Enter a whole number.'
+                            : null,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -158,12 +192,17 @@ class _ScoreBandFormScreenState extends State<ScoreBandFormScreen> {
                       child: TextFormField(
                         controller: _maxController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Max score *', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                          labelText: 'Max score *',
+                          border: OutlineInputBorder(),
+                        ),
                         validator: (value) {
                           final max = int.tryParse(value ?? '');
                           final min = int.tryParse(_minController.text);
                           if (max == null) return 'Enter a whole number.';
-                          if (min != null && max < min) return 'Must be ≥ min score.';
+                          if (min != null && max < min) {
+                            return 'Must be ≥ min score.';
+                          }
                           return null;
                         },
                       ),
@@ -175,7 +214,9 @@ class _ScoreBandFormScreenState extends State<ScoreBandFormScreen> {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Active'),
-                    subtitle: const Text('Inactive ranges are skipped when scoring a submission.'),
+                    subtitle: const Text(
+                      'Inactive ranges are skipped when scoring a submission.',
+                    ),
                     value: _isActive,
                     onChanged: (value) => setState(() {
                       _isActive = value;
@@ -187,8 +228,13 @@ class _ScoreBandFormScreenState extends State<ScoreBandFormScreen> {
                 FilledButton(
                   onPressed: _isSaving ? null : _submit,
                   child: _isSaving
-                      ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                      : Text(widget.isEditing ? 'Save Changes' : 'Add Score Range'),
+                      ? const SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(
+                          widget.isEditing ? 'Save Changes' : 'Add Score Range',
+                        ),
                 ),
               ],
             ),

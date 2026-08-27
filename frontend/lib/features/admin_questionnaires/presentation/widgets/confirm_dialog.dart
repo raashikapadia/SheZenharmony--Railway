@@ -13,10 +13,15 @@ Future<bool> showConfirmDialog(
       title: Text(title),
       content: Text(message),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
-          style: destructive ? FilledButton.styleFrom(backgroundColor: Colors.red) : null,
+          style: destructive
+              ? FilledButton.styleFrom(backgroundColor: Colors.red)
+              : null,
           child: Text(confirmLabel),
         ),
       ],

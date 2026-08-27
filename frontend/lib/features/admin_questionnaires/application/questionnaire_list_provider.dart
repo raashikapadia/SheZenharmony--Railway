@@ -11,9 +11,11 @@ enum ListLoadState { loading, loaded, error }
 /// Every mutation re-fetches from the backend afterwards rather than
 /// patching local state, so the UI always reflects actual persisted data.
 class QuestionnaireListProvider extends ChangeNotifier {
-  QuestionnaireListProvider({required ApiService apiService, required String token})
-    : _apiService = apiService,
-      _token = token;
+  QuestionnaireListProvider({
+    required ApiService apiService,
+    required String token,
+  }) : _apiService = apiService,
+       _token = token;
 
   final ApiService _apiService;
   final String _token;

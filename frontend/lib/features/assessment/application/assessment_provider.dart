@@ -43,7 +43,11 @@ class AssessmentProvider extends ChangeNotifier {
 
   AssessmentQuestion? get currentQuestion {
     final questions = _questionnaire?.questions;
-    if (questions == null || _currentIndex < 0 || _currentIndex >= questions.length) return null;
+    if (questions == null ||
+        _currentIndex < 0 ||
+        _currentIndex >= questions.length) {
+      return null;
+    }
     return questions[_currentIndex];
   }
 
@@ -58,7 +62,9 @@ class AssessmentProvider extends ChangeNotifier {
 
   bool get allRequiredAnswered {
     final questions = _questionnaire?.questions ?? const [];
-    return questions.where((q) => q.required).every((q) => _answers.containsKey(q.id));
+    return questions
+        .where((q) => q.required)
+        .every((q) => _answers.containsKey(q.id));
   }
 
   Future<void> load() async {
@@ -104,7 +110,11 @@ class AssessmentProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _result = await _apiService.submitAssessment(_token, questionnaire.id, Map.of(_answers));
+      _result = await _apiService.submitAssessment(
+        _token,
+        questionnaire.id,
+        Map.of(_answers),
+      );
       return true;
     } on ApiException catch (e) {
       _submitError = e.message;

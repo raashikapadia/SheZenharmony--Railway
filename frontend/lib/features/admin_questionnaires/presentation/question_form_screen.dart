@@ -15,12 +15,18 @@ bool _typeRequiresOptions(String type) {
 
 String _slugify(String label) {
   final lower = label.trim().toLowerCase();
-  final slug = lower.replaceAll(RegExp(r'[^a-z0-9]+'), '_').replaceAll(RegExp(r'^_+|_+$'), '');
+  final slug = lower
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'^_+|_+$'), '');
   return slug;
 }
 
 class QuestionFormScreen extends StatefulWidget {
-  const QuestionFormScreen({super.key, required this.builderProvider, this.question});
+  const QuestionFormScreen({
+    super.key,
+    required this.builderProvider,
+    this.question,
+  });
 
   final QuestionnaireBuilderProvider builderProvider;
   final StressQuestion? question;
@@ -40,7 +46,9 @@ class _OptionRow {
       valueManuallyEdited = option != null,
       labelController = TextEditingController(text: option?.label ?? ''),
       valueController = TextEditingController(text: option?.value ?? ''),
-      scoreController = TextEditingController(text: option?.score?.toString() ?? '') {
+      scoreController = TextEditingController(
+        text: option?.score?.toString() ?? '',
+      ) {
     labelController.addListener(_autoFillValue);
   }
 
@@ -104,7 +112,9 @@ class _QuestionFormScreenState extends State<QuestionFormScreen> {
 
     if (q != null && q.options.isNotEmpty) {
       for (final option in q.options) {
-        _options.add(_OptionRow(localKey: ValueKey(_nextLocalKey++), option: option));
+        _options.add(
+          _OptionRow(localKey: ValueKey(_nextLocalKey++), option: option),
+        );
       }
     } else {
       // New questions start pre-filled with the standard scale — the admin
@@ -119,12 +129,15 @@ class _QuestionFormScreenState extends State<QuestionFormScreen> {
   }
 
   Future<void> _onTemplateSelected(ScaleTemplate template) async {
-    final hasContent = _options.any((row) => row.labelController.text.trim().isNotEmpty);
+    final hasContent = _options.any(
+      (row) => row.labelController.text.trim().isNotEmpty,
+    );
     if (hasContent) {
       final confirmed = await showConfirmDialog(
         context,
         title: 'Replace current options?',
-        message: 'Applying "${template.name}" will replace the options below with this scale\'s '
+        message:
+            'Applying "${template.name}" will replace the options below with this scale\'s '
             'labels and scores.',
         confirmLabel: 'Apply',
         destructive: false,
@@ -192,11 +205,16 @@ class _QuestionFormScreenState extends State<QuestionFormScreen> {
       final label = row.labelController.text.trim();
       final value = row.valueController.text.trim();
       if (label.isEmpty || value.isEmpty) {
-        setState(() => _optionsError = 'Every option needs a label and a value.');
+        setState(
+          () => _optionsError = 'Every option needs a label and a value.',
+        );
         return null;
       }
       if (!values.add(value)) {
-        setState(() => _optionsError = 'Option values must be unique ("$value" is repeated).');
+        setState(
+          () => _optionsError =
+              'Option values must be unique ("$value" is repeated).',
+        );
         return null;
       }
       final scoreText = row.scoreController.text.trim();
@@ -224,7 +242,9 @@ class _QuestionFormScreenState extends State<QuestionFormScreen> {
       ok = await provider.updateQuestion(
         questionId: widget.question!.id,
         questionText: _textController.text.trim(),
-        dimension: _dimensionController.text.trim().isEmpty ? null : _dimensionController.text.trim(),
+        dimension: _dimensionController.text.trim().isEmpty
+            ? null
+            : _dimensionController.text.trim(),
         questionType: _questionType,
         isRequired: _isRequired,
         options: options,
@@ -232,7 +252,9 @@ class _QuestionFormScreenState extends State<QuestionFormScreen> {
     } else {
       ok = await provider.addQuestion(
         questionText: _textController.text.trim(),
-        dimension: _dimensionController.text.trim().isEmpty ? null : _dimensionController.text.trim(),
+        dimension: _dimensionController.text.trim().isEmpty
+            ? null
+            : _dimensionController.text.trim(),
         questionType: _questionType,
         isRequired: _isRequired,
         options: options,
@@ -247,7 +269,9 @@ class _QuestionFormScreenState extends State<QuestionFormScreen> {
       Navigator.of(context).pop();
     } else {
       final message = provider.actionError ?? 'Failed to save question.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -274,7 +298,9 @@ class _QuestionFormScreenState extends State<QuestionFormScreen> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(title: Text(widget.isEditing ? 'Edit Question' : 'Add Question')),
+        appBar: AppBar(
+          title: Text(widget.isEditing ? 'Edit Question' : 'Add Question'),
+        ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Form(
@@ -286,9 +312,13 @@ class _QuestionFormScreenState extends State<QuestionFormScreen> {
                   controller: _textController,
                   maxLength: 2000,
                   maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'Question Text *', border: OutlineInputBorder()),
-                  validator: (value) =>
-                      (value == null || value.trim().isEmpty) ? 'Question text is required.' : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Question Text *',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) => (value == null || value.trim().isEmpty)
+                      ? 'Question text is required.'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -297,15 +327,24 @@ class _QuestionFormScreenState extends State<QuestionFormScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Dimension (optional)',
                     border: OutlineInputBorder(),
-                    helperText: 'e.g. sleep, workload — for grouping/reporting.',
+                    helperText:
+                        'e.g. sleep, workload — for grouping/reporting.',
                   ),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   initialValue: _questionType,
-                  decoration: const InputDecoration(labelText: 'Question Type *', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Question Type *',
+                    border: OutlineInputBorder(),
+                  ),
                   items: QuestionType.values
-                      .map((t) => DropdownMenuItem(value: t, child: Text(QuestionType.label(t))))
+                      .map(
+                        (t) => DropdownMenuItem(
+                          value: t,
+                          child: Text(QuestionType.label(t)),
+                        ),
+                      )
                       .toList(),
                   onChanged: (value) {
                     if (value == null) return;
@@ -332,22 +371,31 @@ class _QuestionFormScreenState extends State<QuestionFormScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Scale',
                       border: OutlineInputBorder(),
-                      helperText: 'Pick a ready-made answer scale, or build custom options below.',
+                      helperText:
+                          'Pick a ready-made answer scale, or build custom options below.',
                     ),
                     hint: const Text('Custom options'),
                     items: [
                       for (final template in ScaleTemplates.all)
-                        DropdownMenuItem(value: template.id, child: Text(template.name)),
+                        DropdownMenuItem(
+                          value: template.id,
+                          child: Text(template.name),
+                        ),
                     ],
                     onChanged: (id) {
-                      final template = ScaleTemplates.all.where((t) => t.id == id).firstOrNull;
+                      final template = ScaleTemplates.all
+                          .where((t) => t.id == id)
+                          .firstOrNull;
                       if (template != null) _onTemplateSelected(template);
                     },
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Text('Answer options', style: Theme.of(context).textTheme.titleSmall),
+                      Text(
+                        'Answer options',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
                       const Spacer(),
                       TextButton.icon(
                         onPressed: _addOption,
@@ -359,13 +407,20 @@ class _QuestionFormScreenState extends State<QuestionFormScreen> {
                   if (_optionsError != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(_optionsError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                      child: Text(
+                        _optionsError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
                     ),
                   ..._options.map(
                     (row) => _OptionEditor(
                       key: row.localKey,
                       row: row,
-                      onRemove: _options.length > 2 ? () => _removeOption(row) : null,
+                      onRemove: _options.length > 2
+                          ? () => _removeOption(row)
+                          : null,
                       onChanged: () {
                         _appliedTemplateId = null;
                         _markDirty();
@@ -377,8 +432,13 @@ class _QuestionFormScreenState extends State<QuestionFormScreen> {
                 FilledButton(
                   onPressed: _isSaving ? null : _submit,
                   child: _isSaving
-                      ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                      : Text(widget.isEditing ? 'Save Changes' : 'Add Question'),
+                      ? const SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(
+                          widget.isEditing ? 'Save Changes' : 'Add Question',
+                        ),
                 ),
               ],
             ),
@@ -394,7 +454,12 @@ extension _FirstOrNull<T> on Iterable<T> {
 }
 
 class _OptionEditor extends StatelessWidget {
-  const _OptionEditor({super.key, required this.row, required this.onRemove, required this.onChanged});
+  const _OptionEditor({
+    super.key,
+    required this.row,
+    required this.onRemove,
+    required this.onChanged,
+  });
 
   final _OptionRow row;
   final VoidCallback? onRemove;
@@ -413,7 +478,10 @@ class _OptionEditor extends StatelessWidget {
               flex: 3,
               child: TextFormField(
                 controller: row.labelController,
-                decoration: const InputDecoration(labelText: 'Label', isDense: true),
+                decoration: const InputDecoration(
+                  labelText: 'Label',
+                  isDense: true,
+                ),
                 onChanged: (_) => onChanged(),
               ),
             ),
@@ -422,7 +490,11 @@ class _OptionEditor extends StatelessWidget {
               flex: 2,
               child: TextFormField(
                 controller: row.valueController,
-                decoration: const InputDecoration(labelText: 'Value', isDense: true, helperText: 'auto'),
+                decoration: const InputDecoration(
+                  labelText: 'Value',
+                  isDense: true,
+                  helperText: 'auto',
+                ),
                 onChanged: (_) {
                   row.onValueEditedByUser();
                   onChanged();
@@ -435,14 +507,19 @@ class _OptionEditor extends StatelessWidget {
               child: TextFormField(
                 controller: row.scoreController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Score', isDense: true),
+                decoration: const InputDecoration(
+                  labelText: 'Score',
+                  isDense: true,
+                ),
                 onChanged: (_) => onChanged(),
               ),
             ),
             IconButton(
               icon: const Icon(Icons.remove_circle_outline),
               onPressed: onRemove,
-              tooltip: onRemove == null ? 'At least 2 options are required' : 'Remove option',
+              tooltip: onRemove == null
+                  ? 'At least 2 options are required'
+                  : 'Remove option',
             ),
           ],
         ),

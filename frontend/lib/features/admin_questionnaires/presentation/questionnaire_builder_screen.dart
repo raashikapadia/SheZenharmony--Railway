@@ -35,7 +35,8 @@ class _QuestionnaireBuilderView extends StatefulWidget {
   const _QuestionnaireBuilderView();
 
   @override
-  State<_QuestionnaireBuilderView> createState() => _QuestionnaireBuilderViewState();
+  State<_QuestionnaireBuilderView> createState() =>
+      _QuestionnaireBuilderViewState();
 }
 
 class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
@@ -45,7 +46,8 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this)..addListener(() => setState(() {}));
+    _tabController = TabController(length: 2, vsync: this)
+      ..addListener(() => setState(() {}));
   }
 
   @override
@@ -57,14 +59,19 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
   Future<void> _addQuestion() async {
     final provider = context.read<QuestionnaireBuilderProvider>();
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => QuestionFormScreen(builderProvider: provider)),
+      MaterialPageRoute(
+        builder: (_) => QuestionFormScreen(builderProvider: provider),
+      ),
     );
   }
 
   Future<void> _editQuestion(StressQuestion question) async {
     final provider = context.read<QuestionnaireBuilderProvider>();
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => QuestionFormScreen(builderProvider: provider, question: question)),
+      MaterialPageRoute(
+        builder: (_) =>
+            QuestionFormScreen(builderProvider: provider, question: question),
+      ),
     );
   }
 
@@ -82,13 +89,19 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          ok ? (provider.lastActionMessage ?? 'Question deleted.') : (provider.actionError ?? 'Failed to delete question.'),
+          ok
+              ? (provider.lastActionMessage ?? 'Question deleted.')
+              : (provider.actionError ?? 'Failed to delete question.'),
         ),
       ),
     );
   }
 
-  Future<void> _reorder(List<StressQuestion> questions, int oldIndex, int newIndex) async {
+  Future<void> _reorder(
+    List<StressQuestion> questions,
+    int oldIndex,
+    int newIndex,
+  ) async {
     if (newIndex > oldIndex) newIndex -= 1;
     final reordered = List<StressQuestion>.from(questions);
     final moved = reordered.removeAt(oldIndex);
@@ -98,23 +111,30 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
     final ok = await provider.reorder(reordered.map((q) => q.id).toList());
     if (!mounted) return;
     if (!ok) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(provider.actionError ?? 'Failed to reorder questions.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.actionError ?? 'Failed to reorder questions.'),
+        ),
+      );
     }
   }
 
   Future<void> _addScoreBand() async {
     final provider = context.read<QuestionnaireBuilderProvider>();
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ScoreBandFormScreen(builderProvider: provider)),
+      MaterialPageRoute(
+        builder: (_) => ScoreBandFormScreen(builderProvider: provider),
+      ),
     );
   }
 
   Future<void> _editScoreBand(ScoreBand band) async {
     final provider = context.read<QuestionnaireBuilderProvider>();
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ScoreBandFormScreen(builderProvider: provider, band: band)),
+      MaterialPageRoute(
+        builder: (_) =>
+            ScoreBandFormScreen(builderProvider: provider, band: band),
+      ),
     );
   }
 
@@ -122,7 +142,8 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
     final confirmed = await showConfirmDialog(
       context,
       title: 'Delete this score range?',
-      message: 'Are you sure you want to delete "${band.label}" (${band.minScore}–${band.maxScore})?',
+      message:
+          'Are you sure you want to delete "${band.label}" (${band.minScore}–${band.maxScore})?',
     );
     if (!confirmed || !mounted) return;
 
@@ -132,7 +153,9 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          ok ? (provider.lastActionMessage ?? 'Score range deleted.') : (provider.actionError ?? 'Failed to delete score range.'),
+          ok
+              ? (provider.lastActionMessage ?? 'Score range deleted.')
+              : (provider.actionError ?? 'Failed to delete score range.'),
         ),
       ),
     );
@@ -142,7 +165,8 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
     final confirmed = await showConfirmDialog(
       context,
       title: 'Create a new version?',
-      message: 'This clones the questionnaire — including its questions, options, and score ranges — into a '
+      message:
+          'This clones the questionnaire — including its questions, options, and score ranges — into a '
           'new draft you can edit freely. The current version and its assessment history are untouched. '
           'When you publish the new draft, it becomes what new users take.',
       confirmLabel: 'Create Draft',
@@ -155,14 +179,22 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
     if (!mounted) return;
 
     if (newId != null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('New draft version created.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('New draft version created.')),
+      );
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => QuestionnaireBuilderScreen(questionnaireId: newId)),
+        MaterialPageRoute(
+          builder: (_) => QuestionnaireBuilderScreen(questionnaireId: newId),
+        ),
       );
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(provider.actionError ?? 'Failed to create a new version.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            provider.actionError ?? 'Failed to create a new version.',
+          ),
+        ),
+      );
     }
   }
 
@@ -195,22 +227,31 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
       ),
       floatingActionButton: loaded
           ? FloatingActionButton.extended(
-              onPressed: _tabController.index == 0 ? _addQuestion : _addScoreBand,
+              onPressed: _tabController.index == 0
+                  ? _addQuestion
+                  : _addScoreBand,
               icon: const Icon(Icons.add),
-              label: Text(_tabController.index == 0 ? 'Add Question' : 'Add Score Range'),
+              label: Text(
+                _tabController.index == 0 ? 'Add Question' : 'Add Score Range',
+              ),
             )
           : null,
       body: _buildBody(context, provider),
     );
   }
 
-  Widget _buildBody(BuildContext context, QuestionnaireBuilderProvider provider) {
+  Widget _buildBody(
+    BuildContext context,
+    QuestionnaireBuilderProvider provider,
+  ) {
     switch (provider.state) {
       case BuilderLoadState.loading:
         return const LoadingState();
       case BuilderLoadState.error:
         return ErrorStateView(
-          message: provider.errorMessage ?? 'Unable to load this questionnaire. Please try again.',
+          message:
+              provider.errorMessage ??
+              'Unable to load this questionnaire. Please try again.',
           onRetry: provider.load,
         );
       case BuilderLoadState.loaded:
@@ -225,14 +266,20 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
                   Row(
                     children: [
                       Expanded(
-                        child: Text(questionnaire.title, style: Theme.of(context).textTheme.headlineSmall),
+                        child: Text(
+                          questionnaire.title,
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
                       ),
                       StatusBadge(isActive: questionnaire.isActive),
                     ],
                   ),
                   if ((questionnaire.description ?? '').isNotEmpty) ...[
                     const SizedBox(height: 4),
-                    Text(questionnaire.description!, style: Theme.of(context).textTheme.bodyMedium),
+                    Text(
+                      questionnaire.description!,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   ],
                   const SizedBox(height: 4),
                   Text(
@@ -260,8 +307,11 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
                       : ReorderableListView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
                           itemCount: questionnaire.questions.length,
-                           onReorderItem: (oldIndex, newIndex) =>
-                              _reorder(questionnaire.questions, oldIndex, newIndex),
+                          onReorderItem: (oldIndex, newIndex) => _reorder(
+                            questionnaire.questions,
+                            oldIndex,
+                            newIndex,
+                          ),
                           itemBuilder: (context, index) {
                             final question = questionnaire.questions[index];
                             return _QuestionTile(
@@ -275,7 +325,8 @@ class _QuestionnaireBuilderViewState extends State<_QuestionnaireBuilderView>
                         ),
                   questionnaire.scoreBands.isEmpty
                       ? EmptyState(
-                          message: 'No score ranges yet — without them, submissions can\'t be scored '
+                          message:
+                              'No score ranges yet — without them, submissions can\'t be scored '
                               'into a stress level.',
                           actionLabel: 'Add Score Range',
                           onAction: _addScoreBand,
@@ -327,10 +378,16 @@ class _QuestionTile extends StatelessWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(radius: 14, child: Text('$index', style: const TextStyle(fontSize: 12))),
+                CircleAvatar(
+                  radius: 14,
+                  child: Text('$index', style: const TextStyle(fontSize: 12)),
+                ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(question.questionText, style: Theme.of(context).textTheme.titleSmall),
+                  child: Text(
+                    question.questionText,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
                 ),
                 const Icon(Icons.drag_handle),
               ],
@@ -340,11 +397,20 @@ class _QuestionTile extends StatelessWidget {
               spacing: 8,
               runSpacing: 4,
               children: [
-                Chip(label: Text(QuestionType.label(question.questionType)), visualDensity: VisualDensity.compact),
+                Chip(
+                  label: Text(QuestionType.label(question.questionType)),
+                  visualDensity: VisualDensity.compact,
+                ),
                 if (question.isRequired)
-                  const Chip(label: Text('Required'), visualDensity: VisualDensity.compact),
+                  const Chip(
+                    label: Text('Required'),
+                    visualDensity: VisualDensity.compact,
+                  ),
                 if (!question.isActive)
-                  const Chip(label: Text('Inactive'), visualDensity: VisualDensity.compact),
+                  const Chip(
+                    label: Text('Inactive'),
+                    visualDensity: VisualDensity.compact,
+                  ),
               ],
             ),
             if (question.options.isNotEmpty) ...[
@@ -359,8 +425,14 @@ class _QuestionTile extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                IconButton(icon: const Icon(Icons.edit_outlined), onPressed: onEdit),
-                IconButton(icon: const Icon(Icons.delete_outline), onPressed: onDelete),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: onEdit,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: onDelete,
+                ),
               ],
             ),
           ],
@@ -371,7 +443,11 @@ class _QuestionTile extends StatelessWidget {
 }
 
 class _ScoreBandTile extends StatelessWidget {
-  const _ScoreBandTile({required this.band, required this.onEdit, required this.onDelete});
+  const _ScoreBandTile({
+    required this.band,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final ScoreBand band;
   final VoidCallback onEdit;
@@ -383,12 +459,20 @@ class _ScoreBandTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         title: Text(band.label, style: Theme.of(context).textTheme.titleSmall),
-        subtitle: Text('Score ${band.minScore}–${band.maxScore}${band.isActive ? '' : ' · inactive'}'),
+        subtitle: Text(
+          'Score ${band.minScore}–${band.maxScore}${band.isActive ? '' : ' · inactive'}',
+        ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(icon: const Icon(Icons.edit_outlined), onPressed: onEdit),
-            IconButton(icon: const Icon(Icons.delete_outline), onPressed: onDelete),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: onEdit,
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: onDelete,
+            ),
           ],
         ),
       ),

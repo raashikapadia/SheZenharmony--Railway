@@ -44,9 +44,13 @@ class ApiService {
           )
           .timeout(const Duration(seconds: 10));
     } on http.ClientException {
-      throw const ApiException('Unable to connect to SheZen. Please try again.');
+      throw const ApiException(
+        'Unable to connect to SheZen. Please try again.',
+      );
     } on TimeoutException {
-      throw const ApiException('Unable to connect to SheZen. Please try again.');
+      throw const ApiException(
+        'Unable to connect to SheZen. Please try again.',
+      );
     }
 
     final body = _decodeObject(response);
@@ -61,7 +65,9 @@ class ApiService {
     try {
       return AuthSession.fromJson(body);
     } on FormatException {
-      throw const ApiException('Backend returned an unexpected registration response.');
+      throw const ApiException(
+        'Backend returned an unexpected registration response.',
+      );
     }
   }
 
@@ -87,20 +93,29 @@ class ApiService {
           )
           .timeout(const Duration(seconds: 10));
     } on http.ClientException {
-      throw const ApiException('Unable to connect to SheZen. Please try again.');
+      throw const ApiException(
+        'Unable to connect to SheZen. Please try again.',
+      );
     } on TimeoutException {
-      throw const ApiException('Unable to connect to SheZen. Please try again.');
+      throw const ApiException(
+        'Unable to connect to SheZen. Please try again.',
+      );
     }
 
     final body = _decodeObject(response);
     if (response.statusCode != 200) {
-      throw ApiException(_errorMessage(body, 'Sign in failed.'), statusCode: response.statusCode);
+      throw ApiException(
+        _errorMessage(body, 'Sign in failed.'),
+        statusCode: response.statusCode,
+      );
     }
 
     try {
       return AuthSession.fromJson(body);
     } on FormatException {
-      throw const ApiException('Backend returned an unexpected sign-in response.');
+      throw const ApiException(
+        'Backend returned an unexpected sign-in response.',
+      );
     }
   }
 
@@ -108,11 +123,16 @@ class ApiService {
   /// completion status and role always reflect real server state rather
   /// than a cached client value.
   Future<AuthSession> me(String token) async {
-    final body = await _getJson(Uri.parse('${ApiConfig.baseUrl}/v1/auth/me'), token);
+    final body = await _getJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/auth/me'),
+      token,
+    );
     try {
       return AuthSession.fromJson({'token': token, 'user': body['user']});
     } on FormatException {
-      throw const ApiException('Backend returned an unexpected profile response.');
+      throw const ApiException(
+        'Backend returned an unexpected profile response.',
+      );
     }
   }
 
@@ -123,7 +143,10 @@ class ApiService {
     );
 
     if (response.statusCode != 200) {
-      throw ApiException('Could not sign out (${response.statusCode}).', statusCode: response.statusCode);
+      throw ApiException(
+        'Could not sign out (${response.statusCode}).',
+        statusCode: response.statusCode,
+      );
     }
   }
 
@@ -137,7 +160,10 @@ class ApiService {
     final Object? body = jsonDecode(response.body);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException('Backend returned HTTP ${response.statusCode}.', statusCode: response.statusCode);
+      throw ApiException(
+        'Backend returned HTTP ${response.statusCode}.',
+        statusCode: response.statusCode,
+      );
     }
 
     if (body is! Map<String, dynamic>) {
@@ -149,10 +175,16 @@ class ApiService {
 
   Future<List<dynamic>> questions() async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/v1/questions');
-    final response = await _client.get(uri, headers: const {'Accept': 'application/json'});
+    final response = await _client.get(
+      uri,
+      headers: const {'Accept': 'application/json'},
+    );
 
     if (response.statusCode != 200) {
-      throw ApiException('Could not load questions (${response.statusCode}).', statusCode: response.statusCode);
+      throw ApiException(
+        'Could not load questions (${response.statusCode}).',
+        statusCode: response.statusCode,
+      );
     }
 
     final body = jsonDecode(response.body);
@@ -173,20 +205,33 @@ class ApiService {
     final uri = Uri.parse('${ApiConfig.baseUrl}/v1/questionnaires/active');
     final http.Response response;
     try {
-      response = await _client.get(uri, headers: const {'Accept': 'application/json'});
+      response = await _client.get(
+        uri,
+        headers: const {'Accept': 'application/json'},
+      );
     } on http.ClientException {
-      throw const ApiException('Network error — check your connection and that the server is reachable.');
+      throw const ApiException(
+        'Network error — check your connection and that the server is reachable.',
+      );
     } on TimeoutException {
-      throw const ApiException('Network error — check your connection and that the server is reachable.');
+      throw const ApiException(
+        'Network error — check your connection and that the server is reachable.',
+      );
     }
     final body = _handleResponse(response);
-    return AssessmentQuestionnaire.fromJson(body['data'] as Map<String, dynamic>);
+    return AssessmentQuestionnaire.fromJson(
+      body['data'] as Map<String, dynamic>,
+    );
   }
 
   /// [answers] maps questionId -> optionId. The backend independently
   /// recalculates the score and stress level from these IDs — it never
   /// trusts a score computed on the client.
-  Future<AssessmentResult> submitAssessment(String token, int questionnaireId, Map<int, int> answers) async {
+  Future<AssessmentResult> submitAssessment(
+    String token,
+    int questionnaireId,
+    Map<int, int> answers,
+  ) async {
     final body = await _sendJson(
       'POST',
       Uri.parse('${ApiConfig.baseUrl}/v1/assessments'),
@@ -194,7 +239,8 @@ class ApiService {
       {
         'questionnaire_id': questionnaireId,
         'answers': [
-          for (final entry in answers.entries) {'question_id': entry.key, 'option_id': entry.value},
+          for (final entry in answers.entries)
+            {'question_id': entry.key, 'option_id': entry.value},
         ],
       },
     );
@@ -202,7 +248,10 @@ class ApiService {
   }
 
   Future<List<AssessmentSummary>> myAssessments(String token) async {
-    final body = await _getJson(Uri.parse('${ApiConfig.baseUrl}/v1/assessments'), token);
+    final body = await _getJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/assessments'),
+      token,
+    );
     return (body['data'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(AssessmentSummary.fromJson)
@@ -219,13 +268,14 @@ class ApiService {
     String filter = 'all',
     int page = 1,
   }) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires').replace(
-      queryParameters: {
-        if (search.isNotEmpty) 'search': search,
-        'filter': filter,
-        'page': page.toString(),
-      },
-    );
+    final uri = Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires')
+        .replace(
+          queryParameters: {
+            if (search.isNotEmpty) 'search': search,
+            'filter': filter,
+            'page': page.toString(),
+          },
+        );
 
     final body = await _getJson(uri, token);
     final items = (body['data'] as List<dynamic>? ?? const [])
@@ -243,7 +293,10 @@ class ApiService {
   }
 
   Future<Questionnaire> adminShowQuestionnaire(String token, int id) async {
-    final body = await _getJson(Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$id'), token);
+    final body = await _getJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$id'),
+      token,
+    );
     return Questionnaire.fromJson(body['data'] as Map<String, dynamic>);
   }
 
@@ -258,7 +311,12 @@ class ApiService {
       'POST',
       Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires'),
       token,
-      {'title': title, 'description': description, 'period': period, 'status': status},
+      {
+        'title': title,
+        'description': description,
+        'period': period,
+        'status': status,
+      },
     );
     return Questionnaire.fromJson(body['data'] as Map<String, dynamic>);
   }
@@ -276,13 +334,24 @@ class ApiService {
       'PUT',
       Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$id'),
       token,
-      {'title': title, 'description': description, 'period': period, 'status': status, 'is_active': isActive},
+      {
+        'title': title,
+        'description': description,
+        'period': period,
+        'status': status,
+        'is_active': isActive,
+      },
     );
     return Questionnaire.fromJson(body['data'] as Map<String, dynamic>);
   }
 
   Future<void> adminDeleteQuestionnaire(String token, int id) async {
-    await _sendJson('DELETE', Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$id'), token, null);
+    await _sendJson(
+      'DELETE',
+      Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$id'),
+      token,
+      null,
+    );
   }
 
   /// Clones the questionnaire into a new draft version with independent
@@ -308,7 +377,10 @@ class ApiService {
     return Questionnaire.fromJson(body['data'] as Map<String, dynamic>);
   }
 
-  Future<Questionnaire> adminDeactivateQuestionnaire(String token, int id) async {
+  Future<Questionnaire> adminDeactivateQuestionnaire(
+    String token,
+    int id,
+  ) async {
     final body = await _sendJson(
       'PATCH',
       Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$id/deactivate'),
@@ -332,9 +404,16 @@ class ApiService {
   }) async {
     final body = await _sendJson(
       'POST',
-      Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$questionnaireId/score-bands'),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/v1/admin/questionnaires/$questionnaireId/score-bands',
+      ),
       token,
-      {'code': code, 'label': label, 'min_score': minScore, 'max_score': maxScore},
+      {
+        'code': code,
+        'label': label,
+        'min_score': minScore,
+        'max_score': maxScore,
+      },
     );
     return ScoreBand.fromJson(body['data'] as Map<String, dynamic>);
   }
@@ -351,17 +430,31 @@ class ApiService {
   }) async {
     final body = await _sendJson(
       'PUT',
-      Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$questionnaireId/score-bands/$bandId'),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/v1/admin/questionnaires/$questionnaireId/score-bands/$bandId',
+      ),
       token,
-      {'code': code, 'label': label, 'min_score': minScore, 'max_score': maxScore, 'is_active': isActive},
+      {
+        'code': code,
+        'label': label,
+        'min_score': minScore,
+        'max_score': maxScore,
+        'is_active': isActive,
+      },
     );
     return ScoreBand.fromJson(body['data'] as Map<String, dynamic>);
   }
 
-  Future<String> adminDeleteScoreBand(String token, int questionnaireId, int bandId) async {
+  Future<String> adminDeleteScoreBand(
+    String token,
+    int questionnaireId,
+    int bandId,
+  ) async {
     final body = await _sendJson(
       'DELETE',
-      Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$questionnaireId/score-bands/$bandId'),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/v1/admin/questionnaires/$questionnaireId/score-bands/$bandId',
+      ),
       token,
       null,
     );
@@ -383,7 +476,9 @@ class ApiService {
   }) async {
     final body = await _sendJson(
       'POST',
-      Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$questionnaireId/questions'),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/v1/admin/questionnaires/$questionnaireId/questions',
+      ),
       token,
       {
         'question_text': questionText,
@@ -408,7 +503,9 @@ class ApiService {
   }) async {
     final body = await _sendJson(
       'PUT',
-      Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$questionnaireId/questions/$questionId'),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/v1/admin/questionnaires/$questionnaireId/questions/$questionId',
+      ),
       token,
       {
         'question_text': questionText,
@@ -423,10 +520,16 @@ class ApiService {
 
   /// Returns the backend's confirmation message, which may indicate the
   /// question was deactivated instead of deleted (it has response history).
-  Future<String> adminDeleteQuestion(String token, int questionnaireId, int questionId) async {
+  Future<String> adminDeleteQuestion(
+    String token,
+    int questionnaireId,
+    int questionId,
+  ) async {
     final body = await _sendJson(
       'DELETE',
-      Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$questionnaireId/questions/$questionId'),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/v1/admin/questionnaires/$questionnaireId/questions/$questionId',
+      ),
       token,
       null,
     );
@@ -440,7 +543,9 @@ class ApiService {
   ) async {
     final body = await _sendJson(
       'PATCH',
-      Uri.parse('${ApiConfig.baseUrl}/v1/admin/questionnaires/$questionnaireId/questions/reorder'),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/v1/admin/questionnaires/$questionnaireId/questions/reorder',
+      ),
       token,
       {'questions': positions},
     );
@@ -461,15 +566,27 @@ class ApiService {
     try {
       response = await _client.get(uri, headers: _authorizedHeaders(token));
     } on http.ClientException {
-      throw const ApiException('Network error — check your connection and that the server is reachable.');
+      throw const ApiException(
+        'Network error — check your connection and that the server is reachable.',
+      );
     } on TimeoutException {
-      throw const ApiException('Network error — check your connection and that the server is reachable.');
+      throw const ApiException(
+        'Network error — check your connection and that the server is reachable.',
+      );
     }
     return _handleResponse(response);
   }
 
-  Future<Map<String, dynamic>> _sendJson(String method, Uri uri, String token, Map<String, dynamic>? payload) async {
-    final headers = {..._authorizedHeaders(token), 'Content-Type': 'application/json'};
+  Future<Map<String, dynamic>> _sendJson(
+    String method,
+    Uri uri,
+    String token,
+    Map<String, dynamic>? payload,
+  ) async {
+    final headers = {
+      ..._authorizedHeaders(token),
+      'Content-Type': 'application/json',
+    };
     final body = payload == null ? null : jsonEncode(payload);
 
     final http.Response response;
@@ -487,9 +604,13 @@ class ApiService {
           throw ArgumentError('Unsupported method: $method');
       }
     } on http.ClientException {
-      throw const ApiException('Network error — check your connection and that the server is reachable.');
+      throw const ApiException(
+        'Network error — check your connection and that the server is reachable.',
+      );
     } on TimeoutException {
-      throw const ApiException('Network error — check your connection and that the server is reachable.');
+      throw const ApiException(
+        'Network error — check your connection and that the server is reachable.',
+      );
     }
     return _handleResponse(response);
   }
@@ -513,7 +634,8 @@ class ApiService {
       401 => 'Your session has expired. Please sign in again.',
       403 => 'You do not have permission to do that.',
       404 => 'That item could not be found — it may have been removed.',
-      409 => 'This could not be completed due to a conflict with existing data.',
+      409 =>
+        'This could not be completed due to a conflict with existing data.',
       422 => 'Please correct the highlighted fields.',
       >= 500 => 'The server ran into a problem. Please try again shortly.',
       _ => 'Something went wrong (HTTP $statusCode).',
@@ -562,7 +684,9 @@ class ApiService {
     final result = <String, List<String>>{};
     for (final entry in errors.entries) {
       if (entry.value is List) {
-        result[entry.key] = (entry.value as List).map((e) => e.toString()).toList();
+        result[entry.key] = (entry.value as List)
+            .map((e) => e.toString())
+            .toList();
       }
     }
     return result.isEmpty ? null : result;

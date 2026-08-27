@@ -1,57 +1,83 @@
-# SheZen starter architecture
+# SheZen Harmony architecture
 
 ```text
-Student Flutter app -- Sanctum token --> Laravel REST API -- Eloquent --> MySQL
-                                               ^
-Admin browser -------- secure session ---------|
+Student Flutter app -- Sanctum bearer token --> Laravel JSON API -- Eloquent --> MySQL
+                                                     ^
+Admin browser -------- session cookie + CSRF --------|
 ```
 
-The Laravel application can also host the future web-admin interface, avoiding the
-need for a second web framework during the capstone.
+## Application boundaries
 
-## Data foundation included
+- `frontend/` is the authenticated Flutter student application.
+- `backend/` is the Laravel API and server-rendered administrator application.
+- `docs/` contains architecture, schema, and requirements records.
+- `scripts/` contains Windows development launch and environment helpers.
 
-- `stress_questions`
-- `question_options`
-- `stress_assessments`
-- `stress_responses`
-- `interventions`
-- `intervention_usages`
+Flutter never connects directly to MySQL. Laravel owns authentication,
+authorization, validation, scoring, persistence, and the student identity
+boundary.
 
-Laravel's existing `users` table remains available for authenticated users/admins.
-The `role` field separates `student` and `admin` accounts. Mobile student sessions
-use revocable Sanctum tokens, while the admin website uses Laravel's cookie-based
-session guard and CSRF protection.
+## Student authentication and privacy
 
-## Authentication boundaries
+Students register and sign in with an approved USP student email. Email and
+password belong to the authentication account in `users`. Laravel creates a
+separate `student_identities` record and returns only this minimal mobile user
+payload after authentication:
 
-- Student mobile login: `POST /api/v1/auth/login`
-- Current mobile user: `GET /api/v1/auth/me`
-- Mobile logout: `POST /api/v1/auth/logout`
-- Admin login: `/admin/login`
-- Admin dashboard: `/admin`
-
-Public student registration is deliberately not enabled until cohort verification
-and enrolment rules are approved. Administrator accounts are created interactively:
-
-```powershell
-cd backend
-php artisan shezen:create-admin
+```json
+{
+  "role": "student",
+  "shezen_id": "SZ-...",
+  "has_completed_required_assessment": true
+}
 ```
 
-`anonymous_session_id` supports future anonymous workflows without pretending that
-the final privacy/data-retention policy has already been decided.
+The mobile response excludes the database user ID, name, email, and raw
+pseudonymous UUID. Flutter securely stores only the Sanctum token and role.
+Wellbeing, demographic, consent, progress, intervention, and chat foundations
+relate to `student_identity_id` where implemented.
 
-## Deliberately not hard-coded
+There is no anonymous guest entry flow. `anonymous_sessions` and related nullable
+compatibility columns are retained schema foundations and are not authority to
+bypass student registration.
 
-The client still needs to approve/provide:
+## Student API
 
-- assessment dimensions
-- final questions
-- scoring
-- stress thresholds
-- sensitive/suicide-ideation handling
-- referral workflow
-- final cohort/login verification rules
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `GET /api/v1/auth/me`
+- `POST /api/v1/auth/logout`
+- `DELETE /api/v1/auth/account`
+- `GET /api/v1/questionnaires/active`
+- `GET /api/v1/assessments`
+- `POST /api/v1/assessments`
+- `GET /api/v1/interventions`
 
-Therefore this starter does not implement a production stress score.
+The one-time baseline assessment gate is derived from completed assessment rows
+on the backend rather than a client-only preference.
+
+## Administrator boundary
+
+The active administrator interface is Laravel Blade under `/admin`. It uses the
+Laravel session guard, CSRF protection, and the `admin` middleware. It manages
+current questionnaire and intervention functionality and exposes only
+pseudonymous/aggregate student information.
+
+The Flutter `admin_questionnaires` feature is a retained prototype backed by
+admin JSON endpoints. It is not currently reachable from the student app because
+the mobile login endpoint deliberately rejects admin accounts. It must not be
+deleted or exposed until the team decides whether administration remains
+Blade-only or gains a separate authenticated Flutter entry point.
+
+## Source organization
+
+Flutter uses feature-first modules with `data`, `application`, and
+`presentation` layers where needed. Cross-cutting infrastructure stays in
+`core`; reusable presentation widgets stay in `shared/widgets`.
+
+Laravel follows framework conventions: controllers and requests in `app/Http`,
+domain models in `app/Models`, transactional/domain operations in `app/Services`,
+routes in `routes`, migrations and seeders in `database`, and feature tests in
+`tests/Feature`.
+
+See `PROJECT_STRUCTURE.md` for the detailed repository map and ownership rules.

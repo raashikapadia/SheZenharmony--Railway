@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../application/auth_provider.dart';
 
-const _registrationTeal = Color(0xFF157A76);
-const _registrationInk = Color(0xFF173D3C);
-const _registrationMuted = Color(0xFF687674);
-const _registrationCream = Color(0xFFFFFCF6);
+const _registrationTeal = AppColors.primary;
+const _registrationInk = AppColors.ink;
+const _registrationMuted = AppColors.muted;
+const _registrationCream = AppColors.background;
 
 final _primaryButtonStyle = FilledButton.styleFrom(
-  backgroundColor: _registrationTeal,
-  foregroundColor: Colors.white,
-  minimumSize: const Size.fromHeight(48),
+  minimumSize: const Size.fromHeight(52),
 );
 
 const _privacySummary = [
@@ -131,7 +130,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ][_step],
           style: const TextStyle(
             color: _registrationInk,
-            fontFamily: 'serif',
             fontWeight: FontWeight.w700,
             fontSize: 19,
           ),

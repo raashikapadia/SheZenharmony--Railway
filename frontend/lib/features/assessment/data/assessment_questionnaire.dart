@@ -1,5 +1,9 @@
 class AssessmentOption {
-  const AssessmentOption({required this.id, required this.label, required this.value});
+  const AssessmentOption({
+    required this.id,
+    required this.label,
+    required this.value,
+  });
 
   final int id;
   final String label;
@@ -37,7 +41,10 @@ class AssessmentQuestion {
       required: json['required'] as bool? ?? true,
       position: json['position'] as int? ?? 0,
       options: rawOptions is List
-          ? rawOptions.whereType<Map<String, dynamic>>().map(AssessmentOption.fromJson).toList()
+          ? rawOptions
+                .whereType<Map<String, dynamic>>()
+                .map(AssessmentOption.fromJson)
+                .toList()
           : const [],
     );
   }
@@ -63,7 +70,10 @@ class AssessmentQuestionnaire {
   factory AssessmentQuestionnaire.fromJson(Map<String, dynamic> json) {
     final rawQuestions = json['questions'];
     final questions = rawQuestions is List
-        ? rawQuestions.whereType<Map<String, dynamic>>().map(AssessmentQuestion.fromJson).toList()
+        ? rawQuestions
+              .whereType<Map<String, dynamic>>()
+              .map(AssessmentQuestion.fromJson)
+              .toList()
         : <AssessmentQuestion>[];
     questions.sort((a, b) => a.position.compareTo(b.position));
 

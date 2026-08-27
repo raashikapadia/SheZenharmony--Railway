@@ -1,37 +1,54 @@
-# Starter API
+# SheZen Harmony API overview
 
-## Authentication
+The JSON API is rooted at `/api`; versioned application routes use `/api/v1`.
+Flutter obtains the base URL from `frontend/lib/core/config/api_config.dart`.
 
-`POST /api/v1/auth/login` authenticates a student and returns a revocable
-Sanctum bearer token. The JSON body requires `email`, `password`, and
-`device_name`. Administrator accounts use the web login instead.
+## Public endpoints
 
-`GET /api/v1/auth/me` returns the authenticated student. It requires an
-`Authorization: Bearer TOKEN` header.
+- `GET /api/health` — connectivity check.
+- `POST /api/v1/auth/register` — creates a USP student authentication account,
+  pseudonymous identity, demographics, consent, and Sanctum token.
+- `POST /api/v1/auth/login` — student-only login returning a minimal identity
+  payload and Sanctum token.
+- `GET /api/v1/questions` — retained legacy active-question listing.
+- `GET /api/v1/questionnaires/active` — active dynamic student questionnaire.
+- `GET /api/v1/interventions` — active intervention listing.
 
-`POST /api/v1/auth/logout` revokes the token used for the current request.
+Registration and login are rate limited. The public questionnaire/intervention
+read routes must not expose student data.
 
-## Health
+## Authenticated student endpoints
 
-`GET /api/health`
+Send `Authorization: Bearer TOKEN` and `Accept: application/json`.
 
-Used to verify Flutter → Laravel communication.
+- `GET /api/v1/auth/me`
+- `POST /api/v1/auth/logout`
+- `DELETE /api/v1/auth/account`
+- `GET /api/v1/assessments`
+- `POST /api/v1/assessments`
 
-## Development questions
+Authentication payloads expose only `role`, formatted `shezen_id`, and required
+assessment completion state. Assessment submission accepts question and option
+IDs; Laravel validates membership and calculates the score independently.
 
-`GET /api/v1/questions`
+## Administrator JSON endpoints
 
-Returns active seeded development questions and their options.
+Routes under `/api/v1/admin` require both Sanctum authentication and the `admin`
+middleware. They manage questionnaires, versions, questions/options, ordering,
+activation, and score bands.
 
-The seed content is **not** an approved psychological assessment.
+The current mobile student login deliberately rejects administrators. These JSON
+routes support the retained admin-client prototype but are not reachable from the
+normal Flutter student shell.
 
-## Interventions
+## Administrator web application
 
-`GET /api/v1/interventions`
+The active admin interface is under `/admin` and uses Laravel session cookies,
+CSRF protection, and role middleware. It is separate from the mobile Sanctum
+session boundary.
 
-Optional query:
+## Development warning
 
-`?stress_level=low`
-
-This endpoint is only a starter read API. Admin CRUD and recommendation logic should
-be added after the project requirements are finalized.
+Development seed questionnaire content and scores are not an approved clinical or
+psychological assessment. Never put authentication identity, answers, scores,
+stress tiers, demographics, chat content, or SheZen IDs into third-party analytics.

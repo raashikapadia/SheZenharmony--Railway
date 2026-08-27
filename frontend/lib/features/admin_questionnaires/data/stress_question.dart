@@ -58,9 +58,9 @@ class StressQuestion {
       isRequired: json['is_required'] as bool? ?? true,
       options: rawOptions is List
           ? rawOptions
-              .whereType<Map<String, dynamic>>()
-              .map(QuestionOption.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(QuestionOption.fromJson)
+                .toList()
           : const [],
     );
   }

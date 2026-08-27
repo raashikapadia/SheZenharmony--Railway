@@ -5,7 +5,11 @@
 /// admin could otherwise fill in manually, and every value stays fully
 /// editable afterwards.
 class ScaleOption {
-  const ScaleOption({required this.label, required this.value, required this.score});
+  const ScaleOption({
+    required this.label,
+    required this.value,
+    required this.score,
+  });
 
   final String label;
   final String value;
@@ -13,7 +17,11 @@ class ScaleOption {
 }
 
 class ScaleTemplate {
-  const ScaleTemplate({required this.id, required this.name, required this.options});
+  const ScaleTemplate({
+    required this.id,
+    required this.name,
+    required this.options,
+  });
 
   final String id;
   final String name;
@@ -39,7 +47,11 @@ class ScaleTemplates {
     id: 'agreement_5',
     name: 'Agreement — Strongly Disagree to Strongly Agree (5-point)',
     options: [
-      ScaleOption(label: 'Strongly Disagree', value: 'strongly_disagree', score: 0),
+      ScaleOption(
+        label: 'Strongly Disagree',
+        value: 'strongly_disagree',
+        score: 0,
+      ),
       ScaleOption(label: 'Disagree', value: 'disagree', score: 1),
       ScaleOption(label: 'Neutral', value: 'neutral', score: 2),
       ScaleOption(label: 'Agree', value: 'agree', score: 3),

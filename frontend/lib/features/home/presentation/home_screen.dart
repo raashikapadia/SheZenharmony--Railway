@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/network/api_service.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_ui.dart';
 import '../../assessment/data/assessment_result.dart';
 import '../../assessment/presentation/questionnaire_screen.dart';
 import '../../auth/application/auth_provider.dart';
@@ -145,31 +147,85 @@ class _DashboardPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 26),
-        const _SectionHeading(
-          title: 'Support your day',
-          subtitle: 'Small moments can make a difference.',
+        const AppSectionHeader(
+          title: 'Explore support',
+          subtitle: 'Choose what would help you right now.',
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _QuickCard(
-                icon: Icons.air_rounded,
-                title: 'Breathe',
-                color: const Color(0xFFE8F2EE),
-                onTap: () => _showComingSoon(context, 'Breathing activities'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _QuickCard(
-                icon: Icons.menu_book_outlined,
-                title: 'Reflect',
-                color: const Color(0xFFF3EAF6),
-                onTap: () => _showComingSoon(context, 'Reflection journal'),
-              ),
-            ),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = (constraints.maxWidth - 12) / 2;
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                SizedBox(
+                  width: width,
+                  child: AppFeatureCard(
+                    icon: Icons.mood_outlined,
+                    title: 'Mood tracking',
+                    description: 'Notice patterns in how you feel.',
+                    badge: 'Soon',
+                    onTap: () => _showComingSoon(context, 'Mood tracking'),
+                  ),
+                ),
+                SizedBox(
+                  width: width,
+                  child: AppFeatureCard(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    title: 'Chat Buddy',
+                    description: 'A gentle space to talk things through.',
+                    tint: AppColors.softPlum,
+                    badge: 'Soon',
+                    onTap: () => _showComingSoon(context, 'Chat Buddy'),
+                  ),
+                ),
+                SizedBox(
+                  width: width,
+                  child: AppFeatureCard(
+                    icon: Icons.self_improvement_rounded,
+                    title: 'Positive activities',
+                    description: 'Pause, breathe, and reset.',
+                    onTap: () =>
+                        _showComingSoon(context, 'Positive activities'),
+                  ),
+                ),
+                SizedBox(
+                  width: width,
+                  child: AppFeatureCard(
+                    icon: Icons.school_outlined,
+                    title: 'Academic support',
+                    description: 'Plan study and manage pressure.',
+                    tint: AppColors.softGold,
+                    badge: 'Soon',
+                    onTap: () => _showComingSoon(context, 'Academic support'),
+                  ),
+                ),
+                SizedBox(
+                  width: width,
+                  child: AppFeatureCard(
+                    icon: Icons.menu_book_outlined,
+                    title: 'Resources',
+                    description: 'Find practical wellbeing guidance.',
+                    tint: AppColors.softPlum,
+                    badge: 'Soon',
+                    onTap: () => _showComingSoon(context, 'Resources'),
+                  ),
+                ),
+                SizedBox(
+                  width: width,
+                  child: AppFeatureCard(
+                    icon: Icons.air_rounded,
+                    title: 'Breathing',
+                    description: 'Take a short calming pause.',
+                    badge: 'Soon',
+                    onTap: () =>
+                        _showComingSoon(context, 'Breathing activities'),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 26),
         const _SectionHeading(title: 'Academic wellbeing'),
@@ -263,7 +319,7 @@ class _ProgressPageState extends State<_ProgressPage> {
         return const Center(child: CircularProgressIndicator());
       }
       if (snapshot.hasError) {
-        return _CenteredState(
+        return AppStateView(
           icon: Icons.cloud_off_outlined,
           title: 'Couldn\'t load your progress',
           message: 'Check your connection and try again.',
@@ -273,7 +329,7 @@ class _ProgressPageState extends State<_ProgressPage> {
       }
       final history = snapshot.data ?? const [];
       if (history.isEmpty) {
-        return const _CenteredState(
+        return const AppStateView(
           icon: Icons.insights_outlined,
           title: 'No check-ins yet',
           message: 'Your completed wellbeing check-ins will appear here.',
@@ -413,44 +469,6 @@ class _SectionHeading extends StatelessWidget {
   );
 }
 
-class _QuickCard extends StatelessWidget {
-  const _QuickCard({
-    required this.icon,
-    required this.title,
-    required this.color,
-    required this.onTap,
-  });
-  final IconData icon;
-  final String title;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Card(
-    color: color,
-    child: InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 30),
-            const SizedBox(height: 22),
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
 class _InfoCard extends StatelessWidget {
   const _InfoCard({
     required this.icon,
@@ -516,48 +534,6 @@ class _ComingSoonBadge extends StatelessWidget {
     child: const Text(
       'Soon',
       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-    ),
-  );
-}
-
-class _CenteredState extends StatelessWidget {
-  const _CenteredState({
-    required this.icon,
-    required this.title,
-    required this.message,
-    this.actionLabel,
-    this.onAction,
-  });
-  final IconData icon;
-  final String title;
-  final String message;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 48, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(height: 14),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          Text(message, textAlign: TextAlign.center),
-          if (onAction != null) ...[
-            const SizedBox(height: 18),
-            FilledButton(onPressed: onAction, child: Text(actionLabel!)),
-          ],
-        ],
-      ),
     ),
   );
 }

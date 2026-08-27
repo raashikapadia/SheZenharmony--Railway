@@ -24,7 +24,9 @@ class AssessmentResult {
       totalScore: result['total_score'] as int? ?? 0,
       bandCode: band['code'] as String? ?? '',
       bandLabel: band['label'] as String? ?? '',
-      completedAt: completedAtRaw is String ? DateTime.tryParse(completedAtRaw) : null,
+      completedAt: completedAtRaw is String
+          ? DateTime.tryParse(completedAtRaw)
+          : null,
     );
   }
 }
@@ -53,7 +55,9 @@ class AssessmentSummary {
       questionnaireTitle: json['questionnaire_title'] as String?,
       totalScore: json['total_score'] as int? ?? 0,
       bandLabel: band?['label'] as String?,
-      completedAt: completedAtRaw is String ? DateTime.tryParse(completedAtRaw) : null,
+      completedAt: completedAtRaw is String
+          ? DateTime.tryParse(completedAtRaw)
+          : null,
     );
   }
 }
