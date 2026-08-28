@@ -31,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          titles[_selectedIndex],
+          toMathBold(titles[_selectedIndex]),
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: _selectedIndex == 0
@@ -251,7 +251,8 @@ class _WellbeingPage extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
     children: [
       const _SectionHeading(
-        title: 'Wellbeing tools',
+        title: '''
+𝐖𝐞𝐥𝐥𝐛𝐞𝐢𝐧𝐠 𝐭𝐨𝐨𝐥𝐬''',
         subtitle: 'Explore gentle ways to pause, reset, and reflect.',
       ),
       const SizedBox(height: 20),
@@ -451,7 +452,7 @@ class _SectionHeading extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(
-        title,
+        toMathBold(title),
         style: Theme.of(
           context,
         ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),

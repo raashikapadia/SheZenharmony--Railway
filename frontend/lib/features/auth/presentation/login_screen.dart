@@ -8,7 +8,6 @@ import 'register_screen.dart';
 const _teal = AppColors.primary;
 const _ink = AppColors.ink;
 const _muted = AppColors.muted;
-const _cream = AppColors.background;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -51,7 +50,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     return Scaffold(
-      backgroundColor: _cream,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

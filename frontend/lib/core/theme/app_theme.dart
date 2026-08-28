@@ -1,16 +1,31 @@
 import 'package:flutter/material.dart';
 
+String toMathBold(String text) {
+  return text.runes.map((rune) {
+    if (rune >= 0x41 && rune <= 0x5A) {
+      return String.fromCharCode(0x1D400 + rune - 0x41);
+    }
+    if (rune >= 0x61 && rune <= 0x7A) {
+      return String.fromCharCode(0x1D41A + rune - 0x61);
+    }
+    if (rune >= 0x30 && rune <= 0x39) {
+      return String.fromCharCode(0x1D7CE + rune - 0x30);
+    }
+    return String.fromCharCode(rune);
+  }).join();
+}
+
 abstract final class AppColors {
-  static const primary = Color(0xFF286B68);
-  static const secondary = Color(0xFF765A79);
-  static const background = Color(0xFFF8F7F4);
-  static const surface = Color(0xFFFFFEFC);
-  static const ink = Color(0xFF203B3A);
-  static const muted = Color(0xFF667572);
-  static const outline = Color(0xFFD8E1DE);
-  static const softTeal = Color(0xFFE3F0ED);
-  static const softPlum = Color(0xFFF0E8F1);
-  static const softGold = Color(0xFFF6EEDB);
+  static const primary = Color(0xFF7042A3);
+  static const secondary = Color(0xFF9A66C4);
+  static const background = Color(0xFFF8F4FC);
+  static const surface = Color(0xFFFFFEFF);
+  static const ink = Color(0xFF321C4D);
+  static const muted = Color(0xFF725F80);
+  static const outline = Color(0xFFDCCCE8);
+  static const softTeal = Color(0xFFF0E5FA);
+  static const softPlum = Color(0xFFF3E8FA);
+  static const softGold = Color(0xFFF8EFFC);
 }
 
 abstract final class AppSpacing {
@@ -46,25 +61,35 @@ abstract final class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: AppColors.background,
+      scaffoldBackgroundColor: Colors.transparent,
       textTheme: textTheme.copyWith(
         headlineMedium: textTheme.headlineMedium?.copyWith(
+          fontFamily: 'Cambria Math',
           fontWeight: FontWeight.w800,
           letterSpacing: -0.6,
+          decoration: TextDecoration.underline,
         ),
         headlineSmall: textTheme.headlineSmall?.copyWith(
+          fontFamily: 'Cambria Math',
           fontWeight: FontWeight.w800,
           letterSpacing: -0.35,
+          decoration: TextDecoration.underline,
         ),
-        titleLarge: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        titleLarge: textTheme.titleLarge?.copyWith(
+          fontFamily: 'Cambria Math',
+          fontWeight: FontWeight.w800,
+          decoration: TextDecoration.underline,
+        ),
         titleMedium: textTheme.titleMedium?.copyWith(
+          fontFamily: 'Cambria Math',
           fontWeight: FontWeight.w700,
+          decoration: TextDecoration.underline,
         ),
         bodyLarge: textTheme.bodyLarge?.copyWith(height: 1.45),
         bodyMedium: textTheme.bodyMedium?.copyWith(height: 1.45),
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         foregroundColor: AppColors.ink,
         surfaceTintColor: Colors.transparent,
         centerTitle: false,
@@ -72,7 +97,9 @@ abstract final class AppTheme {
         titleTextStyle: TextStyle(
           color: AppColors.ink,
           fontSize: 20,
+          fontFamily: 'Cambria Math',
           fontWeight: FontWeight.w800,
+          decoration: TextDecoration.underline,
         ),
       ),
       cardTheme: const CardThemeData(
@@ -130,7 +157,7 @@ abstract final class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         height: 72,
         elevation: 0,
-        backgroundColor: AppColors.surface,
+        backgroundColor: AppColors.surface.withValues(alpha: 0.94),
         indicatorColor: AppColors.softTeal,
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => TextStyle(

@@ -7,7 +7,6 @@ import '../application/auth_provider.dart';
 const _registrationTeal = AppColors.primary;
 const _registrationInk = AppColors.ink;
 const _registrationMuted = AppColors.muted;
-const _registrationCream = AppColors.background;
 
 final _primaryButtonStyle = FilledButton.styleFrom(
   minimumSize: const Size.fromHeight(52),
@@ -112,9 +111,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     return Scaffold(
-      backgroundColor: _registrationCream,
       appBar: AppBar(
-        backgroundColor: _registrationCream,
         automaticallyImplyLeading: false,
         leading: IconButton(
           onPressed: auth.isLoading ? null : _goBack,
@@ -229,11 +226,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         padding: const EdgeInsets.fromLTRB(24, 28, 24, 22),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          border: Border.all(color: const Color(0xFFD7E0DD)),
+                          border: Border.all(color: AppColors.outline),
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: const [
                             BoxShadow(
-                              color: Color(0x160C3E3C),
+                              color: Color(0x167042A3),
                               blurRadius: 22,
                               offset: Offset(0, 10),
                             ),
@@ -243,7 +240,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           children: [
                             const CircleAvatar(
                               radius: 28,
-                              backgroundColor: Color(0xFFE4F2EC),
+                              backgroundColor: AppColors.softTeal,
                               child: Icon(
                                 Icons.shield_outlined,
                                 color: _registrationTeal,
@@ -268,7 +265,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF3F4EB),
+                                color: AppColors.softGold,
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: const Text(
@@ -307,7 +304,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       Material(
-                        color: const Color(0xFFF3F4EB),
+                        color: AppColors.softGold,
                         borderRadius: BorderRadius.circular(24),
                         child: CheckboxListTile(
                           shape: RoundedRectangleBorder(

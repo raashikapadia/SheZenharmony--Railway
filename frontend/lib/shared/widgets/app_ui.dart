@@ -2,6 +2,22 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 
+class AppBackground extends StatelessWidget {
+  const AppBackground({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    fit: StackFit.expand,
+    children: [
+      Image.asset('assets/images/shezen_background.png', fit: BoxFit.cover),
+      ColoredBox(color: Colors.white.withValues(alpha: 0.28)),
+      child,
+    ],
+  );
+}
+
 class AppSectionHeader extends StatelessWidget {
   const AppSectionHeader({super.key, required this.title, this.subtitle});
 
@@ -12,7 +28,7 @@ class AppSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(title, style: Theme.of(context).textTheme.titleLarge),
+      Text(toMathBold(title), style: Theme.of(context).textTheme.titleLarge),
       if (subtitle != null) ...[
         const SizedBox(height: AppSpacing.xs),
         Text(
@@ -87,7 +103,10 @@ class AppFeatureCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.md),
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              toMathBold(title),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: AppSpacing.xs),
             Text(
               description,
@@ -139,7 +158,7 @@ class AppStateView extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
           Text(
-            title,
+            toMathBold(title),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleLarge,
           ),
