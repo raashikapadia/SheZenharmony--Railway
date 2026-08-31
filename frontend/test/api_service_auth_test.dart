@@ -7,6 +7,8 @@ import 'package:shezen_harmony/core/network/api_service.dart';
 
 void main() {
   const demographics = <String, dynamic>{
+    'date_of_birth': '2004-03-15',
+    'year_of_study': 'Year 3',
     'gender': 'Woman',
     'country': 'Fiji',
     'employment_status': 'Student',
@@ -120,6 +122,57 @@ void main() {
 
     expect(restored.token, 'login-token');
     expect(restored.hasCompletedRequiredAssessment, isTrue);
+  });
+
+  test('getProfile fetches the authenticated student\'s own profile', () async {
+    final api = ApiService(
+      client: MockClient((request) async {
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/profile');
+        expect(request.headers['Authorization'], 'Bearer a-token');
+        return http.Response(
+          jsonEncode({
+            'data': {
+              'email': 'student@example.com',
+              'date_of_birth': '2004-03-15',
+              'age': 22,
+              'country': 'Fiji',
+            },
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+
+    final profile = await api.getProfile('a-token');
+
+    expect(profile['email'], 'student@example.com');
+    expect(profile['age'], 22);
+  });
+
+  test('updateProfile sends only the given fields and returns the updated data', () async {
+    late Map<String, dynamic> requestBody;
+    final api = ApiService(
+      client: MockClient((request) async {
+        expect(request.method, 'PUT');
+        expect(request.url.path, '/api/v1/profile');
+        requestBody = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response(
+          jsonEncode({
+            'message': 'Your profile has been updated successfully.',
+            'data': {'country': 'Samoa'},
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+
+    final result = await api.updateProfile('a-token', {'country': 'Samoa'});
+
+    expect(requestBody, {'country': 'Samoa'});
+    expect(result['country'], 'Samoa');
   });
 
   test('authentication connection failures become safe API errors', () async {

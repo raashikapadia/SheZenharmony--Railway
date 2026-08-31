@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/data/reference_data.dart';
+import '../../../shared/widgets/form_fields.dart';
 import '../application/auth_provider.dart';
 
 const _registrationTeal = AppColors.primary;
@@ -15,7 +17,7 @@ final _primaryButtonStyle = FilledButton.styleFrom(
 const _privacySummary = [
   'SheZen Harmony is a wellbeing support tool.',
   'It is not a replacement for professional medical care.',
-  'Your student login information is used for authentication only.',
+  'Your login email is used for authentication only.',
   'SheZen uses a persistent pseudonymous system ID internally to represent you.',
   'Assessment data is treated as sensitive information.',
   'Only authorised administrators may access approved system information.',
@@ -36,10 +38,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmController = TextEditingController();
   final _genderController = TextEditingController();
   final _countryController = TextEditingController();
+  final _yearOfStudyController = TextEditingController();
   final _employmentController = TextEditingController();
   final _relationshipController = TextEditingController();
   final _livingSituationController = TextEditingController();
   bool? _hasChildren;
+  DateTime? _dateOfBirth;
   bool _privacyConsent = false;
   bool _obscurePassword = true;
   int _step = 0;
@@ -52,6 +56,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _confirmController.dispose();
     _genderController.dispose();
     _countryController.dispose();
+    _yearOfStudyController.dispose();
     _employmentController.dispose();
     _relationshipController.dispose();
     _livingSituationController.dispose();
@@ -67,6 +72,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       password: _passwordController.text,
       passwordConfirmation: _confirmController.text,
       demographics: {
+        'date_of_birth': _dateOfBirth == null
+            ? null
+            : '${_dateOfBirth!.year.toString().padLeft(4, '0')}-'
+                  '${_dateOfBirth!.month.toString().padLeft(2, '0')}-'
+                  '${_dateOfBirth!.day.toString().padLeft(2, '0')}',
+        'year_of_study': _yearOfStudyController.text,
         'gender': _genderController.text,
         'country': _countryController.text,
         'employment_status': _employmentController.text,
@@ -145,7 +156,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   children: [
                     if (_step == 0) ...[
                       const Text(
-                        'Registration starts with your USP student account. We check the email format, then create your pseudonymous SheZen profile securely.',
+                        'Registration starts with your email account. We check the email format, then create your pseudonymous SheZen profile securely.',
                         style: TextStyle(
                           color: _registrationMuted,
                           height: 1.45,
@@ -154,19 +165,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 26),
                       _RegistrationField(
                         controller: _emailController,
-                        label: 'USP Student Email',
+                        label: 'Email Address',
                         errorText: fieldErrors?['email']?.first,
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         validator: (value) {
                           final email = value?.trim() ?? '';
                           if (email.isEmpty) return 'Enter your email address.';
-                          final studentEmail = RegExp(
-                            r'^[A-Za-z0-9][A-Za-z0-9._%+-]*@student\.usp\.ac\.fj$',
-                            caseSensitive: false,
+                          final validEmail = RegExp(
+                            r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
                           );
-                          if (!studentEmail.hasMatch(email)) {
-                            return 'Use your @student.usp.ac.fj email.';
+                          if (!validEmail.hasMatch(email)) {
+                            return 'Enter a valid email address.';
                           }
                           return null;
                         },
@@ -348,7 +358,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      _ChoiceField(
+                      DateOfBirthField(
+                        value: _dateOfBirth,
+                        errorText:
+                            fieldErrors?['demographics.date_of_birth']?.first,
+                        onChanged: (value) =>
+                            setState(() => _dateOfBirth = value),
+                      ),
+                      ChoiceField(
                         controller: _genderController,
                         label: 'Gender',
                         options: const [
@@ -359,20 +376,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ],
                         errorText: fieldErrors?['demographics.gender']?.first,
                       ),
-                      _ChoiceField(
+                      CountryField(
                         controller: _countryController,
-                        label: 'Country',
-                        options: const [
-                          'Fiji',
-                          'Samoa',
-                          'Tonga',
-                          'Vanuatu',
-                          'Solomon Islands',
-                          'Other Pacific',
-                        ],
                         errorText: fieldErrors?['demographics.country']?.first,
                       ),
-                      _ChoiceField(
+                      ChoiceField(
+                        controller: _yearOfStudyController,
+                        label: 'Year of study',
+                        options: ReferenceData.yearOfStudy,
+                        errorText:
+                            fieldErrors?['demographics.year_of_study']?.first,
+                      ),
+                      ChoiceField(
                         controller: _employmentController,
                         label: 'Employment status',
                         options: const [
@@ -385,7 +400,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fieldErrors?['demographics.employment_status']
                                 ?.first,
                       ),
-                      _ChoiceField(
+                      ChoiceField(
                         controller: _relationshipController,
                         label: 'Relationship status',
                         options: const [
@@ -398,7 +413,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fieldErrors?['demographics.relationship_status']
                                 ?.first,
                       ),
-                      _BooleanChoiceField(
+                      BooleanChoiceField(
                         label: 'Do you have children?',
                         value: _hasChildren,
                         errorText:
@@ -406,7 +421,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         onChanged: (value) =>
                             setState(() => _hasChildren = value),
                       ),
-                      _ChoiceField(
+                      ChoiceField(
                         controller: _livingSituationController,
                         label: 'Living situation',
                         options: const [
@@ -715,147 +730,6 @@ class _RegistrationField extends StatelessWidget {
   );
 }
 
-class _ChoiceField extends StatelessWidget {
-  const _ChoiceField({
-    required this.controller,
-    required this.label,
-    required this.options,
-    this.errorText,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final List<String> options;
-  final String? errorText;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 20),
-    child: FormField<String>(
-      initialValue: controller.text.isEmpty ? null : controller.text,
-      validator: (value) => value == null || value.isEmpty
-          ? 'Select your ${label.toLowerCase()}.'
-          : null,
-      builder: (state) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: _registrationInk,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final option in options)
-                ChoiceChip(
-                  label: Text(option),
-                  selected: controller.text == option,
-                  selectedColor: _registrationTeal,
-                  backgroundColor: Colors.white,
-                  side: const BorderSide(color: Color(0xFFD2DDDA)),
-                  labelStyle: TextStyle(
-                    color: controller.text == option
-                        ? Colors.white
-                        : _registrationInk,
-                    fontSize: 12,
-                  ),
-                  onSelected: (_) {
-                    controller.text = option;
-                    state.didChange(option);
-                  },
-                ),
-            ],
-          ),
-          if (errorText ?? state.errorText case final String message) ...[
-            const SizedBox(height: 6),
-            Text(
-              message,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ],
-      ),
-    ),
-  );
-}
-
-class _BooleanChoiceField extends StatelessWidget {
-  const _BooleanChoiceField({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-    this.errorText,
-  });
-
-  final String label;
-  final bool? value;
-  final ValueChanged<bool> onChanged;
-  final String? errorText;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 20),
-    child: FormField<bool>(
-      initialValue: value,
-      validator: (value) => value == null ? 'Select an answer.' : null,
-      builder: (state) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: _registrationInk,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final option in const [(false, 'No'), (true, 'Yes')])
-                ChoiceChip(
-                  label: Text(option.$2),
-                  selected: value == option.$1,
-                  selectedColor: _registrationTeal,
-                  backgroundColor: Colors.white,
-                  side: const BorderSide(color: Color(0xFFD2DDDA)),
-                  labelStyle: TextStyle(
-                    color: value == option.$1 ? Colors.white : _registrationInk,
-                    fontSize: 12,
-                  ),
-                  onSelected: (_) {
-                    onChanged(option.$1);
-                    state.didChange(option.$1);
-                  },
-                ),
-            ],
-          ),
-          if (errorText ?? state.errorText case final String message) ...[
-            const SizedBox(height: 6),
-            Text(
-              message,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ],
-      ),
-    ),
-  );
-}
-
 class _PrivacyNotice extends StatelessWidget {
   const _PrivacyNotice();
 
@@ -884,7 +758,7 @@ class _PrivacyNotice extends StatelessWidget {
           const _NoticeSection(
             title: 'Information SheZen collects',
             body:
-                'SheZen uses your USP student email for registration, login, and account security. It also collects the demographic details entered during registration, stress questionnaire responses and results, assessment history, progress information, and interactions with wellbeing resources and supported features.',
+                'SheZen uses your email for registration, login, and account security. It also collects the demographic details entered during registration, stress questionnaire responses and results, assessment history, progress information, and interactions with wellbeing resources and supported features.',
           ),
           const _NoticeSection(
             title: 'How your identity is protected',
@@ -899,7 +773,7 @@ class _PrivacyNotice extends StatelessWidget {
           const _NoticeSection(
             title: 'Administrator access',
             body:
-                'Authorised administrators may access approved aggregate or pseudonymous information needed to operate and evaluate SheZen. Normal wellbeing analytics should not show a student name, USP email, or student ID alongside individual wellbeing information.',
+                'Authorised administrators may access approved aggregate or pseudonymous information needed to operate and evaluate SheZen. Normal wellbeing analytics should not show a student name, email, or student ID alongside individual wellbeing information.',
           ),
           const _NoticeSection(
             title: 'Sensitive wellbeing information',

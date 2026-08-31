@@ -18,17 +18,17 @@ class StudentPrivacyArchitectureTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_only_usp_student_domain_can_self_register(): void
+    public function test_registration_accepts_any_valid_email_domain_usp_is_not_compulsory(): void
     {
-        foreach (['student@usp.ac.fj', 'student@example.test', 'student@student.usp.ac.fj.evil.test'] as $email) {
+        foreach (['student@usp.ac.fj', 'student@gmail.com', 'student@hotmail.com', 'student@yahoo.com'] as $email) {
             $this->postJson('/api/v1/auth/register', $this->registrationPayload($email))
-                ->assertUnprocessable()
-                ->assertJsonValidationErrors('email');
+                ->assertCreated();
+            $this->assertDatabaseHas('users', ['email' => $email]);
         }
 
-        $this->postJson('/api/v1/auth/register', $this->registrationPayload('S12345678@STUDENT.USP.AC.FJ'))
-            ->assertCreated();
-        $this->assertDatabaseHas('users', ['email' => 's12345678@student.usp.ac.fj']);
+        $this->postJson('/api/v1/auth/register', $this->registrationPayload('not-an-email'))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('email');
     }
 
     public function test_registration_requires_and_records_pseudonymous_privacy_consent(): void
@@ -186,6 +186,8 @@ class StudentPrivacyArchitectureTest extends TestCase
             'device_name' => 'test device',
             'privacy_consent' => true,
             'demographics' => [
+                'date_of_birth' => '2004-03-15',
+                'year_of_study' => 'Year 3',
                 'gender' => 'Woman',
                 'country' => 'Fiji',
                 'employment_status' => 'Student',

@@ -20,11 +20,13 @@ class AuthController extends Controller
         $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
         $data = $request->validate(
             [
-                'email' => ['required', 'email:rfc', 'max:255', 'ends_with:@student.usp.ac.fj', 'unique:users,email'],
+                'email' => ['required', 'email:rfc', 'max:255', 'unique:users,email'],
                 'password' => ['required', 'confirmed', Password::min(8)],
                 'device_name' => ['required', 'string', 'max:100'],
                 'privacy_consent' => ['required', 'accepted'],
                 'demographics' => ['required', 'array'],
+                'demographics.date_of_birth' => ['required', 'date', 'before:today'],
+                'demographics.year_of_study' => ['required', 'string', 'max:30'],
                 'demographics.gender' => ['required', 'string', 'max:50'],
                 'demographics.country' => ['required', 'string', 'max:100'],
                 'demographics.employment_status' => ['required', 'string', 'max:100'],
@@ -34,9 +36,9 @@ class AuthController extends Controller
                 'demographics.preferred_language' => ['sometimes', 'nullable', 'string', 'max:50'],
             ],
             [
-                'email.email' => 'Please enter a valid USP student email.',
-                'email.ends_with' => 'Please use your @student.usp.ac.fj email.',
+                'email.email' => 'Please enter a valid email address.',
                 'email.unique' => 'An account with this email already exists.',
+                'demographics.date_of_birth.before' => 'Date of birth cannot be in the future.',
                 'privacy_consent.accepted' => 'Please acknowledge the Privacy & Data Use information.',
             ]
         );

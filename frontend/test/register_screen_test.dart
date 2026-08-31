@@ -25,7 +25,7 @@ void main() {
 
     expect(find.text('Create Account'), findsOneWidget);
     expect(
-      find.widgetWithText(TextFormField, 'USP Student Email'),
+      find.widgetWithText(TextFormField, 'Email Address'),
       findsOneWidget,
     );
     expect(
@@ -42,18 +42,39 @@ void main() {
     expect(find.text('Country'), findsNothing);
   });
 
-  testWidgets('non-student USP domain receives friendly validation', (
+  testWidgets('any valid email domain is accepted, USP is not required', (
     tester,
   ) async {
     await tester.pumpWidget(screen());
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'USP Student Email'),
-      'person@usp.ac.fj',
+      find.widgetWithText(TextFormField, 'Email Address'),
+      'student@gmail.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Create Password'),
+      'safe-password',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Confirm Password'),
+      'safe-password',
     );
     await tester.tap(find.widgetWithText(FilledButton, 'Verify Account'));
     await tester.pump();
 
-    expect(find.text('Use your @student.usp.ac.fj email.'), findsOneWidget);
+    expect(find.text('Enter a valid email address.'), findsNothing);
+    expect(find.text('Student login ready'), findsOneWidget);
+  });
+
+  testWidgets('malformed email receives friendly validation', (tester) async {
+    await tester.pumpWidget(screen());
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Email Address'),
+      'not-an-email',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Verify Account'));
+    await tester.pump();
+
+    expect(find.text('Enter a valid email address.'), findsOneWidget);
     expect(find.text('Create Account'), findsOneWidget);
     expect(find.text('Student login ready'), findsNothing);
   });
@@ -105,11 +126,11 @@ void main() {
     expect(
       tester
           .widget<TextFormField>(
-            find.widgetWithText(TextFormField, 'USP Student Email'),
+            find.widgetWithText(TextFormField, 'Email Address'),
           )
           .controller
           ?.text,
-      's12345678@student.usp.ac.fj',
+      'student@example.com',
     );
   });
 
@@ -151,8 +172,8 @@ void main() {
 
 Future<void> _advanceToPrivacy(WidgetTester tester) async {
   await tester.enterText(
-    find.widgetWithText(TextFormField, 'USP Student Email'),
-    's12345678@student.usp.ac.fj',
+    find.widgetWithText(TextFormField, 'Email Address'),
+    'student@example.com',
   );
   await tester.enterText(
     find.widgetWithText(TextFormField, 'Create Password'),
@@ -169,9 +190,29 @@ Future<void> _advanceToPrivacy(WidgetTester tester) async {
 }
 
 Future<void> _completeDemographics(WidgetTester tester) async {
+  final dobField = find.text('Select date of birth');
+  await tester.ensureVisible(dobField);
+  await tester.tap(dobField);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('OK'));
+  await tester.pumpAndSettle();
+
+  for (final option in const ['Female']) {
+    final chip = find.widgetWithText(ChoiceChip, option);
+    await tester.ensureVisible(chip);
+    await tester.tap(chip);
+    await tester.pump();
+  }
+
+  final countryField = find.byType(DropdownMenu<String>);
+  await tester.ensureVisible(countryField);
+  await tester.tap(countryField);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Fiji').last);
+  await tester.pumpAndSettle();
+
   for (final option in const [
-    'Female',
-    'Fiji',
+    'Year 3',
     'Not employed',
     'Single',
     'No',

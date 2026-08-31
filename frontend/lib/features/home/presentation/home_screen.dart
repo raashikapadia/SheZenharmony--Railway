@@ -7,6 +7,7 @@ import '../../../shared/widgets/app_ui.dart';
 import '../../assessment/data/assessment_result.dart';
 import '../../assessment/presentation/questionnaire_screen.dart';
 import '../../auth/application/auth_provider.dart';
+import '../../profile/presentation/profile_view_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -417,6 +418,15 @@ class _ProfilePage extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 28),
+        _InfoCard(
+          icon: Icons.person_outline_rounded,
+          title: 'My Profile',
+          description: 'View and edit your account details.',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ProfileViewScreen()),
+          ),
+        ),
+        const SizedBox(height: 12),
         _InfoCard(
           icon: Icons.shield_outlined,
           title: 'Privacy',

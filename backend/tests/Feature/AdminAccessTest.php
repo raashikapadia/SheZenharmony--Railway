@@ -6,6 +6,7 @@ use App\Models\Intervention;
 use App\Models\StressQuestion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
@@ -95,6 +96,74 @@ class AdminAccessTest extends TestCase
         $this->actingAs($student)->get('/admin/students')->assertForbidden();
         Auth::logout();
         $this->get('/admin/students')->assertRedirect(route('admin.login'));
+    }
+
+    public function test_admin_can_view_and_edit_student_demographics_without_seeing_identity(): void
+    {
+        $student = User::factory()->create([
+            'name' => 'Hidden Student Name',
+            'email' => 'hidden2@student.usp.ac.fj',
+            'role' => User::ROLE_STUDENT,
+        ]);
+        $identity = $student->studentIdentity;
+        $identity->profile()->create([
+            'date_of_birth' => '2000-01-01',
+            'year_of_study' => 'Year 2',
+            'country' => 'Fiji',
+            'employment_status' => 'Not employed',
+            'relationship_status' => 'Single',
+            'has_children' => false,
+            'living_situation' => 'With family',
+        ]);
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAs($admin)->get("/admin/students/{$identity->id}")
+            ->assertOk()
+            ->assertSee($identity->displayId())
+            ->assertDontSee($student->name)
+            ->assertDontSee($student->email);
+
+        $this->actingAs($admin)->put("/admin/students/{$identity->id}", [
+            'date_of_birth' => '2000-01-01',
+            'country' => 'Samoa',
+            'year_of_study' => 'Year 3',
+            'employment_status' => 'Part-time',
+            'relationship_status' => 'Single',
+            'has_children' => '0',
+            'living_situation' => 'Living alone',
+        ])->assertRedirect(route('admin.students.show', $identity));
+
+        $this->assertDatabaseHas('user_profiles', [
+            'student_identity_id' => $identity->id,
+            'country' => 'Samoa',
+            'year_of_study' => 'Year 3',
+            'living_situation' => 'Living alone',
+        ]);
+        $this->assertSame('active', $student->fresh()->account_status);
+    }
+
+    public function test_admin_cannot_directly_edit_calculated_age_and_non_admin_cannot_reach_student_routes(): void
+    {
+        $student = User::factory()->create(['role' => User::ROLE_STUDENT]);
+        $identity = $student->studentIdentity;
+        $identity->profile()->create(['date_of_birth' => '2000-01-01']);
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $expectedAge = Carbon::parse('2000-01-01')->age;
+
+        $this->actingAs($admin)->put("/admin/students/{$identity->id}", [
+            'date_of_birth' => '2000-01-01',
+            'age' => 999,
+        ])->assertRedirect(route('admin.students.show', $identity));
+
+        $this->assertSame($expectedAge, $identity->fresh()->profile->age);
+        $this->assertNotEquals(999, $identity->fresh()->profile->age);
+
+        $this->actingAs($student)->get("/admin/students/{$identity->id}")->assertForbidden();
+        $this->actingAs($student)->get("/admin/students/{$identity->id}/edit")->assertForbidden();
+        $this->actingAs($student)->put("/admin/students/{$identity->id}", [])->assertForbidden();
+
+        Auth::logout();
+        $this->get("/admin/students/{$identity->id}")->assertRedirect(route('admin.login'));
     }
 
     public function test_admin_can_manage_questionnaire_content(): void

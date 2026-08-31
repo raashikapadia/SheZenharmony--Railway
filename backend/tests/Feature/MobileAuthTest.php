@@ -233,6 +233,8 @@ class MobileAuthTest extends TestCase
     private function demographics(): array
     {
         return [
+            'date_of_birth' => '2004-03-15',
+            'year_of_study' => 'Year 3',
             'gender' => 'Woman',
             'country' => 'Fiji',
             'employment_status' => 'Student',

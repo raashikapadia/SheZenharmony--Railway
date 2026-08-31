@@ -11,7 +11,7 @@
         </div>
         <div class="table-wrap">
             <table>
-                <thead><tr><th>SheZen ID</th><th>Status</th><th>Country</th><th>Gender</th><th>Employment</th><th>Baseline</th><th>Registered</th></tr></thead>
+                <thead><tr><th>SheZen ID</th><th>Status</th><th>Country</th><th>Gender</th><th>Employment</th><th>Baseline</th><th>Registered</th><th></th></tr></thead>
                 <tbody>
                 @forelse($students as $student)
                     <tr>
@@ -22,9 +22,13 @@
                         <td>{{ $student->profile?->employment_status ?? '—' }}</td>
                         <td><span class="badge {{ $student->has_completed_required_assessment ? 'active' : '' }}">{{ $student->has_completed_required_assessment ? 'Completed' : 'Required' }}</span></td>
                         <td>{{ $student->created_at->format('d M Y') }}</td>
+                        <td class="actions">
+                            <a class="button-link" href="{{ route('admin.students.show', $student) }}">View</a>
+                            <a class="button-link" href="{{ route('admin.students.edit', $student) }}">Edit</a>
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7">No registered students yet.</td></tr>
+                    <tr><td colspan="8">No registered students yet.</td></tr>
                 @endforelse
                 </tbody>
             </table>

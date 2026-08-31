@@ -136,6 +136,29 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> getProfile(String token) async {
+    final body = await _getJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/profile'),
+      token,
+    );
+    return body['data'] as Map<String, dynamic>? ?? const {};
+  }
+
+  /// [updates] should only contain fields the student is permitted to
+  /// change — the backend also enforces an explicit allowlist server-side.
+  Future<Map<String, dynamic>> updateProfile(
+    String token,
+    Map<String, dynamic> updates,
+  ) async {
+    final body = await _sendJson(
+      'PUT',
+      Uri.parse('${ApiConfig.baseUrl}/v1/profile'),
+      token,
+      updates,
+    );
+    return body['data'] as Map<String, dynamic>? ?? const {};
+  }
+
   Future<void> logout(String token) async {
     final response = await _client.post(
       Uri.parse('${ApiConfig.baseUrl}/v1/auth/logout'),

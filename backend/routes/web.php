@@ -20,6 +20,9 @@ Route::middleware('guest')->group(function (): void {
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/', AdminDashboardController::class)->name('dashboard');
     Route::get('/students', [AdminStudentController::class, 'index'])->name('students.index');
+    Route::get('/students/{student}', [AdminStudentController::class, 'show'])->name('students.show');
+    Route::get('/students/{student}/edit', [AdminStudentController::class, 'edit'])->name('students.edit');
+    Route::put('/students/{student}', [AdminStudentController::class, 'update'])->name('students.update');
     Route::resource('questions', AdminQuestionController::class)->except(['show']);
     Route::resource('questionnaires', AdminQuestionnaireController::class)->except(['show']);
     Route::resource('interventions', AdminInterventionController::class)->except(['show']);
