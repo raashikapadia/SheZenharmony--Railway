@@ -8,7 +8,9 @@ use App\Notifications\EmailOtpNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Throwable;
 
 class EmailOtpService
@@ -37,6 +39,14 @@ class EmailOtpService
 
         try {
             $user->notify(new EmailOtpNotification($code, $expiresMinutes));
+        } catch (TransportExceptionInterface $exception) {
+            $challenge->update(['invalidated_at' => now()]);
+            report($exception);
+
+            throw new ServiceUnavailableHttpException(
+                null,
+                'We could not send the verification email. Please try again shortly.'
+            );
         } catch (Throwable $exception) {
             $challenge->update(['invalidated_at' => now()]);
             throw $exception;

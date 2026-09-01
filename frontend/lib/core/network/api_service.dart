@@ -16,6 +16,8 @@ import '../config/api_config.dart';
 class ApiService {
   ApiService({http.Client? client}) : _client = client ?? http.Client();
 
+  static const _emailRequestTimeout = Duration(seconds: 30);
+
   final http.Client _client;
 
   Future<AuthChallenge> register({
@@ -44,14 +46,14 @@ class ApiService {
               'privacy_consent': privacyConsent,
             }),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(_emailRequestTimeout);
     } on http.ClientException {
       throw const ApiException(
         'Unable to connect to SheZen. Please try again.',
       );
     } on TimeoutException {
       throw const ApiException(
-        'Unable to connect to SheZen. Please try again.',
+        'The verification email is taking longer than expected. Try signing in with the same email and password to continue.',
       );
     }
 
@@ -93,14 +95,14 @@ class ApiService {
               'device_name': deviceName,
             }),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(_emailRequestTimeout);
     } on http.ClientException {
       throw const ApiException(
         'Unable to connect to SheZen. Please try again.',
       );
     } on TimeoutException {
       throw const ApiException(
-        'Unable to connect to SheZen. Please try again.',
+        'The verification email is taking longer than expected. Please try again.',
       );
     }
 
@@ -672,14 +674,14 @@ class ApiService {
             },
             body: jsonEncode(payload),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(_emailRequestTimeout);
     } on http.ClientException {
       throw const ApiException(
         'Unable to connect to SheZen. Please try again.',
       );
     } on TimeoutException {
       throw const ApiException(
-        'Unable to connect to SheZen. Please try again.',
+        'The email service is taking longer than expected. Please try again.',
       );
     }
 

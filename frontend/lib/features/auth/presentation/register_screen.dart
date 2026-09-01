@@ -112,8 +112,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('We couldn\'t create your account. Please try again.'),
+        SnackBar(
+          content: Text(
+            auth.error ?? 'We couldn\'t create your account. Please try again.',
+          ),
         ),
       );
     }
