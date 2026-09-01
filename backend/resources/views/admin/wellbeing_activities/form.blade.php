@@ -1,0 +1,10 @@
+@extends('layouts.admin')
+@section('title', $activity->exists ? 'Edit activity' : 'Add activity')
+@section('body')
+<main class="content"><a href="{{ route('admin.wellbeing_activities.index') }}">← Wellbeing Activities</a><h1>{{ $activity->exists ? 'Edit activity' : 'Add activity' }}</h1>
+@if($errors->any())<ul class="errors">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>@endif
+<form method="POST" action="{{ $activity->exists ? route('admin.wellbeing_activities.update', $activity) : route('admin.wellbeing_activities.store') }}">@csrf @if($activity->exists) @method('PUT') @endif
+<label for="title">Title</label><input id="title" name="title" type="text" value="{{ old('title', $activity->title) }}" required><label for="description">Description</label><textarea id="description" name="description">{{ old('description', $activity->description) }}</textarea>
+<label for="video_url">Video URL</label><input id="video_url" name="video_url" type="url" value="{{ old('video_url', $activity->video_url) }}" required placeholder="https://www.youtube.com/watch?v=..."><div class="field-row"><div><label for="video_type">Video Type</label><select id="video_type" name="video_type" required><option value="youtube" @selected(old('video_type', $activity->video_type ?? 'youtube') === 'youtube')>YouTube</option><option value="tiktok" @selected(old('video_type', $activity->video_type) === 'tiktok')>TikTok</option></select></div><div><label for="category">Category</label><input id="category" name="category" type="text" value="{{ old('category', $activity->category) }}" placeholder="e.g., Breathing, Grounding"></div></div><label class="remember"><input name="is_active" type="checkbox" value="1" @checked(old('is_active', $activity->exists ? $activity->is_active : true))> Active</label>
+<div class="actions"><button class="button" type="submit">Save activity</button><a class="button button-secondary" href="{{ route('admin.wellbeing_activities.index') }}">Cancel</a></div></form></main>
+@endsection

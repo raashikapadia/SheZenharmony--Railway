@@ -6,6 +6,7 @@ use App\Http\Controllers\Web\AdminInterventionController;
 use App\Http\Controllers\Web\AdminQuestionController;
 use App\Http\Controllers\Web\AdminQuestionnaireController;
 use App\Http\Controllers\Web\AdminStudentController;
+use App\Http\Controllers\Web\AdminWellbeingActivityController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -26,5 +27,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('questions', AdminQuestionController::class)->except(['show']);
     Route::resource('questionnaires', AdminQuestionnaireController::class)->except(['show']);
     Route::resource('interventions', AdminInterventionController::class)->except(['show']);
+Route::resource('wellbeing_activities', AdminWellbeingActivityController::class)->except(['show']);
     Route::post('/logout', [AdminAuthController::class, 'destroy'])->name('logout');
 });
