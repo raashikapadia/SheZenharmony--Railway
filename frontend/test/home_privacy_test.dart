@@ -5,6 +5,7 @@ import 'package:shezen_harmony/core/network/api_service.dart';
 import 'package:shezen_harmony/core/storage/secure_token_storage.dart';
 import 'package:shezen_harmony/features/auth/application/auth_provider.dart';
 import 'package:shezen_harmony/features/auth/data/auth_session.dart';
+import 'package:shezen_harmony/features/auth/data/auth_challenge.dart';
 import 'package:shezen_harmony/features/home/presentation/home_screen.dart';
 
 void main() {
@@ -26,6 +27,7 @@ void main() {
       demographics: const {},
       privacyConsent: true,
     );
+    await provider.verifyOtp('123456');
 
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
@@ -45,13 +47,25 @@ void main() {
 
 class _SignedInApiService extends ApiService {
   @override
-  Future<AuthSession> register({
+  Future<AuthChallenge> register({
     required String email,
     required String password,
     required String passwordConfirmation,
     required Map<String, dynamic> demographics,
     required bool privacyConsent,
     String deviceName = 'SheZen mobile app',
+  }) async => const AuthChallenge(
+    id: '11111111-1111-4111-8111-111111111111',
+    purpose: 'registration',
+    maskedEmail: 'h*****@student.usp.ac.fj',
+    expiresInSeconds: 600,
+    resendAfterSeconds: 60,
+  );
+
+  @override
+  Future<AuthSession> verifyOtp({
+    required String challengeId,
+    required String code,
   }) async => const AuthSession(
     token: 'token',
     role: 'student',

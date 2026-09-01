@@ -5,6 +5,7 @@ import 'package:shezen_harmony/core/network/api_service.dart';
 import 'package:shezen_harmony/core/storage/secure_token_storage.dart';
 import 'package:shezen_harmony/features/auth/application/auth_provider.dart';
 import 'package:shezen_harmony/features/auth/data/auth_session.dart';
+import 'package:shezen_harmony/features/auth/data/auth_challenge.dart';
 
 void main() {
   const stored = {'token': 'revoked-token', 'role': 'student'};
@@ -111,7 +112,7 @@ void main() {
   );
 
   test(
-    'successful registration authenticates into questionnaire gate',
+    'registration waits for OTP before authenticating into questionnaire gate',
     () async {
       final storage = _FakeStorage(null);
       final provider = AuthProvider(
@@ -135,6 +136,11 @@ void main() {
       );
 
       expect(success, isTrue);
+      expect(provider.status, isNot(AuthStatus.signedIn));
+      expect(provider.pendingMfa, isNotNull);
+      expect(storage.savedToken, isNull);
+
+      expect(await provider.verifyOtp('123456'), isTrue);
       expect(provider.status, AuthStatus.signedIn);
       expect(provider.hasCompletedRequiredAssessment, isFalse);
       expect(storage.savedToken, 'new-token');
@@ -155,6 +161,7 @@ void main() {
       demographics: const {},
       privacyConsent: true,
     );
+    await provider.verifyOtp('123456');
 
     expect(await provider.deleteAccount(), isTrue);
     expect(provider.status, AuthStatus.signedOut);
@@ -195,13 +202,25 @@ class _SuccessfulApiService extends ApiService {
 
 class _RegistrationApiService extends ApiService {
   @override
-  Future<AuthSession> register({
+  Future<AuthChallenge> register({
     required String email,
     required String password,
     required String passwordConfirmation,
     required Map<String, dynamic> demographics,
     required bool privacyConsent,
     String deviceName = 'SheZen mobile app',
+  }) async => const AuthChallenge(
+    id: '11111111-1111-4111-8111-111111111111',
+    purpose: 'registration',
+    maskedEmail: 's*******@student.usp.ac.fj',
+    expiresInSeconds: 600,
+    resendAfterSeconds: 60,
+  );
+
+  @override
+  Future<AuthSession> verifyOtp({
+    required String challengeId,
+    required String code,
   }) async => const AuthSession(
     token: 'new-token',
     role: 'student',

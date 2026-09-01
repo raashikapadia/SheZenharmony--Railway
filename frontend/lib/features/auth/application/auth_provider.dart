@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_service.dart';
 import '../../../core/storage/secure_token_storage.dart';
 import '../data/auth_session.dart';
+import '../data/auth_challenge.dart';
 
 enum AuthStatus { unknown, signedOut, signedIn }
 
@@ -25,6 +26,7 @@ class AuthProvider extends ChangeNotifier {
 
   AuthStatus _status = AuthStatus.unknown;
   AuthSession? _session;
+  AuthChallenge? _pendingMfa;
   bool _isLoading = false;
   bool _isDeletingAccount = false;
   String? _error;
@@ -32,6 +34,7 @@ class AuthProvider extends ChangeNotifier {
 
   AuthStatus get status => _status;
   AuthSession? get session => _session;
+  AuthChallenge? get pendingMfa => _pendingMfa;
   bool get isLoading => _isLoading;
   bool get isDeletingAccount => _isDeletingAccount;
   String? get error => _error;
@@ -104,21 +107,19 @@ class AuthProvider extends ChangeNotifier {
     required bool privacyConsent,
   }) async {
     _isLoading = true;
+    _pendingMfa = null;
     _error = null;
     _fieldErrors = null;
     notifyListeners();
 
     try {
-      final session = await _apiService.register(
+      _pendingMfa = await _apiService.register(
         email: email,
         password: password,
         passwordConfirmation: passwordConfirmation,
         demographics: demographics,
         privacyConsent: privacyConsent,
       );
-      _session = session;
-      _status = AuthStatus.signedIn;
-      await _persist(session);
       return true;
     } on ApiException catch (e) {
       _error = e.message;
@@ -132,17 +133,65 @@ class AuthProvider extends ChangeNotifier {
 
   Future<bool> login({required String email, required String password}) async {
     _isLoading = true;
+    _pendingMfa = null;
     _error = null;
+    _fieldErrors = null;
     notifyListeners();
 
     try {
-      final session = await _apiService.login(email: email, password: password);
+      _pendingMfa = await _apiService.login(email: email, password: password);
+      return true;
+    } on ApiException catch (e) {
+      _error = e.message;
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> verifyOtp(String code) async {
+    final challenge = _pendingMfa;
+    if (challenge == null) return false;
+
+    _isLoading = true;
+    _error = null;
+    _fieldErrors = null;
+    notifyListeners();
+    try {
+      final session = await _apiService.verifyOtp(
+        challengeId: challenge.id,
+        code: code,
+      );
+      _pendingMfa = null;
       _session = session;
       _status = AuthStatus.signedIn;
       await _persist(session);
       return true;
-    } on ApiException catch (e) {
-      _error = e.message;
+    } on ApiException catch (error) {
+      _error = error.message;
+      _fieldErrors = error.fieldErrors;
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> resendOtp() async {
+    final challenge = _pendingMfa;
+    if (challenge == null) return false;
+
+    _isLoading = true;
+    _error = null;
+    _fieldErrors = null;
+    notifyListeners();
+    try {
+      _pendingMfa = await _apiService.resendOtp(challenge.id);
+      return true;
+    } on ApiException catch (error) {
+      _error = error.message;
+      _fieldErrors = error.fieldErrors;
       return false;
     } finally {
       _isLoading = false;
@@ -162,6 +211,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     final token = _session?.token;
     _session = null;
+    _pendingMfa = null;
     _status = AuthStatus.signedOut;
     await _storage.clear();
     notifyListeners();

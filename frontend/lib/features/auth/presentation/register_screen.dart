@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/data/reference_data.dart';
 import '../../../shared/widgets/form_fields.dart';
 import '../application/auth_provider.dart';
+import 'otp_verification_screen.dart';
 
 const _registrationTeal = AppColors.primary;
 const _registrationInk = AppColors.ink;
@@ -88,7 +89,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
     if (!mounted) return;
     if (success) {
-      setState(() => _registrationComplete = true);
+      final challenge = auth.pendingMfa;
+      if (challenge == null) return;
+      final verified = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationScreen(challenge: challenge),
+        ),
+      );
+      if (mounted && verified == true) {
+        setState(() => _registrationComplete = true);
+      }
     } else if (auth.fieldErrors != null) {
       final keys = auth.fieldErrors!.keys;
       setState(() {

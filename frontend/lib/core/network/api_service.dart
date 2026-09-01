@@ -10,6 +10,7 @@ import '../../features/activities/data/support_content.dart';
 import '../../features/assessment/data/assessment_questionnaire.dart';
 import '../../features/assessment/data/assessment_result.dart';
 import '../../features/auth/data/auth_session.dart';
+import '../../features/auth/data/auth_challenge.dart';
 import '../config/api_config.dart';
 
 class ApiService {
@@ -17,7 +18,7 @@ class ApiService {
 
   final http.Client _client;
 
-  Future<AuthSession> register({
+  Future<AuthChallenge> register({
     required String email,
     required String password,
     required String passwordConfirmation,
@@ -64,7 +65,7 @@ class ApiService {
     }
 
     try {
-      return AuthSession.fromJson(body);
+      return AuthChallenge.fromResponse(body);
     } on FormatException {
       throw const ApiException(
         'Backend returned an unexpected registration response.',
@@ -72,7 +73,7 @@ class ApiService {
     }
   }
 
-  Future<AuthSession> login({
+  Future<AuthChallenge> login({
     required String email,
     required String password,
     String deviceName = 'SheZen mobile app',
@@ -112,10 +113,41 @@ class ApiService {
     }
 
     try {
-      return AuthSession.fromJson(body);
+      return AuthChallenge.fromResponse(body);
     } on FormatException {
       throw const ApiException(
         'Backend returned an unexpected sign-in response.',
+      );
+    }
+  }
+
+  Future<AuthSession> verifyOtp({
+    required String challengeId,
+    required String code,
+  }) async {
+    final response = await _postPublicJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/auth/verify-otp'),
+      {'challenge_id': challengeId, 'code': code},
+    );
+    try {
+      return AuthSession.fromJson(response);
+    } on FormatException {
+      throw const ApiException(
+        'Backend returned an unexpected verification response.',
+      );
+    }
+  }
+
+  Future<AuthChallenge> resendOtp(String challengeId) async {
+    final response = await _postPublicJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/auth/resend-otp'),
+      {'challenge_id': challengeId},
+    );
+    try {
+      return AuthChallenge.fromResponse(response);
+    } on FormatException {
+      throw const ApiException(
+        'Backend returned an unexpected verification response.',
       );
     }
   }
@@ -624,6 +656,35 @@ class ApiService {
   }
 
   void close() => _client.close();
+
+  Future<Map<String, dynamic>> _postPublicJson(
+    Uri uri,
+    Map<String, dynamic> payload,
+  ) async {
+    final http.Response response;
+    try {
+      response = await _client
+          .post(
+            uri,
+            headers: const {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 10));
+    } on http.ClientException {
+      throw const ApiException(
+        'Unable to connect to SheZen. Please try again.',
+      );
+    } on TimeoutException {
+      throw const ApiException(
+        'Unable to connect to SheZen. Please try again.',
+      );
+    }
+
+    return _handleResponse(response);
+  }
 
   Future<Map<String, dynamic>> _getPublicJson(Uri uri) async {
     final http.Response response;

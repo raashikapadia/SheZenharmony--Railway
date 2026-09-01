@@ -20,9 +20,12 @@ boundary.
 ## Student authentication and privacy
 
 Students register and sign in with an approved USP student email. Email and
-password belong to the authentication account in `users`. Laravel creates a
-separate `student_identities` record and returns only this minimal mobile user
-payload after authentication:
+password belong to the authentication account in `users`. Registration and valid
+password login create a short-lived `email_otp_challenges` record and send a
+six-digit code through Laravel mail. The OTP is stored only as a hash; no Sanctum
+token exists until the challenge is verified. Laravel creates a separate
+`student_identities` record and returns only this minimal mobile user payload after
+authentication:
 
 ```json
 {
@@ -45,6 +48,8 @@ bypass student registration.
 
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
+- `POST /api/v1/auth/verify-otp`
+- `POST /api/v1/auth/resend-otp`
 - `GET /api/v1/auth/me`
 - `POST /api/v1/auth/logout`
 - `DELETE /api/v1/auth/account`

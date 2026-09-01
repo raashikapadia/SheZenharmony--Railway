@@ -101,6 +101,11 @@ class User extends Authenticatable
         return $this->hasMany(UserMfaMethod::class);
     }
 
+    public function emailOtpChallenges(): HasMany
+    {
+        return $this->hasMany(EmailOtpChallenge::class);
+    }
+
     public function stressAssessments(): HasMany
     {
         return $this->hasMany(StressAssessment::class);

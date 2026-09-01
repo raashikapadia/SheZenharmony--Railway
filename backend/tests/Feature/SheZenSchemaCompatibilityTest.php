@@ -15,7 +15,7 @@ class SheZenSchemaCompatibilityTest extends TestCase
     public function test_validated_schema_tables_and_compatibility_columns_exist(): void
     {
         foreach ([
-            'user_profiles', 'roles', 'user_roles', 'user_mfa_methods', 'anonymous_sessions',
+            'user_profiles', 'roles', 'user_roles', 'user_mfa_methods', 'email_otp_challenges', 'anonymous_sessions',
             'stress_score_bands', 'intervention_recommendations', 'content_categories',
             'intervention_content_categories', 'tags', 'intervention_tags', 'chat_sessions',
             'chat_messages', 'crisis_reports', 'progress_entries',

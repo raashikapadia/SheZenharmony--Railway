@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../application/auth_provider.dart';
 import 'register_screen.dart';
+import 'otp_verification_screen.dart';
 
 const _teal = AppColors.primary;
 const _ink = AppColors.ink;
@@ -36,7 +37,18 @@ class _LoginScreenState extends State<LoginScreen> {
       email: _emailController.text.trim(),
       password: _passwordController.text,
     );
-    if (!mounted || success) return;
+    if (!mounted) return;
+    if (success) {
+      final challenge = context.read<AuthProvider>().pendingMfa;
+      if (challenge != null) {
+        await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => OtpVerificationScreen(challenge: challenge),
+          ),
+        );
+      }
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(

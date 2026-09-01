@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Questionnaire;
 use App\Models\StressAssessment;
 use App\Models\User;
+use App\Notifications\EmailOtpNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class MobileAuthTest extends TestCase
@@ -14,6 +16,7 @@ class MobileAuthTest extends TestCase
 
     public function test_student_can_login_view_profile_and_logout(): void
     {
+        Notification::fake();
         $student = User::factory()->create([
             'password' => 'student-password',
             'role' => User::ROLE_STUDENT,
@@ -25,9 +28,10 @@ class MobileAuthTest extends TestCase
             'device_name' => 'test device',
         ]);
 
-        $token = $login->assertOk()
-            ->assertJsonPath('user.role', User::ROLE_STUDENT)
-            ->json('token');
+        $challengeId = $login->assertOk()
+            ->assertJsonMissingPath('token')
+            ->json('mfa.challenge_id');
+        $token = $this->verifyChallenge($student, $challengeId);
 
         $this->withToken($token)
             ->getJson('/api/v1/auth/me')
@@ -102,8 +106,9 @@ class MobileAuthTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('email');
     }
 
-    public function test_registration_creates_an_active_student_with_student_token(): void
+    public function test_registration_activates_student_and_issues_token_only_after_otp(): void
     {
+        Notification::fake();
         $response = $this->postJson('/api/v1/auth/register', [
             'email' => 's12345678@student.usp.ac.fj',
             'password' => 'safe-password',
@@ -111,11 +116,14 @@ class MobileAuthTest extends TestCase
             'device_name' => 'test device',
             'demographics' => $this->demographics(),
             'privacy_consent' => true,
-        ])->assertCreated()->assertJsonPath('user.role', User::ROLE_STUDENT);
+        ])->assertCreated()
+            ->assertJsonMissingPath('token')
+            ->assertJsonPath('mfa.purpose', 'registration');
 
         $student = User::query()->where('email', 's12345678@student.usp.ac.fj')->firstOrFail();
         $this->assertTrue($student->hasRole(User::ROLE_STUDENT));
-        $this->assertSame('active', $student->account_status);
+        $this->assertSame('pending_verification', $student->account_status);
+        $this->assertNull($student->email_verified_at);
         $this->assertNotNull($student->studentIdentity);
         $this->assertSame($student->pseudonymous_uuid, $student->studentIdentity->pseudonymous_uuid);
         $this->assertNull($student->name);
@@ -126,17 +134,26 @@ class MobileAuthTest extends TestCase
             'student_identity_id' => $student->studentIdentity->id,
             'policy_version' => 'shezen-privacy-notice-v1-draft',
         ]);
-        $response->assertJsonMissingPath('user.id')
+        $verified = $this->postJson('/api/v1/auth/verify-otp', [
+            'challenge_id' => $response->json('mfa.challenge_id'),
+            'code' => $this->latestCodeFor($student),
+        ])->assertOk();
+
+        $student->refresh();
+        $this->assertSame('active', $student->account_status);
+        $this->assertNotNull($student->email_verified_at);
+        $verified->assertJsonMissingPath('user.id')
             ->assertJsonMissingPath('user.name')
             ->assertJsonMissingPath('user.email')
             ->assertJsonMissingPath('user.pseudonymous_uuid')
             ->assertJsonPath('user.shezen_id', $student->studentIdentity->displayId())
             ->assertJsonPath('user.has_completed_required_assessment', false);
-        $this->assertNotEmpty($response->json('token'));
+        $this->assertNotEmpty($verified->json('token'));
     }
 
     public function test_complete_registration_logout_login_and_me_lifecycle(): void
     {
+        Notification::fake();
         $email = 's87654321@student.usp.ac.fj';
         $password = 'safe-password';
         $registration = $this->postJson('/api/v1/auth/register', [
@@ -152,7 +169,12 @@ class MobileAuthTest extends TestCase
         $identityId = $student->studentIdentity->id;
         $uuid = $student->studentIdentity->pseudonymous_uuid;
 
-        $this->withToken($registration->json('token'))
+        $registrationToken = $this->verifyChallenge(
+            $student,
+            $registration->json('mfa.challenge_id')
+        );
+
+        $this->withToken($registrationToken)
             ->postJson('/api/v1/auth/logout')
             ->assertOk();
 
@@ -160,11 +182,11 @@ class MobileAuthTest extends TestCase
             'email' => strtoupper($email),
             'password' => $password,
             'device_name' => 'login device',
-        ])->assertOk()
-            ->assertJsonPath('user.shezen_id', $student->studentIdentity->displayId())
-            ->assertJsonPath('user.has_completed_required_assessment', false);
+        ])->assertOk()->assertJsonMissingPath('token');
 
-        $this->withToken($login->json('token'))->getJson('/api/v1/auth/me')
+        $loginToken = $this->verifyChallenge($student, $login->json('mfa.challenge_id'));
+
+        $this->withToken($loginToken)->getJson('/api/v1/auth/me')
             ->assertOk()
             ->assertJsonPath('user.role', User::ROLE_STUDENT)
             ->assertJsonPath('user.shezen_id', $student->studentIdentity->displayId())
@@ -276,5 +298,21 @@ class MobileAuthTest extends TestCase
             'has_children' => false,
             'living_situation' => 'With family',
         ];
+    }
+
+    private function verifyChallenge(User $student, string $challengeId): string
+    {
+        return $this->postJson('/api/v1/auth/verify-otp', [
+            'challenge_id' => $challengeId,
+            'code' => $this->latestCodeFor($student),
+        ])->assertOk()->json('token');
+    }
+
+    private function latestCodeFor(User $student): string
+    {
+        $notification = Notification::sent($student, EmailOtpNotification::class)->last();
+        $this->assertNotNull($notification);
+
+        return $notification->code;
     }
 }

@@ -10,7 +10,9 @@ use App\Models\ProgressEntry;
 use App\Models\StressAssessment;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Notifications\EmailOtpNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -58,6 +60,7 @@ class StudentPrivacyArchitectureTest extends TestCase
 
     public function test_pseudonymous_identity_is_stable_and_never_exposed_to_mobile(): void
     {
+        Notification::fake();
         $student = User::factory()->create([
             'email' => 's10000001@student.usp.ac.fj',
             'password' => 'student-password',
@@ -69,23 +72,40 @@ class StudentPrivacyArchitectureTest extends TestCase
             'email' => $student->email,
             'password' => 'student-password',
             'device_name' => 'first device',
-        ])->assertOk()->assertJsonMissingPath('user.id')->assertJsonMissingPath('user.name')
-            ->assertJsonMissingPath('user.email')->assertJsonMissingPath('user.pseudonymous_uuid');
+        ])->assertOk()->assertJsonMissingPath('token')->assertJsonMissingPath('user.email');
 
-        $this->withToken($first->json('token'))->postJson('/api/v1/auth/logout')->assertOk();
+        $firstToken = $this->verifyLogin($student, $first->json('mfa.challenge_id'));
+
+        $this->withToken($firstToken)->postJson('/api/v1/auth/logout')->assertOk();
 
         $second = $this->postJson('/api/v1/auth/login', [
             'email' => $student->email,
             'password' => 'student-password',
             'device_name' => 'second device',
-        ])->assertOk()->assertJsonMissingPath('user.pseudonymous_uuid');
+        ])->assertOk()->assertJsonMissingPath('token');
 
-        $this->withToken($second->json('token'))->getJson('/api/v1/auth/me')
+        $secondToken = $this->verifyLogin($student, $second->json('mfa.challenge_id'));
+
+        $this->withToken($secondToken)->getJson('/api/v1/auth/me')
             ->assertOk()->assertJsonMissingPath('user.id')->assertJsonMissingPath('user.name')
             ->assertJsonMissingPath('user.email')->assertJsonMissingPath('user.pseudonymous_uuid');
 
         $this->assertSame($uuid, $student->fresh()->studentIdentity->pseudonymous_uuid);
         $this->assertDatabaseCount('student_identities', 1);
+    }
+
+    private function verifyLogin(User $student, string $challengeId): string
+    {
+        $notification = Notification::sent($student, EmailOtpNotification::class)->last();
+        $this->assertNotNull($notification);
+
+        return $this->postJson('/api/v1/auth/verify-otp', [
+            'challenge_id' => $challengeId,
+            'code' => $notification->code,
+        ])->assertOk()
+            ->assertJsonMissingPath('user.email')
+            ->assertJsonMissingPath('user.pseudonymous_uuid')
+            ->json('token');
     }
 
     public function test_demographics_and_wellbeing_records_use_student_identity(): void

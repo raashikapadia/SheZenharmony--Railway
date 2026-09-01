@@ -26,11 +26,12 @@ void main() {
         requestBody = jsonDecode(request.body) as Map<String, dynamic>;
         return http.Response(
           jsonEncode({
-            'token': 'new-token',
-            'user': {
-              'role': 'student',
-              'shezen_id': 'SZ-TESTIDENTITY',
-              'has_completed_required_assessment': false,
+            'mfa': {
+              'challenge_id': '11111111-1111-4111-8111-111111111111',
+              'purpose': 'registration',
+              'masked_email': 's*******@student.usp.ac.fj',
+              'expires_in_seconds': 600,
+              'resend_after_seconds': 60,
             },
           }),
           201,
@@ -39,7 +40,7 @@ void main() {
       }),
     );
 
-    final session = await api.register(
+    final challenge = await api.register(
       email: 's12345678@student.usp.ac.fj',
       password: 'safe-password',
       passwordConfirmation: 'safe-password',
@@ -50,10 +51,9 @@ void main() {
     expect(requestBody['name'], isNull);
     expect(requestBody['privacy_consent'], isTrue);
     expect(requestBody['demographics'], demographics);
-    expect(session.token, 'new-token');
-    expect(session.role, 'student');
-    expect(session.shezenId, 'SZ-TESTIDENTITY');
-    expect(session.hasCompletedRequiredAssessment, isFalse);
+    expect(challenge.purpose, 'registration');
+    expect(challenge.maskedEmail, 's*******@student.usp.ac.fj');
+    expect(challenge.expiresInSeconds, 600);
   });
 
   test('duplicate registration exposes a friendly field error', () async {
@@ -90,22 +90,33 @@ void main() {
     );
   });
 
-  test('login and auth me parse the same minimal session contract', () async {
+  test('login requires OTP before auth session can be parsed', () async {
     var calls = 0;
     final api = ApiService(
       client: MockClient((request) async {
         calls++;
-        expect(
-          request.url.path,
-          calls == 1 ? '/api/v1/auth/login' : '/api/v1/auth/me',
-        );
+        expect(request.url.path, switch (calls) {
+          1 => '/api/v1/auth/login',
+          2 => '/api/v1/auth/verify-otp',
+          _ => '/api/v1/auth/me',
+        });
         return http.Response(
           jsonEncode({
-            if (calls == 1) 'token': 'login-token',
-            'user': {
-              'role': 'student',
-              'shezen_id': 'SZ-TESTIDENTITY',
-              'has_completed_required_assessment': true,
+            if (calls == 1)
+              'mfa': {
+                'challenge_id': '22222222-2222-4222-8222-222222222222',
+                'purpose': 'login',
+                'masked_email': 's*******@student.usp.ac.fj',
+                'expires_in_seconds': 600,
+                'resend_after_seconds': 60,
+              }
+            else ...{
+              if (calls == 2) 'token': 'login-token',
+              'user': {
+                'role': 'student',
+                'shezen_id': 'SZ-TESTIDENTITY',
+                'has_completed_required_assessment': true,
+              },
             },
           }),
           200,
@@ -118,7 +129,8 @@ void main() {
       email: 's12345678@student.usp.ac.fj',
       password: 'safe-password',
     );
-    final restored = await api.me(login.token);
+    final verified = await api.verifyOtp(challengeId: login.id, code: '123456');
+    final restored = await api.me(verified.token);
 
     expect(restored.token, 'login-token');
     expect(restored.hasCompletedRequiredAssessment, isTrue);

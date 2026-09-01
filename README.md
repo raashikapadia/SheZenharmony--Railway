@@ -58,6 +58,27 @@ DB_USERNAME=root
 DB_PASSWORD=YOUR_LOCAL_PASSWORD
 ```
 
+Student registration and login use email OTP verification. For local development,
+run a local SMTP inbox such as Mailpit and keep these values in `backend/.env`:
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_HOST=127.0.0.1
+MAIL_PORT=1025
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_FROM_ADDRESS="hello@shezen.local"
+USP_STUDENT_EMAIL_DOMAIN=student.usp.ac.fj
+MFA_OTP_EXPIRES_MINUTES=10
+MFA_OTP_MAX_ATTEMPTS=5
+MFA_RESEND_COOLDOWN_SECONDS=60
+```
+
+Mailpit exposes the development inbox at `http://127.0.0.1:8025`. For deployment,
+replace the SMTP host, port, username, password and sender with real provider
+credentials. Do not use Laravel's `log` mailer for OTP email because it writes the
+message body to application logs.
+
 Create the database:
 
 ```powershell

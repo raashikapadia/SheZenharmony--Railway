@@ -6,17 +6,22 @@ Flutter obtains the base URL from `frontend/lib/core/config/api_config.dart`.
 ## Public endpoints
 
 - `GET /api/health` — connectivity check.
-- `POST /api/v1/auth/register` — creates a USP student authentication account,
-  pseudonymous identity, demographics, consent, and Sanctum token.
-- `POST /api/v1/auth/login` — student-only login returning a minimal identity
-  payload and Sanctum token.
+- `POST /api/v1/auth/register` — creates a pending USP student authentication
+  account, pseudonymous identity, demographics and consent, then emails an OTP.
+- `POST /api/v1/auth/login` — validates student credentials and emails a fresh
+  OTP challenge; it does not issue a token.
+- `POST /api/v1/auth/verify-otp` — consumes a valid registration/login challenge
+  and only then returns the minimal identity payload and Sanctum token.
+- `POST /api/v1/auth/resend-otp` — rotates an unverified challenge after the
+  configured cooldown and invalidates its previous code.
 - `GET /api/v1/questions` — retained legacy active-question listing.
 - `GET /api/v1/questionnaires/active` — active dynamic student questionnaire.
 - `GET /api/v1/interventions` — active intervention listing.
 - `GET /api/v1/wellbeing-activities` — active student wellbeing activity listing.
 
-Registration and login are rate limited. The public questionnaire/intervention
-read routes must not expose student data.
+Registration, login, OTP verification and resend are rate limited. OTP challenges
+are opaque, hashed, expiring, single-use and attempt-limited. The public
+questionnaire/intervention read routes must not expose student data.
 
 ## Authenticated student endpoints
 
