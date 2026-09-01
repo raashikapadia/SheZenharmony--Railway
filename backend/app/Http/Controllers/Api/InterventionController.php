@@ -23,8 +23,26 @@ class InterventionController extends Controller
             });
         }
 
+        if ($request->filled('content_type')) {
+            $types = collect(explode(',', $request->string('content_type')->toString()))
+                ->map(fn (string $type): string => trim($type))
+                ->filter()
+                ->values();
+
+            if ($types->isNotEmpty()) {
+                $query->whereIn('content_type', $types);
+            }
+        }
+
         return response()->json([
-            'data' => $query->get(),
+            'data' => $query->get()->map(fn (Intervention $intervention): array => [
+                'title' => $intervention->title,
+                'description' => $intervention->description,
+                'content_type' => $intervention->content_type,
+                'stress_level' => $intervention->stress_level,
+                'external_url' => $intervention->external_url,
+                'instructions' => $intervention->instructions,
+            ])->values(),
         ]);
     }
 }

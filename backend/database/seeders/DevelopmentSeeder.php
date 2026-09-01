@@ -3,7 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\Questionnaire;
+use App\Models\Intervention;
 use App\Models\User;
+use App\Models\WellbeingActivity;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -13,7 +15,7 @@ class DevelopmentSeeder extends Seeder
 {
     public const ADMIN_EMAIL = 'admin.demo@shezen.local';
 
-    public const STUDENT_EMAIL = 'student.demo@shezen.local';
+    public const STUDENT_EMAIL = 'student.demo@student.usp.ac.fj';
 
     public const QUESTIONNAIRE_TITLE = 'SheZen Development Stress Assessment';
 
@@ -116,6 +118,64 @@ class DevelopmentSeeder extends Seeder
                 $questionnaire->scoreBands()->updateOrCreate(
                     ['code' => $band['code']],
                     $band + ['is_active' => true, 'created_by_user_id' => $admin->id],
+                );
+            }
+
+            foreach ([
+                [
+                    'title' => 'DEMO: Box breathing reset',
+                    'description' => 'A short visual breathing prompt for a calm pause.',
+                    'video_url' => 'https://example.com/shezen-demo/box-breathing',
+                    'video_type' => 'youtube',
+                    'category' => 'Breathing',
+                ],
+                [
+                    'title' => 'DEMO: Five-senses grounding',
+                    'description' => 'A gentle prompt to reconnect with the present moment.',
+                    'video_url' => 'https://example.com/shezen-demo/grounding',
+                    'video_type' => 'youtube',
+                    'category' => 'Grounding',
+                ],
+            ] as $activity) {
+                WellbeingActivity::query()->updateOrCreate(
+                    ['title' => $activity['title']],
+                    $activity + ['is_active' => true, 'created_by_user_id' => $admin->id],
+                );
+            }
+
+            foreach ([
+                [
+                    'title' => 'Box breathing',
+                    'slug' => 'box-breathing',
+                    'description' => 'A short guided breathing activity.',
+                    'content_type' => 'breathing',
+                    'instructions' => 'Breathe in gently for 4 counts, hold for 4, breathe out for 4, and hold for 4. Repeat for four comfortable rounds without forcing your breath.',
+                ],
+                [
+                    'title' => 'Gratitude reflection',
+                    'slug' => 'gratitude-reflection',
+                    'description' => 'Pause and notice three things you appreciate today.',
+                    'content_type' => 'journaling',
+                    'instructions' => 'Pause and name three things you appreciate today. They can be small: a kind message, a quiet moment, or something you managed well.',
+                ],
+                [
+                    'title' => 'DEMO: A kinder inner voice',
+                    'slug' => 'demo-kinder-inner-voice',
+                    'description' => 'Pause and replace one harsh thought with a fairer one.',
+                    'content_type' => 'affirmation',
+                    'instructions' => 'Notice one difficult thought. Ask what you would say to a friend in the same situation, then offer those words to yourself.',
+                ],
+                [
+                    'title' => 'DEMO: Three good moments',
+                    'slug' => 'demo-three-good-moments',
+                    'description' => 'A light reflection on small positive moments from today.',
+                    'content_type' => 'positive_engagement',
+                    'instructions' => 'Think of three moments that felt helpful, peaceful, or simply okay today. They can be very small.',
+                ],
+            ] as $content) {
+                Intervention::query()->updateOrCreate(
+                    ['title' => $content['title']],
+                    $content + ['is_active' => true, 'created_by_user_id' => $admin->id],
                 );
             }
         });

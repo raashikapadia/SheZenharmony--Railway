@@ -46,110 +46,245 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
         builder: (_) => EditProfileScreen(profile: profile, apiService: _api),
       ),
     );
-    if (updated == true) {
-      setState(_load);
+    if (updated == true) setState(_load);
+  }
+
+  Future<void> _confirmDeletion() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(
+          Icons.warning_amber_rounded,
+          color: Theme.of(dialogContext).colorScheme.error,
+        ),
+        title: const Text('Permanently delete account?'),
+        content: const Text(
+          'This permanently removes your SheZen account and associated profile, assessment, progress, and chat data. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep account'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete permanently'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final auth = context.read<AuthProvider>();
+    final deleted = await auth.deleteAccount();
+    if (!mounted) return;
+    if (deleted) {
+      final navigator = Navigator.of(context);
+      final messenger = ScaffoldMessenger.of(context);
+      navigator.popUntil((route) => route.isFirst);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Your SheZen account has been deleted.')),
+      );
+      return;
     }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          auth.error ?? 'Your account could not be deleted. Please try again.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _signOut() async {
+    await context.read<AuthProvider>().logout();
+    if (!mounted) return;
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('My Profile')),
-    body: FutureBuilder<StudentProfile>(
-      future: _profile,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return AppStateView(
-            icon: Icons.cloud_off_outlined,
-            title: 'Couldn\'t load your profile',
-            message: 'Check your connection and try again.',
-            actionLabel: 'Try again',
-            onAction: () => setState(_load),
+    appBar: AppBar(title: const Text('Profile & account')),
+    body: SafeArea(
+      child: FutureBuilder<StudentProfile>(
+        future: _profile,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return AppStateView(
+              icon: Icons.cloud_off_outlined,
+              title: 'Couldn\'t load your profile',
+              message: 'Check your connection and try again.',
+              actionLabel: 'Try again',
+              onAction: () => setState(_load),
+            );
+          }
+
+          final profile = snapshot.data!;
+          final sessionId =
+              context.read<AuthProvider>().session?.shezenId ?? '';
+          final shezenId = profile.shezenId.isNotEmpty
+              ? profile.shezenId
+              : sessionId;
+          final deleting = context.watch<AuthProvider>().isDeletingAccount;
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+            children: [
+              AppIdentityCard(shezenId: shezenId),
+              const SizedBox(height: AppSpacing.xxl),
+              const AppSectionHeader(
+                title: 'About you',
+                subtitle:
+                    'Only the profile information you are allowed to manage is shown here.',
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Column(
+                    children: [
+                      _ProfileRow(
+                        label: 'Date of birth',
+                        value: _formatDate(profile.dateOfBirth),
+                      ),
+                      _ProfileRow(
+                        label: 'Age',
+                        value: profile.age?.toString() ?? 'Not provided',
+                      ),
+                      _ProfileRow(
+                        label: 'Country',
+                        value: profile.country ?? 'Not provided',
+                      ),
+                      _ProfileRow(
+                        label: 'Year of study',
+                        value: profile.yearOfStudy ?? 'Not provided',
+                      ),
+                      _ProfileRow(
+                        label: 'Employment',
+                        value: profile.employmentStatus ?? 'Not provided',
+                      ),
+                      _ProfileRow(
+                        label: 'Relationship status',
+                        value: profile.relationshipStatus ?? 'Not provided',
+                      ),
+                      _ProfileRow(
+                        label: 'Children',
+                        value: profile.hasChildren == null
+                            ? 'Not provided'
+                            : (profile.hasChildren! ? 'Yes' : 'No'),
+                      ),
+                      _ProfileRow(
+                        label: 'Living situation',
+                        value: profile.livingSituation ?? 'Not provided',
+                        showDivider: false,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              FilledButton.icon(
+                onPressed: () => _openEdit(profile),
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Edit profile'),
+              ),
+              const SizedBox(height: AppSpacing.xxxl),
+              const AppSectionHeader(
+                title: 'Account',
+                subtitle:
+                    'Your sign-in email is kept in the authentication layer and is not displayed here.',
+              ),
+              const SizedBox(height: AppSpacing.md),
+              OutlinedButton.icon(
+                onPressed: deleting ? null : _signOut,
+                icon: const Icon(Icons.logout_rounded),
+                label: const Text('Sign out'),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextButton.icon(
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                  minimumSize: const Size.fromHeight(52),
+                ),
+                onPressed: deleting ? null : _confirmDeletion,
+                icon: deleting
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.delete_outline_rounded),
+                label: Text(deleting ? 'Deleting account…' : 'Delete account'),
+              ),
+            ],
           );
-        }
-        final profile = snapshot.data!;
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-          children: [
-            _ProfileField(label: 'Email', value: profile.email),
-            _ProfileField(
-              label: 'Date of Birth',
-              value: _formatDate(profile.dateOfBirth),
-            ),
-            _ProfileField(
-              label: 'Age',
-              value: profile.age?.toString() ?? '—',
-            ),
-            _ProfileField(label: 'Country', value: profile.country ?? '—'),
-            _ProfileField(
-              label: 'Year of Study',
-              value: profile.yearOfStudy ?? '—',
-            ),
-            _ProfileField(
-              label: 'Working',
-              value: profile.employmentStatus ?? '—',
-            ),
-            _ProfileField(
-              label: 'Relationship Status',
-              value: profile.relationshipStatus ?? '—',
-            ),
-            _ProfileField(
-              label: 'Children',
-              value: profile.hasChildren == null
-                  ? '—'
-                  : (profile.hasChildren! ? 'Yes' : 'No'),
-            ),
-            _ProfileField(
-              label: 'Living Arrangement',
-              value: profile.livingSituation ?? '—',
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: () => _openEdit(profile),
-              child: const Text('Edit Profile'),
-            ),
-          ],
-        );
-      },
+        },
+      ),
     ),
   );
-
-  String _formatDate(String? isoDate) {
-    if (isoDate == null) return '—';
-    final parsed = DateTime.tryParse(isoDate);
-    if (parsed == null) return isoDate;
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
-    ];
-    return '${parsed.day} ${months[parsed.month - 1]} ${parsed.year}';
-  }
 }
 
-class _ProfileField extends StatelessWidget {
-  const _ProfileField({required this.label, required this.value});
+class _ProfileRow extends StatelessWidget {
+  const _ProfileRow({
+    required this.label,
+    required this.value,
+    this.showDivider = true,
+  });
 
   final String label;
   final String value;
+  final bool showDivider;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 18),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: AppColors.muted,
-            fontWeight: FontWeight.w600,
+  Widget build(BuildContext context) => Column(
+    children: [
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Text(label, style: const TextStyle(color: AppColors.muted)),
           ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+      if (showDivider)
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+          child: Divider(height: 1),
         ),
-        const SizedBox(height: 2),
-        Text(value, style: Theme.of(context).textTheme.bodyLarge),
-      ],
-    ),
+    ],
   );
+}
+
+String _formatDate(String? isoDate) {
+  if (isoDate == null) return 'Not provided';
+  final parsed = DateTime.tryParse(isoDate);
+  if (parsed == null) return isoDate;
+  const months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+  return '${parsed.day} ${months[parsed.month - 1]} ${parsed.year}';
 }

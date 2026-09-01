@@ -41,8 +41,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Welcome to SheZen\nHarmony'), findsOneWidget);
-    expect(find.text('Login'), findsOneWidget);
-    expect(find.text('Forgot Password?'), findsOneWidget);
+    expect(find.text('Sign in'), findsOneWidget);
     expect(find.text('Create Account'), findsOneWidget);
   });
 }

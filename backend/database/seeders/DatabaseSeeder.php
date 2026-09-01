@@ -46,7 +46,9 @@ class DatabaseSeeder extends Seeder
             ['title' => 'Box breathing'],
             [
                 'description' => 'Development example: a short guided breathing activity.',
+                'slug' => 'box-breathing',
                 'content_type' => 'breathing',
+                'instructions' => 'Breathe in gently for 4 counts, hold for 4, breathe out for 4, and hold for 4. Repeat for four comfortable rounds without forcing your breath.',
                 'stress_level' => null,
                 'external_url' => null,
                 'is_active' => true,
@@ -57,7 +59,9 @@ class DatabaseSeeder extends Seeder
             ['title' => 'Gratitude reflection'],
             [
                 'description' => 'Development example: note three things you appreciate today.',
+                'slug' => 'gratitude-reflection',
                 'content_type' => 'journaling',
+                'instructions' => 'Pause and name three things you appreciate today. They can be small: a kind message, a quiet moment, or something you managed well.',
                 'stress_level' => null,
                 'external_url' => null,
                 'is_active' => true,

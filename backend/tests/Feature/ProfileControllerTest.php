@@ -27,7 +27,8 @@ class ProfileControllerTest extends TestCase
         $this->actingAs($student)
             ->getJson('/api/v1/profile')
             ->assertOk()
-            ->assertJsonPath('data.email', $student->email)
+            ->assertJsonPath('data.shezen_id', $student->studentIdentity->displayId())
+            ->assertJsonMissingPath('data.email')
             ->assertJsonPath('data.date_of_birth', '2004-03-15')
             ->assertJsonPath('data.age', Carbon::parse('2004-03-15')->age)
             ->assertJsonPath('data.year_of_study', 'Year 3')
@@ -72,26 +73,17 @@ class ProfileControllerTest extends TestCase
         ]);
     }
 
-    public function test_student_can_change_their_own_email_but_not_to_one_already_in_use(): void
+    public function test_profile_update_cannot_change_or_return_authentication_email(): void
     {
-        User::factory()->create(['email' => 'taken@example.com']);
         $student = User::factory()->create(['email' => 'mine@example.com', 'role' => User::ROLE_STUDENT]);
         $student->studentIdentity->profile()->create([]);
 
         $this->actingAs($student)
-            ->putJson('/api/v1/profile', ['email' => 'mine@example.com'])
-            ->assertOk();
-
-        $this->actingAs($student)
-            ->putJson('/api/v1/profile', ['email' => 'taken@example.com'])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('email');
-
-        $this->actingAs($student)
             ->putJson('/api/v1/profile', ['email' => 'new-address@example.com'])
             ->assertOk()
-            ->assertJsonPath('data.email', 'new-address@example.com');
-        $this->assertSame('new-address@example.com', $student->fresh()->email);
+            ->assertJsonMissingPath('data.email');
+
+        $this->assertSame('mine@example.com', $student->fresh()->email);
     }
 
     public function test_student_cannot_submit_age_role_or_password_through_profile_update(): void
@@ -128,5 +120,9 @@ class ProfileControllerTest extends TestCase
             ->assertOk()
             ->assertJsonMissingPath('data.password')
             ->assertJsonMissingPath('data.password_hash');
+        $this->actingAs($student)
+            ->getJson('/api/v1/profile')
+            ->assertJsonMissingPath('data.email')
+            ->assertJsonMissingPath('data.id');
     }
 }

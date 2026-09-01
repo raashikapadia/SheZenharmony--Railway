@@ -21,7 +21,6 @@ const _privacySummary = [
   'SheZen uses a persistent pseudonymous system ID internally to represent you.',
   'Assessment data is treated as sensitive information.',
   'Only authorised administrators may access approved system information.',
-  'Usage analytics never contain sensitive wellbeing information.',
 ];
 
 class RegisterScreen extends StatefulWidget {
@@ -132,7 +131,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         title: Text(
           [
             'Create Account',
-            'Student account details',
+            'Confirm student email',
             'Privacy & Consent',
             'Your demographic profile',
           ][_step],
@@ -156,7 +155,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   children: [
                     if (_step == 0) ...[
                       const Text(
-                        'Registration starts with your email account. We check the email format, then create your pseudonymous SheZen profile securely.',
+                        'Register with your USP student email. It stays in the authentication layer while your wellbeing journey uses a pseudonymous SheZen ID.',
                         style: TextStyle(
                           color: _registrationMuted,
                           height: 1.45,
@@ -165,18 +164,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 26),
                       _RegistrationField(
                         controller: _emailController,
-                        label: 'Email Address',
+                        label: 'USP student email',
                         errorText: fieldErrors?['email']?.first,
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         validator: (value) {
                           final email = value?.trim() ?? '';
                           if (email.isEmpty) return 'Enter your email address.';
-                          final validEmail = RegExp(
+                          if (!RegExp(
                             r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                          );
-                          if (!validEmail.hasMatch(email)) {
+                          ).hasMatch(email)) {
                             return 'Enter a valid email address.';
+                          }
+                          if (!RegExp(
+                            r'^[^@\s]+@student\.usp\.ac\.fj$',
+                            caseSensitive: false,
+                          ).hasMatch(email)) {
+                            return 'Use your @student.usp.ac.fj email.';
                           }
                           return null;
                         },
@@ -225,7 +229,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       FilledButton(
                         style: _primaryButtonStyle,
                         onPressed: auth.isLoading ? null : _nextStep,
-                        child: const Text('Verify Account'),
+                        child: const Text('Continue'),
                       ),
                       const SizedBox(height: 26),
                       const _StepProgress(currentStep: 0),
@@ -258,7 +262,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             const SizedBox(height: 16),
                             const Text(
-                              'Student login ready',
+                              'USP student email ready',
                               style: TextStyle(
                                 color: _registrationInk,
                                 fontWeight: FontWeight.w700,
@@ -279,7 +283,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: const Text(
-                                'Your student login format has been checked. Final verification happens securely when your profile is created, then your login stays inside the authentication layer.',
+                                'Your USP student email format has been checked. It will be used only for sign-in and account security.',
                                 style: TextStyle(
                                   color: _registrationMuted,
                                   height: 1.5,

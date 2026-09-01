@@ -20,7 +20,13 @@ class AuthController extends Controller
         $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
         $data = $request->validate(
             [
-                'email' => ['required', 'email:rfc', 'max:255', 'unique:users,email'],
+                'email' => [
+                    'required',
+                    'email:rfc',
+                    'max:255',
+                    'regex:/^[^@\\s]+@student\\.usp\\.ac\\.fj$/i',
+                    'unique:users,email',
+                ],
                 'password' => ['required', 'confirmed', Password::min(8)],
                 'device_name' => ['required', 'string', 'max:100'],
                 'privacy_consent' => ['required', 'accepted'],
@@ -37,6 +43,7 @@ class AuthController extends Controller
             ],
             [
                 'email.email' => 'Please enter a valid email address.',
+                'email.regex' => 'Use your USP student email ending in @student.usp.ac.fj.',
                 'email.unique' => 'An account with this email already exists.',
                 'demographics.date_of_birth.before' => 'Date of birth cannot be in the future.',
                 'privacy_consent.accepted' => 'Please acknowledge the Privacy & Data Use information.',

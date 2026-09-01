@@ -8,8 +8,11 @@ import '../../auth/application/auth_provider.dart';
 import '../data/student_profile.dart';
 
 class EditProfileScreen extends StatefulWidget {
-  const EditProfileScreen({super.key, required this.profile, ApiService? apiService})
-    : _injectedApiService = apiService;
+  const EditProfileScreen({
+    super.key,
+    required this.profile,
+    ApiService? apiService,
+  }) : _injectedApiService = apiService;
 
   final StudentProfile profile;
   final ApiService? _injectedApiService;
@@ -20,7 +23,6 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _emailController;
   late final TextEditingController _countryController;
   late final TextEditingController _yearOfStudyController;
   late final TextEditingController _employmentController;
@@ -35,7 +37,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
     final profile = widget.profile;
-    _emailController = TextEditingController(text: profile.email);
     _countryController = TextEditingController(text: profile.country ?? '');
     _yearOfStudyController = TextEditingController(
       text: profile.yearOfStudy ?? '',
@@ -57,7 +58,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
     _countryController.dispose();
     _yearOfStudyController.dispose();
     _employmentController.dispose();
@@ -77,7 +77,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final api = widget._injectedApiService ?? ApiService();
     try {
       await api.updateProfile(token, {
-        'email': _emailController.text.trim(),
         'date_of_birth': _dateOfBirth == null
             ? null
             : '${_dateOfBirth!.year.toString().padLeft(4, '0')}-'
@@ -122,21 +121,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    errorText: errors?['email']?.first,
-                  ),
-                  validator: (value) {
-                    final email = value?.trim() ?? '';
-                    if (email.isEmpty) return 'Enter your email address.';
-                    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
-                      return 'Enter a valid email address.';
-                    }
-                    return null;
-                  },
+                Text(
+                  'Update the profile details linked to your SheZen ID. Your sign-in email is kept separate.',
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 20),
                 DateOfBirthField(
@@ -149,7 +136,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Age', style: Theme.of(context).textTheme.labelMedium),
+                      Text(
+                        'Age',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         widget.profile.age?.toString() ?? '—',

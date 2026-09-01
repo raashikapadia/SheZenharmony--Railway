@@ -90,7 +90,7 @@ php artisan db:seed --class=DevelopmentSeeder
 ```
 
 This creates `admin.demo@shezen.local` / `Admin1234!` and
-`student.demo@shezen.local` / `Student1234!`, plus a complete development-only
+`student.demo@student.usp.ac.fj` / `Student1234!`, plus a complete development-only
 stress questionnaire. These credentials are fake, local-only test credentials;
 never use them in production. The seeder refuses to run outside the `local` and
 `testing` environments and is safe to run repeatedly.

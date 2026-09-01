@@ -11,6 +11,10 @@ void main() {
   testWidgets('profile shows SheZen ID without student name or email', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final provider = AuthProvider(
       apiService: _SignedInApiService(),
       storage: _MemoryStorage(),
@@ -35,6 +39,7 @@ void main() {
     expect(find.text('SZ-TESTIDENTITY'), findsOneWidget);
     expect(find.text('hidden@student.usp.ac.fj'), findsNothing);
     expect(find.text('Hidden Student Name'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 }
 

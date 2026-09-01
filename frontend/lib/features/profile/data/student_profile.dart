@@ -1,6 +1,6 @@
 class StudentProfile {
   const StudentProfile({
-    required this.email,
+    required this.shezenId,
     this.dateOfBirth,
     this.age,
     this.country,
@@ -11,7 +11,7 @@ class StudentProfile {
     this.livingSituation,
   });
 
-  final String email;
+  final String shezenId;
 
   /// ISO `yyyy-MM-dd`, or null if not yet set.
   final String? dateOfBirth;
@@ -26,7 +26,7 @@ class StudentProfile {
   final String? livingSituation;
 
   factory StudentProfile.fromJson(Map<String, dynamic> json) => StudentProfile(
-    email: json['email'] as String? ?? '',
+    shezenId: json['shezen_id'] as String? ?? '',
     dateOfBirth: json['date_of_birth'] as String?,
     age: json['age'] as int?,
     country: json['country'] as String?,

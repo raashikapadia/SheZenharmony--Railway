@@ -141,6 +141,26 @@ void main() {
       expect(storage.savedRole, 'student');
     },
   );
+
+  test('successful account deletion clears the local session', () async {
+    final storage = _FakeStorage(null);
+    final provider = AuthProvider(
+      apiService: _DeletingApiService(),
+      storage: storage,
+    );
+    await provider.register(
+      email: 's12345678@student.usp.ac.fj',
+      password: 'safe-password',
+      passwordConfirmation: 'safe-password',
+      demographics: const {},
+      privacyConsent: true,
+    );
+
+    expect(await provider.deleteAccount(), isTrue);
+    expect(provider.status, AuthStatus.signedOut);
+    expect(provider.session, isNull);
+    expect(storage.wasCleared, isTrue);
+  });
 }
 
 class _FakeApiService extends ApiService {
@@ -188,6 +208,13 @@ class _RegistrationApiService extends ApiService {
     shezenId: 'SZ-TESTIDENTITY',
     hasCompletedRequiredAssessment: false,
   );
+}
+
+class _DeletingApiService extends _RegistrationApiService {
+  @override
+  Future<void> deleteAccount(String token) async {
+    expect(token, 'new-token');
+  }
 }
 
 class _FakeStorage extends SecureTokenStorage {

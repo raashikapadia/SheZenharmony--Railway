@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/theme/app_theme.dart';
+import '../../activities/presentation/wellbeing_activities_screen.dart';
 import '../../auth/application/auth_provider.dart';
 import '../data/assessment_result.dart';
 
@@ -102,6 +104,31 @@ class AssessmentResultScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 22),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        color: AppColors.softSage,
+                        borderRadius: BorderRadius.circular(AppRadii.card),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.favorite_outline_rounded,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Text(
+                              _supportiveMessage(result.bandCode),
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 22),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -129,6 +156,21 @@ class AssessmentResultScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (!mandatory) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const WellbeingActivitiesScreen(),
+                            ),
+                          ),
+                          icon: const Icon(Icons.spa_outlined),
+                          label: const Text('View wellbeing activities'),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -137,5 +179,16 @@ class AssessmentResultScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _supportiveMessage(String code) {
+    final normalized = code.toLowerCase();
+    if (normalized.contains('high') || normalized.contains('severe')) {
+      return 'It may help to slow down, choose one gentle activity, and connect with a trusted person or appropriate university support if you need it.';
+    }
+    if (normalized.contains('moderate') || normalized.contains('medium')) {
+      return 'Consider making space for a short reset today and checking in again when it feels useful.';
+    }
+    return 'Keep noticing what supports your wellbeing. Small, regular moments of rest can help you stay connected to how you feel.';
   }
 }

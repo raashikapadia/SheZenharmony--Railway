@@ -160,8 +160,7 @@ class DateOfBirthField extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 20),
     child: FormField<DateTime>(
       initialValue: value,
-      validator: (value) =>
-          value == null ? 'Select your date of birth.' : null,
+      validator: (value) => value == null ? 'Select your date of birth.' : null,
       builder: (state) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -1,6 +1,6 @@
 # SheZen Harmony requirements audit
 
-Audit refreshed: 2026-08-27
+Audit refreshed: 2026-09-01
 
 ## Scope
 
@@ -18,7 +18,7 @@ completed safely without an approved product/privacy rule.
 
 | Capability | Status | Repository evidence / limitation |
 |---|---|---|
-| Student registration | Implemented | USP-domain validation, password confirmation, demographics, consent, Sanctum token creation, Flutter onboarding, and tests exist. Email verification/cohort verification is not implemented. |
+| Student registration | Implemented | `@student.usp.ac.fj` validation, password confirmation, demographics, consent, Sanctum token creation, Flutter onboarding, and tests exist. Email verification and MFA remain unimplemented. |
 | Student login/session/logout | Implemented | Student-only Sanctum login, minimal `/auth/me` response, revocable logout, secure Flutter token persistence, restoration handling, and tests exist. |
 | Anonymous guest access | Intentionally unavailable | The Flutter root gate requires an authenticated student. Compatibility schema for anonymous sessions is retained but is not an active guest flow. |
 | SheZen Anonymous ID | Implemented | A stable `student_identities` record is created and only the formatted `shezen_id` is returned to Flutter. Mobile payloads omit user ID, name, email, and raw UUID. |
@@ -27,12 +27,13 @@ completed safely without an approved product/privacy rule.
 | Baseline stress assessment | Implemented foundation | The first-login gate uses the active dynamic questionnaire; answers are submitted and scored server-side. Seed questions are development content, not an approved final instrument. |
 | Stress history/check-ins | Implemented foundation | Authenticated students can repeat the active check-in and view their completed assessment summaries. Clinical interpretation and production content remain unapproved. |
 | Mood tracking | Missing | No distinct mood model, API, or active screen. Dashboard entry is a labelled future feature. |
-| Wellbeing activities | Partial | Intervention schema, public listing endpoint, admin CRUD, and foundations for recommendations/usage exist. Student activity screens and completion tracking API are not complete. |
+| Wellbeing activities | Implemented prototype | Active admin-managed wellbeing activities have a privacy-safe student endpoint and Flutter list/detail experience. Completion tracking is not included. |
+| Positive engagement | Implemented prototype | Active affirmation, quiz, motivation, and positive-engagement interventions are filtered through the existing intervention endpoint and shown in a dedicated Flutter experience. |
 | Rule-based Chat Buddy | Partial foundation | Chat/session/message/crisis schema models exist, but no approved conversation tree, API, or Flutter flow is active. It must remain menu/path driven rather than unrestricted AI. |
 | Resources/categories | Partial foundation | Content category/tag relationships exist around interventions. A dedicated student resources experience and complete admin management are not active. |
 | Academic support | Missing | Dashboard placeholder only; courses, deadlines, and reminder persistence are not implemented. |
 | Notifications | Missing | No preferences, device-token integration, scheduled delivery, or notification UI exists. |
-| Student profile | Partial | Anonymous ID, privacy/help placeholders, progress, and logout are available. Account deletion exists in the API but is not exposed in the Flutter profile. |
+| Student profile | Implemented prototype | The SheZen ID is primary, permitted demographics can be viewed/edited, authentication email stays hidden, and sign-out/account deletion are available with confirmation and feedback. |
 | Admin authentication/RBAC | Implemented | Laravel session login, CSRF, admin middleware, command-created admins, and access tests exist. |
 | Admin questionnaires | Implemented foundation | Blade CRUD and protected JSON management cover questionnaires, versions, questions/options, ordering, activation, and score bands. |
 | Admin interventions | Implemented foundation | Blade management exists; broader content/resource workflows remain incomplete. |

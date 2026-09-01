@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\InterventionController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\QuestionnaireController;
+use App\Http\Controllers\Api\WellbeingActivityController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', HealthController::class);
@@ -20,6 +21,7 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/questions', [QuestionController::class, 'index']);
     Route::get('/questionnaires/active', [QuestionnaireController::class, 'active']);
     Route::get('/interventions', [InterventionController::class, 'index']);
+    Route::get('/wellbeing-activities', [WellbeingActivityController::class, 'index']);
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/assessments', [AssessmentController::class, 'index']);

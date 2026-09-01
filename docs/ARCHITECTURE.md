@@ -52,6 +52,7 @@ bypass student registration.
 - `GET /api/v1/assessments`
 - `POST /api/v1/assessments`
 - `GET /api/v1/interventions`
+- `GET /api/v1/wellbeing-activities`
 
 The one-time baseline assessment gate is derived from completed assessment rows
 on the backend rather than a client-only preference.

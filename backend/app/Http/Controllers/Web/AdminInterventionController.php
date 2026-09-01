@@ -26,7 +26,7 @@ class AdminInterventionController extends Controller
     {
         Intervention::query()->create($this->validated($request));
 
-        return redirect()->route('admin.interventions.index')->with('status', 'Intervention created.');
+        return redirect()->route('admin.interventions.index')->with('status', 'Support content created.');
     }
 
     public function edit(Intervention $intervention): View
@@ -38,7 +38,7 @@ class AdminInterventionController extends Controller
     {
         $intervention->update($this->validated($request));
 
-        return redirect()->route('admin.interventions.index')->with('status', 'Intervention updated.');
+        return redirect()->route('admin.interventions.index')->with('status', 'Support content updated.');
     }
 
     public function destroy(Intervention $intervention): RedirectResponse
@@ -46,12 +46,12 @@ class AdminInterventionController extends Controller
         if ($intervention->usages()->exists()) {
             $intervention->update(['is_active' => false]);
 
-            return back()->with('status', 'Intervention has usage history and was deactivated instead of deleted.');
+            return back()->with('status', 'Support content has usage history and was deactivated instead of deleted.');
         }
 
         $intervention->delete();
 
-        return back()->with('status', 'Intervention deleted.');
+        return back()->with('status', 'Support content deleted.');
     }
 
     private function validated(Request $request): array
@@ -59,9 +59,10 @@ class AdminInterventionController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'content_type' => ['required', 'string', 'max:100'],
+            'content_type' => ['required', 'in:breathing,grounding,mindfulness,relaxation,activity,resource,journaling,affirmation,quiz,motivation,positive_engagement'],
             'stress_level' => ['nullable', 'string', 'max:100'],
             'external_url' => ['nullable', 'url', 'max:2000'],
+            'instructions' => ['nullable', 'string', 'max:10000'],
             'is_active' => ['nullable', 'boolean'],
         ]);
         $data['is_active'] = (bool) ($data['is_active'] ?? false);

@@ -11,10 +11,56 @@ class AppBackground extends StatelessWidget {
   Widget build(BuildContext context) => Stack(
     fit: StackFit.expand,
     children: [
-      Image.asset('assets/images/shezen_background.png', fit: BoxFit.cover),
-      ColoredBox(color: Colors.white.withValues(alpha: 0.28)),
+      const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFFFBFF), Color(0xFFF8F1F9), Color(0xFFF5F8F5)],
+          ),
+        ),
+      ),
       child,
     ],
+  );
+}
+
+class AppPageScaffold extends StatelessWidget {
+  const AppPageScaffold({
+    super.key,
+    required this.title,
+    required this.child,
+    this.subtitle,
+    this.actions,
+    this.padding = const EdgeInsets.fromLTRB(20, 8, 20, 28),
+  });
+
+  final String title;
+  final String? subtitle;
+  final Widget child;
+  final List<Widget>? actions;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(title), actions: actions),
+    body: SafeArea(
+      child: ListView(
+        padding: padding,
+        children: [
+          if (subtitle != null) ...[
+            Text(
+              subtitle!,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: AppColors.muted),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+          ],
+          child,
+        ],
+      ),
+    ),
   );
 }
 
@@ -176,6 +222,81 @@ class AppStateView extends StatelessWidget {
           ],
         ],
       ),
+    ),
+  );
+}
+
+class AppLoadingView extends StatelessWidget {
+  const AppLoadingView({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.muted),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class AppIdentityCard extends StatelessWidget {
+  const AppIdentityCard({super.key, required this.shezenId});
+
+  final String shezenId;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(AppSpacing.xl),
+    decoration: BoxDecoration(
+      color: AppColors.softLavender,
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      border: Border.all(color: AppColors.outline),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const CircleAvatar(
+          backgroundColor: AppColors.surface,
+          child: Icon(Icons.shield_outlined, color: AppColors.primary),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Your SheZen ID',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              SelectableText(
+                shezenId,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppColors.primary,
+                  fontFamily: 'monospace',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              const Text(
+                'SheZen uses this ID for your wellbeing journey instead of showing your university identity.',
+                style: TextStyle(color: AppColors.muted, height: 1.4),
+              ),
+            ],
+          ),
+        ),
+      ],
     ),
   );
 }

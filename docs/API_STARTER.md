@@ -13,6 +13,7 @@ Flutter obtains the base URL from `frontend/lib/core/config/api_config.dart`.
 - `GET /api/v1/questions` — retained legacy active-question listing.
 - `GET /api/v1/questionnaires/active` — active dynamic student questionnaire.
 - `GET /api/v1/interventions` — active intervention listing.
+- `GET /api/v1/wellbeing-activities` — active student wellbeing activity listing.
 
 Registration and login are rate limited. The public questionnaire/intervention
 read routes must not expose student data.
@@ -26,6 +27,8 @@ Send `Authorization: Bearer TOKEN` and `Accept: application/json`.
 - `DELETE /api/v1/auth/account`
 - `GET /api/v1/assessments`
 - `POST /api/v1/assessments`
+- `GET /api/v1/profile`
+- `PUT /api/v1/profile`
 
 Authentication payloads expose only `role`, formatted `shezen_id`, and required
 assessment completion state. Assessment submission accepts question and option

@@ -133,7 +133,7 @@ void main() {
         return http.Response(
           jsonEncode({
             'data': {
-              'email': 'student@example.com',
+              'shezen_id': 'SZ-TESTIDENTITY',
               'date_of_birth': '2004-03-15',
               'age': 22,
               'country': 'Fiji',
@@ -147,33 +147,36 @@ void main() {
 
     final profile = await api.getProfile('a-token');
 
-    expect(profile['email'], 'student@example.com');
+    expect(profile['shezen_id'], 'SZ-TESTIDENTITY');
     expect(profile['age'], 22);
   });
 
-  test('updateProfile sends only the given fields and returns the updated data', () async {
-    late Map<String, dynamic> requestBody;
-    final api = ApiService(
-      client: MockClient((request) async {
-        expect(request.method, 'PUT');
-        expect(request.url.path, '/api/v1/profile');
-        requestBody = jsonDecode(request.body) as Map<String, dynamic>;
-        return http.Response(
-          jsonEncode({
-            'message': 'Your profile has been updated successfully.',
-            'data': {'country': 'Samoa'},
-          }),
-          200,
-          headers: {'content-type': 'application/json'},
-        );
-      }),
-    );
+  test(
+    'updateProfile sends only the given fields and returns the updated data',
+    () async {
+      late Map<String, dynamic> requestBody;
+      final api = ApiService(
+        client: MockClient((request) async {
+          expect(request.method, 'PUT');
+          expect(request.url.path, '/api/v1/profile');
+          requestBody = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response(
+            jsonEncode({
+              'message': 'Your profile has been updated successfully.',
+              'data': {'country': 'Samoa'},
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
 
-    final result = await api.updateProfile('a-token', {'country': 'Samoa'});
+      final result = await api.updateProfile('a-token', {'country': 'Samoa'});
 
-    expect(requestBody, {'country': 'Samoa'});
-    expect(result['country'], 'Samoa');
-  });
+      expect(requestBody, {'country': 'Samoa'});
+      expect(result['country'], 'Samoa');
+    },
+  );
 
   test('authentication connection failures become safe API errors', () async {
     final api = ApiService(
@@ -193,5 +196,22 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('deleteAccount calls the authenticated deletion endpoint', () async {
+    final api = ApiService(
+      client: MockClient((request) async {
+        expect(request.method, 'DELETE');
+        expect(request.url.path, '/api/v1/auth/account');
+        expect(request.headers['Authorization'], 'Bearer a-token');
+        return http.Response(
+          jsonEncode({'message': 'Account deleted successfully.'}),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+
+    await api.deleteAccount('a-token');
   });
 }

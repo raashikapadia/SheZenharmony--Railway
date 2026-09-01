@@ -26,12 +26,14 @@ class AuthProvider extends ChangeNotifier {
   AuthStatus _status = AuthStatus.unknown;
   AuthSession? _session;
   bool _isLoading = false;
+  bool _isDeletingAccount = false;
   String? _error;
   Map<String, List<String>>? _fieldErrors;
 
   AuthStatus get status => _status;
   AuthSession? get session => _session;
   bool get isLoading => _isLoading;
+  bool get isDeletingAccount => _isDeletingAccount;
   String? get error => _error;
   Map<String, List<String>>? get fieldErrors => _fieldErrors;
   bool get isAdmin => _session?.isAdmin ?? false;
@@ -171,6 +173,28 @@ class AuthProvider extends ChangeNotifier {
         // Token is already discarded locally; a failed remote revoke isn't
         // actionable from the UI at this point.
       }
+    }
+  }
+
+  Future<bool> deleteAccount() async {
+    final token = _session?.token;
+    if (token == null || _isDeletingAccount) return false;
+
+    _isDeletingAccount = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _apiService.deleteAccount(token);
+      _session = null;
+      _status = AuthStatus.signedOut;
+      await _storage.clear();
+      return true;
+    } on ApiException catch (error) {
+      _error = error.message;
+      return false;
+    } finally {
+      _isDeletingAccount = false;
+      notifyListeners();
     }
   }
 

@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
@@ -24,7 +23,6 @@ class ProfileController extends Controller
         $user = $request->user();
 
         $data = $request->validate([
-            'email' => ['sometimes', 'email:rfc', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'date_of_birth' => ['sometimes', 'date', 'before:today'],
             'country' => ['sometimes', 'string', 'max:100'],
             'year_of_study' => ['sometimes', 'string', 'max:30'],
@@ -34,13 +32,7 @@ class ProfileController extends Controller
             'living_situation' => ['sometimes', 'string', 'max:150'],
         ], [
             'date_of_birth.before' => 'Date of birth cannot be in the future.',
-            'email.unique' => 'An account with this email already exists.',
         ]);
-
-        if (array_key_exists('email', $data)) {
-            $user->update(['email' => $data['email']]);
-            unset($data['email']);
-        }
 
         if ($data !== []) {
             $identity = $user->studentIdentity()->firstOrFail();
@@ -59,7 +51,7 @@ class ProfileController extends Controller
         $profile = $identity->profile;
 
         return [
-            'email' => $user->email,
+            'shezen_id' => $identity->displayId(),
             'date_of_birth' => $profile?->date_of_birth?->toDateString(),
             'age' => $profile?->age,
             'country' => $profile?->country,

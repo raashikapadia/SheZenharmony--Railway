@@ -18,17 +18,18 @@ class StudentPrivacyArchitectureTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_registration_accepts_any_valid_email_domain_usp_is_not_compulsory(): void
+    public function test_registration_requires_a_usp_student_email(): void
     {
-        foreach (['student@usp.ac.fj', 'student@gmail.com', 'student@hotmail.com', 'student@yahoo.com'] as $email) {
-            $this->postJson('/api/v1/auth/register', $this->registrationPayload($email))
-                ->assertCreated();
-            $this->assertDatabaseHas('users', ['email' => $email]);
-        }
+        $email = 's12345678@student.usp.ac.fj';
+        $this->postJson('/api/v1/auth/register', $this->registrationPayload($email))
+            ->assertCreated();
+        $this->assertDatabaseHas('users', ['email' => $email]);
 
-        $this->postJson('/api/v1/auth/register', $this->registrationPayload('not-an-email'))
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('email');
+        foreach (['student@usp.ac.fj', 'student@gmail.com', 'not-an-email'] as $invalidEmail) {
+            $this->postJson('/api/v1/auth/register', $this->registrationPayload($invalidEmail))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('email');
+        }
     }
 
     public function test_registration_requires_and_records_pseudonymous_privacy_consent(): void

@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../../features/admin_questionnaires/data/questionnaire.dart';
 import '../../features/admin_questionnaires/data/score_band.dart';
 import '../../features/admin_questionnaires/data/stress_question.dart';
+import '../../features/activities/data/support_content.dart';
 import '../../features/assessment/data/assessment_questionnaire.dart';
 import '../../features/assessment/data/assessment_result.dart';
 import '../../features/auth/data/auth_session.dart';
@@ -173,6 +174,15 @@ class ApiService {
     }
   }
 
+  Future<void> deleteAccount(String token) async {
+    await _sendJson(
+      'DELETE',
+      Uri.parse('${ApiConfig.baseUrl}/v1/auth/account'),
+      token,
+      null,
+    );
+  }
+
   Future<Map<String, dynamic>> health() async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/health');
 
@@ -228,10 +238,9 @@ class ApiService {
     final uri = Uri.parse('${ApiConfig.baseUrl}/v1/questionnaires/active');
     final http.Response response;
     try {
-      response = await _client.get(
-        uri,
-        headers: const {'Accept': 'application/json'},
-      );
+      response = await _client
+          .get(uri, headers: const {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 10));
     } on http.ClientException {
       throw const ApiException(
         'Network error — check your connection and that the server is reachable.',
@@ -278,6 +287,42 @@ class ApiService {
     return (body['data'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(AssessmentSummary.fromJson)
+        .toList();
+  }
+
+  Future<List<WellbeingActivity>> wellbeingActivities() async {
+    final responses = await Future.wait([
+      _getPublicJson(Uri.parse('${ApiConfig.baseUrl}/v1/wellbeing-activities')),
+      _getPublicJson(
+        Uri.parse('${ApiConfig.baseUrl}/v1/interventions').replace(
+          queryParameters: {
+            'content_type':
+                'breathing,grounding,mindfulness,relaxation,activity,resource',
+          },
+        ),
+      ),
+    ]);
+    final videoActivities = (responses[0]['data'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(WellbeingActivity.fromJson);
+    final guidedActivities =
+        (responses[1]['data'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(WellbeingActivity.fromInterventionJson);
+    return [...guidedActivities, ...videoActivities];
+  }
+
+  Future<List<PositiveContent>> positiveEngagement() async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/v1/interventions').replace(
+      queryParameters: {
+        'content_type':
+            'journaling,affirmation,quiz,motivation,positive_engagement',
+      },
+    );
+    final body = await _getPublicJson(uri);
+    return (body['data'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(PositiveContent.fromJson)
         .toList();
   }
 
@@ -579,6 +624,24 @@ class ApiService {
   }
 
   void close() => _client.close();
+
+  Future<Map<String, dynamic>> _getPublicJson(Uri uri) async {
+    final http.Response response;
+    try {
+      response = await _client
+          .get(uri, headers: const {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 10));
+    } on http.ClientException {
+      throw const ApiException(
+        'Unable to connect to SheZen. Check your connection and try again.',
+      );
+    } on TimeoutException {
+      throw const ApiException(
+        'SheZen is taking longer than expected. Please try again.',
+      );
+    }
+    return _handleResponse(response);
+  }
 
   // ---------------------------------------------------------------------
   // Internal helpers

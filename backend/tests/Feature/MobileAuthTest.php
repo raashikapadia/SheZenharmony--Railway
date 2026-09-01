@@ -176,6 +176,40 @@ class MobileAuthTest extends TestCase
         $this->assertDatabaseCount('student_identities', 1);
     }
 
+    public function test_student_can_permanently_delete_account_and_associated_data(): void
+    {
+        $student = User::factory()->create(['role' => User::ROLE_STUDENT]);
+        $identity = $student->studentIdentity;
+        $identity->profile()->create(['country' => 'Fiji']);
+        $questionnaire = Questionnaire::query()->create([
+            'title' => 'Deletion test',
+            'type' => 'stress',
+            'version' => 1,
+            'status' => 'published',
+            'is_active' => true,
+        ]);
+        StressAssessment::query()->create([
+            'student_identity_id' => $identity->id,
+            'questionnaire_id' => $questionnaire->id,
+            'assessment_type' => 'stress',
+            'assessment_status' => 'completed',
+            'total_score' => 1,
+            'completed_at' => now(),
+        ]);
+        $token = $student->createToken('deletion test', ['student'])->plainTextToken;
+
+        $this->withToken($token)
+            ->deleteJson('/api/v1/auth/account')
+            ->assertOk()
+            ->assertJsonPath('message', 'Account deleted successfully.');
+
+        $this->assertDatabaseMissing('users', ['id' => $student->id]);
+        $this->assertDatabaseMissing('student_identities', ['id' => $identity->id]);
+        $this->assertDatabaseMissing('user_profiles', ['student_identity_id' => $identity->id]);
+        $this->assertDatabaseMissing('stress_assessments', ['student_identity_id' => $identity->id]);
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
     public function test_duplicate_email_and_weak_password_are_validation_errors(): void
     {
         User::factory()->create(['email' => 's11111111@student.usp.ac.fj']);

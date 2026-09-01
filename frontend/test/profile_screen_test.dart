@@ -42,12 +42,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('student@example.com'), findsOneWidget);
+    expect(find.text('student@example.com'), findsNothing);
+    expect(find.text('SZ-TESTIDENTITY'), findsOneWidget);
     expect(find.text('22'), findsOneWidget);
     expect(find.text('Fiji'), findsOneWidget);
     expect(find.text('Year 3'), findsOneWidget);
     expect(find.text('Yes'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, 'Edit Profile'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Edit profile'), findsOneWidget);
   });
 
   testWidgets('editing the profile saves changes and shows a success message', (
@@ -69,17 +70,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Edit Profile'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Edit profile'));
     await tester.pumpAndSettle();
 
     expect(find.text('Edit Profile'), findsWidgets);
-    expect(
-      tester
-          .widget<TextFormField>(find.widgetWithText(TextFormField, 'Email'))
-          .controller
-          ?.text,
-      'student@example.com',
-    );
+    expect(find.widgetWithText(TextFormField, 'Email'), findsNothing);
 
     final saveButton = find.widgetWithText(FilledButton, 'Save Changes');
     await tester.ensureVisible(saveButton);
@@ -98,7 +93,7 @@ class _ProfileApiService extends ApiService {
   Map<String, dynamic>? lastUpdate;
 
   Map<String, dynamic> _profileJson() => {
-    'email': 'student@example.com',
+    'shezen_id': 'SZ-TESTIDENTITY',
     'date_of_birth': '2004-03-15',
     'age': 22,
     'country': 'Fiji',
@@ -110,8 +105,7 @@ class _ProfileApiService extends ApiService {
   };
 
   @override
-  Future<Map<String, dynamic>> getProfile(String token) async =>
-      _profileJson();
+  Future<Map<String, dynamic>> getProfile(String token) async => _profileJson();
 
   @override
   Future<Map<String, dynamic>> updateProfile(

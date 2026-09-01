@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../../core/network/api_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_ui.dart';
+import '../../activities/presentation/positive_engagement_screen.dart';
+import '../../activities/presentation/wellbeing_activities_screen.dart';
 import '../../assessment/data/assessment_result.dart';
 import '../../assessment/presentation/questionnaire_screen.dart';
 import '../../auth/application/auth_provider.dart';
@@ -22,36 +24,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      const _DashboardPage(),
-      const _WellbeingPage(),
-      const _ProgressPage(),
+      _DashboardPage(onNavigate: _selectTab),
+      const _StressPage(),
+      const _ActivitiesPage(),
       const _ProfilePage(),
     ];
-    final titles = ['Home', 'Wellbeing', 'Progress', 'Profile'];
+    const titles = ['Home', 'Stress', 'Activities', 'Profile'];
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          toMathBold(titles[_selectedIndex]),
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        actions: _selectedIndex == 0
-            ? [
-                IconButton(
-                  tooltip: 'Notifications',
-                  onPressed: () => _showComingSoon(context, 'Notifications'),
-                  icon: const Icon(Icons.notifications_none_rounded),
-                ),
-              ]
-            : null,
-      ),
+      appBar: AppBar(title: Text(titles[_selectedIndex])),
       body: SafeArea(
         child: IndexedStack(index: _selectedIndex, children: pages),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) =>
-            setState(() => _selectedIndex = index),
+        onDestinationSelected: _selectTab,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
@@ -59,17 +46,17 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Home',
           ),
           NavigationDestination(
+            icon: Icon(Icons.monitor_heart_outlined),
+            selectedIcon: Icon(Icons.monitor_heart_rounded),
+            label: 'Stress',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.spa_outlined),
             selectedIcon: Icon(Icons.spa_rounded),
-            label: 'Wellbeing',
+            label: 'Activities',
           ),
           NavigationDestination(
-            icon: Icon(Icons.insights_outlined),
-            selectedIcon: Icon(Icons.insights_rounded),
-            label: 'Progress',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
+            icon: Icon(Icons.person_outline_rounded),
             selectedIcon: Icon(Icons.person_rounded),
             label: 'Profile',
           ),
@@ -77,221 +64,175 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  void _selectTab(int index) => setState(() => _selectedIndex = index);
 }
 
 class _DashboardPage extends StatelessWidget {
-  const _DashboardPage();
+  const _DashboardPage({required this.onNavigate});
+
+  final ValueChanged<int> onNavigate;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
+    final shezenId = context.watch<AuthProvider>().session?.shezenId ?? '';
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       children: [
         Text(
-          'Welcome back',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+          'Welcome to your space',
+          style: Theme.of(context).textTheme.headlineMedium,
         ),
-        const SizedBox(height: 6),
-        Text(
-          'How are you feeling today?',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyLarge?.copyWith(color: colors.onSurfaceVariant),
+        const SizedBox(height: AppSpacing.sm),
+        const Text(
+          'A quiet place to check in, reset, and support your wellbeing.',
+          style: TextStyle(color: AppColors.muted),
         ),
-        const SizedBox(height: 24),
-        Card(
-          color: colors.primaryContainer,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.favorite_outline_rounded, color: colors.primary),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Your wellbeing check-in',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Your baseline check-in is complete.',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Check in again whenever you want to reflect on how you\'re doing.',
-                  style: TextStyle(color: colors.onPrimaryContainer),
-                ),
-                const SizedBox(height: 18),
-                FilledButton.tonalIcon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          const QuestionnaireScreen(mandatory: false),
-                    ),
-                  ),
-                  icon: const Icon(Icons.monitor_heart_outlined),
-                  label: const Text('Start a check-in'),
-                ),
-              ],
+        const SizedBox(height: AppSpacing.xxl),
+        _StressHero(
+          onStart: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const QuestionnaireScreen(mandatory: false),
             ),
           ),
         ),
-        const SizedBox(height: 26),
+        const SizedBox(height: AppSpacing.xxl),
         const AppSectionHeader(
-          title: 'Explore support',
-          subtitle: 'Choose what would help you right now.',
+          title: 'What would help right now?',
+          subtitle: 'Choose one simple next step.',
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         LayoutBuilder(
           builder: (context, constraints) {
-            final width = (constraints.maxWidth - 12) / 2;
+            final isNarrow = constraints.maxWidth < 350;
+            final width = isNarrow
+                ? constraints.maxWidth
+                : (constraints.maxWidth - AppSpacing.md) / 2;
             return Wrap(
-              spacing: 12,
-              runSpacing: 12,
+              spacing: AppSpacing.md,
+              runSpacing: AppSpacing.md,
               children: [
                 SizedBox(
                   width: width,
                   child: AppFeatureCard(
-                    icon: Icons.mood_outlined,
-                    title: 'Mood tracking',
-                    description: 'Notice patterns in how you feel.',
-                    badge: 'Soon',
-                    onTap: () => _showComingSoon(context, 'Mood tracking'),
+                    icon: Icons.spa_outlined,
+                    title: 'Wellbeing activities',
+                    description: 'Breathing, grounding, and mindful breaks.',
+                    tint: AppColors.softSage,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const WellbeingActivitiesScreen(),
+                      ),
+                    ),
                   ),
                 ),
                 SizedBox(
                   width: width,
                   child: AppFeatureCard(
-                    icon: Icons.chat_bubble_outline_rounded,
-                    title: 'Chat Buddy',
-                    description: 'A gentle space to talk things through.',
-                    tint: AppColors.softPlum,
-                    badge: 'Soon',
-                    onTap: () => _showComingSoon(context, 'Chat Buddy'),
-                  ),
-                ),
-                SizedBox(
-                  width: width,
-                  child: AppFeatureCard(
-                    icon: Icons.self_improvement_rounded,
-                    title: 'Positive activities',
-                    description: 'Pause, breathe, and reset.',
-                    onTap: () =>
-                        _showComingSoon(context, 'Positive activities'),
-                  ),
-                ),
-                SizedBox(
-                  width: width,
-                  child: AppFeatureCard(
-                    icon: Icons.school_outlined,
-                    title: 'Academic support',
-                    description: 'Plan study and manage pressure.',
-                    tint: AppColors.softGold,
-                    badge: 'Soon',
-                    onTap: () => _showComingSoon(context, 'Academic support'),
-                  ),
-                ),
-                SizedBox(
-                  width: width,
-                  child: AppFeatureCard(
-                    icon: Icons.menu_book_outlined,
-                    title: 'Resources',
-                    description: 'Find practical wellbeing guidance.',
-                    tint: AppColors.softPlum,
-                    badge: 'Soon',
-                    onTap: () => _showComingSoon(context, 'Resources'),
-                  ),
-                ),
-                SizedBox(
-                  width: width,
-                  child: AppFeatureCard(
-                    icon: Icons.air_rounded,
-                    title: 'Breathing',
-                    description: 'Take a short calming pause.',
-                    badge: 'Soon',
-                    onTap: () =>
-                        _showComingSoon(context, 'Breathing activities'),
+                    icon: Icons.auto_awesome_outlined,
+                    title: 'Positive engagement',
+                    description: 'Affirmations and light positive activities.',
+                    tint: AppColors.softBlush,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PositiveEngagementScreen(),
+                      ),
+                    ),
                   ),
                 ),
               ],
             );
           },
         ),
-        const SizedBox(height: 26),
-        const _SectionHeading(title: 'Academic wellbeing'),
-        const SizedBox(height: 12),
-        _InfoCard(
-          icon: Icons.event_note_outlined,
-          title: 'Study reminders',
-          description:
-              'Planning and reminder tools are coming in a future update.',
-          trailing: const _ComingSoonBadge(),
-          onTap: () => _showComingSoon(context, 'Study reminders'),
+        const SizedBox(height: AppSpacing.xxl),
+        AppIdentityCard(shezenId: shezenId),
+        const SizedBox(height: AppSpacing.lg),
+        TextButton.icon(
+          onPressed: () => onNavigate(3),
+          icon: const Icon(Icons.manage_accounts_outlined),
+          label: const Text('Manage profile and account'),
         ),
       ],
     );
   }
 }
 
-class _WellbeingPage extends StatelessWidget {
-  const _WellbeingPage();
+class _StressHero extends StatelessWidget {
+  const _StressHero({required this.onStart});
+  final VoidCallback onStart;
 
   @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-    children: [
-      const _SectionHeading(
-        title: '''
-𝐖𝐞𝐥𝐥𝐛𝐞𝐢𝐧𝐠 𝐭𝐨𝐨𝐥𝐬''',
-        subtitle: 'Explore gentle ways to pause, reset, and reflect.',
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(AppSpacing.xl),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [AppColors.primary, Color(0xFF9A718F)],
       ),
-      const SizedBox(height: 20),
-      _InfoCard(
-        icon: Icons.air_rounded,
-        title: 'Breathing exercises',
-        description: 'Guided breathing activities.',
-        trailing: const _ComingSoonBadge(),
-        onTap: () => _showComingSoon(context, 'Breathing exercises'),
-      ),
-      const SizedBox(height: 12),
-      _InfoCard(
-        icon: Icons.self_improvement_rounded,
-        title: 'Grounding activities',
-        description: 'Simple prompts to help you reconnect with the present.',
-        trailing: const _ComingSoonBadge(),
-        onTap: () => _showComingSoon(context, 'Grounding activities'),
-      ),
-      const SizedBox(height: 12),
-      _InfoCard(
-        icon: Icons.auto_stories_outlined,
-        title: 'Reflection journal',
-        description: 'A private space for guided reflection.',
-        trailing: const _ComingSoonBadge(),
-        onTap: () => _showComingSoon(context, 'Reflection journal'),
-      ),
-    ],
+      borderRadius: BorderRadius.circular(28),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x2876517B),
+          blurRadius: 24,
+          offset: Offset(0, 12),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: .16),
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+          ),
+          child: const Text(
+            'STRESS CHECK',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1,
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Text(
+          'How are you feeling today?',
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(color: Colors.white),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        const Text(
+          'Take a short check-in and receive a supportive, non-diagnostic result.',
+          style: TextStyle(color: Color(0xFFF9EEF8), height: 1.45),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: AppColors.primary,
+          ),
+          onPressed: onStart,
+          icon: const Icon(Icons.arrow_forward_rounded),
+          label: const Text('Start stress check'),
+        ),
+      ],
+    ),
   );
 }
 
-class _ProgressPage extends StatefulWidget {
-  const _ProgressPage();
+class _StressPage extends StatefulWidget {
+  const _StressPage();
 
   @override
-  State<_ProgressPage> createState() => _ProgressPageState();
+  State<_StressPage> createState() => _StressPageState();
 }
 
-class _ProgressPageState extends State<_ProgressPage> {
+class _StressPageState extends State<_StressPage> {
   late final ApiService _api;
   late Future<List<AssessmentSummary>> _history;
 
@@ -305,6 +246,15 @@ class _ProgressPageState extends State<_ProgressPage> {
   void _load() {
     final token = context.read<AuthProvider>().session!.token;
     _history = _api.myAssessments(token);
+  }
+
+  Future<void> _startCheckIn() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const QuestionnaireScreen(mandatory: false),
+      ),
+    );
+    if (mounted) setState(_load);
   }
 
   @override
@@ -323,54 +273,200 @@ class _ProgressPageState extends State<_ProgressPage> {
       if (snapshot.hasError) {
         return AppStateView(
           icon: Icons.cloud_off_outlined,
-          title: 'Couldn\'t load your progress',
+          title: 'Couldn\'t load your stress checks',
           message: 'Check your connection and try again.',
           actionLabel: 'Try again',
           onAction: () => setState(_load),
         );
       }
       final history = snapshot.data ?? const [];
-      if (history.isEmpty) {
-        return const AppStateView(
-          icon: Icons.insights_outlined,
-          title: 'No check-ins yet',
-          message: 'Your completed wellbeing check-ins will appear here.',
-        );
-      }
-      return ListView.separated(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-        itemCount: history.length + 1,
-        separatorBuilder: (_, index) => SizedBox(height: index == 0 ? 18 : 12),
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return const _SectionHeading(
-              title: 'Your check-in history',
-              subtitle:
-                  'Results shown here come directly from your completed assessments.',
-            );
-          }
-          final item = history[index - 1];
-          final date = item.completedAt?.toLocal();
-          final dateText = date == null
-              ? 'Completed'
-              : '${date.day}/${date.month}/${date.year}';
-          return _InfoCard(
-            icon: Icons.monitor_heart_outlined,
-            title: item.bandLabel?.isNotEmpty == true
-                ? item.bandLabel!
-                : 'Completed check-in',
-            description:
-                '${item.questionnaireTitle ?? 'Stress check-in'} • $dateText',
-            trailing: Text(
-              '${item.totalScore}',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-            ),
-          );
+      return RefreshIndicator(
+        onRefresh: () async {
+          setState(_load);
+          await _history;
         },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          children: [
+            const AppSectionHeader(
+              title: 'Your stress check-ins',
+              subtitle:
+                  'Private results from questionnaires completed with SheZen.',
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            FilledButton.icon(
+              onPressed: _startCheckIn,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Start a new stress check'),
+            ),
+            const SizedBox(height: AppSpacing.xxl),
+            if (history.isEmpty)
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(AppSpacing.xl),
+                  child: Text(
+                    'No completed check-ins yet. Your results will appear here after submission.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.muted),
+                  ),
+                ),
+              )
+            else
+              for (final item in history) ...[
+                _AssessmentCard(item: item),
+                const SizedBox(height: AppSpacing.md),
+              ],
+          ],
+        ),
       );
     },
+  );
+}
+
+class _AssessmentCard extends StatelessWidget {
+  const _AssessmentCard({required this.item});
+  final AssessmentSummary item;
+
+  @override
+  Widget build(BuildContext context) {
+    final date = item.completedAt?.toLocal();
+    final dateText = date == null
+        ? 'Completed'
+        : '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Row(
+          children: [
+            const CircleAvatar(
+              backgroundColor: AppColors.softLavender,
+              child: Icon(
+                Icons.monitor_heart_outlined,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.bandLabel?.isNotEmpty == true
+                        ? item.bandLabel!
+                        : 'Completed stress check',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  Text(
+                    dateText,
+                    style: const TextStyle(color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.softSage,
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+              ),
+              child: Text(
+                '${item.totalScore}',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActivitiesPage extends StatelessWidget {
+  const _ActivitiesPage();
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+    children: [
+      const AppSectionHeader(
+        title: 'Activities',
+        subtitle: 'Explore content published by the SheZen wellbeing team.',
+      ),
+      const SizedBox(height: AppSpacing.xl),
+      _LargeNavigationCard(
+        icon: Icons.spa_outlined,
+        title: 'Wellbeing activities',
+        description:
+            'Breathing, mindfulness, grounding, relaxation, and healthy breaks.',
+        color: AppColors.softSage,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const WellbeingActivitiesScreen()),
+        ),
+      ),
+      const SizedBox(height: AppSpacing.md),
+      _LargeNavigationCard(
+        icon: Icons.auto_awesome_outlined,
+        title: 'Positive engagement',
+        description:
+            'Friendly affirmations, quizzes, motivational prompts, and light activities.',
+        color: AppColors.softBlush,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const PositiveEngagementScreen()),
+        ),
+      ),
+    ],
+  );
+}
+
+class _LargeNavigationCard extends StatelessWidget {
+  const _LargeNavigationCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.color,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String title;
+  final String description;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    color: color,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 26,
+              backgroundColor: AppColors.surface,
+              child: Icon(icon, color: AppColors.primary),
+            ),
+            const SizedBox(width: AppSpacing.lg),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    description,
+                    style: const TextStyle(color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
+      ),
+    ),
   );
 }
 
@@ -379,178 +475,29 @@ class _ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final shezenId = context.watch<AuthProvider>().session?.shezenId;
+    final auth = context.watch<AuthProvider>();
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       children: [
-        Center(
-          child: CircleAvatar(
-            radius: 42,
-            backgroundColor: colors.primaryContainer,
-            child: Text(
-              'S',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: colors.primary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        Text(
-          'Student account',
-          textAlign: TextAlign.center,
-          style: Theme.of(
+        AppIdentityCard(shezenId: auth.session?.shezenId ?? ''),
+        const SizedBox(height: AppSpacing.xxl),
+        _LargeNavigationCard(
+          icon: Icons.manage_accounts_outlined,
+          title: 'Profile & account',
+          description:
+              'View or edit permitted details, sign out, or delete your account.',
+          color: AppColors.softLavender,
+          onTap: () => Navigator.of(
             context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          ).push(MaterialPageRoute(builder: (_) => const ProfileViewScreen())),
         ),
-        if (shezenId != null) ...[
-          const SizedBox(height: 8),
-          SelectableText(
-            shezenId,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: colors.primary,
-              fontFamily: 'monospace',
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-        const SizedBox(height: 28),
-        _InfoCard(
-          icon: Icons.person_outline_rounded,
-          title: 'My Profile',
-          description: 'View and edit your account details.',
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const ProfileViewScreen()),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _InfoCard(
-          icon: Icons.shield_outlined,
-          title: 'Privacy',
-          description: 'Your wellbeing information is kept with your account.',
-          onTap: () => _showComingSoon(context, 'Privacy information'),
-        ),
-        const SizedBox(height: 12),
-        _InfoCard(
-          icon: Icons.help_outline_rounded,
-          title: 'Help and support',
-          description: 'Support information will be available here.',
-          trailing: const _ComingSoonBadge(),
-          onTap: () => _showComingSoon(context, 'Help and support'),
-        ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.xxl),
         OutlinedButton.icon(
-          onPressed: () => context.read<AuthProvider>().logout(),
+          onPressed: auth.isLoading ? null : auth.logout,
           icon: const Icon(Icons.logout_rounded),
           label: const Text('Sign out'),
         ),
       ],
     );
   }
-}
-
-class _SectionHeading extends StatelessWidget {
-  const _SectionHeading({required this.title, this.subtitle});
-  final String title;
-  final String? subtitle;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        toMathBold(title),
-        style: Theme.of(
-          context,
-        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-      ),
-      if (subtitle != null) ...[
-        const SizedBox(height: 4),
-        Text(
-          subtitle!,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
-    ],
-  );
-}
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({
-    required this.icon,
-    required this.title,
-    required this.description,
-    this.trailing,
-    this.onTap,
-  });
-  final IconData icon;
-  final String title;
-  final String description;
-  final Widget? trailing;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) => Card(
-    child: InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
-            CircleAvatar(child: Icon(icon)),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (trailing != null) ...[const SizedBox(width: 10), trailing!],
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-class _ComingSoonBadge extends StatelessWidget {
-  const _ComingSoonBadge();
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.secondaryContainer,
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: const Text(
-      'Soon',
-      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-    ),
-  );
-}
-
-void _showComingSoon(BuildContext context, String feature) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('$feature is coming in a future update.')),
-  );
 }

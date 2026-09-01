@@ -38,9 +38,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!mounted || success) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text(
-          'We couldn\'t sign you in. Check your details and try again.',
+          context.read<AuthProvider>().error ??
+              'We couldn\'t sign you in. Check your details and try again.',
         ),
       ),
     );
@@ -96,15 +97,23 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 34),
                     _LoginField(
                       controller: _emailController,
-                      label: 'Student Email / Student Login',
+                      label: 'USP student email',
                       keyboardType: TextInputType.emailAddress,
                       autofillHints: const [AutofillHints.email],
                       textInputAction: TextInputAction.next,
                       validator: (value) {
                         final email = value?.trim() ?? '';
                         if (email.isEmpty) return 'Enter your email address.';
-                        if (!email.contains('@')) {
+                        if (!RegExp(
+                          r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                        ).hasMatch(email)) {
                           return 'Enter a valid email address.';
+                        }
+                        if (!RegExp(
+                          r'^[^@\s]+@student\.usp\.ac\.fj$',
+                          caseSensitive: false,
+                        ).hasMatch(email)) {
+                          return 'Use your @student.usp.ac.fj email.';
                         }
                         return null;
                       },
@@ -151,23 +160,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Login'),
+                          : const Text('Sign in'),
                     ),
-                    TextButton(
-                      onPressed: auth.isLoading
-                          ? null
-                          : () => ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Password recovery is not available yet.',
-                                ),
-                              ),
-                            ),
-                      child: const Text(
-                        'Forgot Password?',
-                        style: TextStyle(color: _muted),
-                      ),
-                    ),
+                    const SizedBox(height: 8),
                     const Row(
                       children: [
                         Expanded(child: Divider()),

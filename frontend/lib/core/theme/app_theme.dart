@@ -1,31 +1,23 @@
 import 'package:flutter/material.dart';
 
-String toMathBold(String text) {
-  return text.runes.map((rune) {
-    if (rune >= 0x41 && rune <= 0x5A) {
-      return String.fromCharCode(0x1D400 + rune - 0x41);
-    }
-    if (rune >= 0x61 && rune <= 0x7A) {
-      return String.fromCharCode(0x1D41A + rune - 0x61);
-    }
-    if (rune >= 0x30 && rune <= 0x39) {
-      return String.fromCharCode(0x1D7CE + rune - 0x30);
-    }
-    return String.fromCharCode(rune);
-  }).join();
-}
+// Compatibility helper for older screens. Headings now use the app text theme
+// instead of mathematical Unicode glyphs.
+String toMathBold(String text) => text;
 
 abstract final class AppColors {
-  static const primary = Color(0xFF7042A3);
-  static const secondary = Color(0xFF9A66C4);
-  static const background = Color(0xFFF8F4FC);
-  static const surface = Color(0xFFFFFEFF);
-  static const ink = Color(0xFF321C4D);
-  static const muted = Color(0xFF725F80);
-  static const outline = Color(0xFFDCCCE8);
-  static const softTeal = Color(0xFFF0E5FA);
-  static const softPlum = Color(0xFFF3E8FA);
-  static const softGold = Color(0xFFF8EFFC);
+  static const primary = Color(0xFF76517B);
+  static const secondary = Color(0xFFB56F7C);
+  static const background = Color(0xFFFBF8FC);
+  static const surface = Color(0xFFFFFCFF);
+  static const ink = Color(0xFF2E2731);
+  static const muted = Color(0xFF716775);
+  static const outline = Color(0xFFE5DDE7);
+  static const softLavender = Color(0xFFF1EAF4);
+  static const softBlush = Color(0xFFF9EDEF);
+  static const softSage = Color(0xFFE9F2ED);
+  static const softGold = Color(0xFFFFF4DE);
+  static const softTeal = softSage;
+  static const softPlum = softLavender;
 }
 
 abstract final class AppSpacing {
@@ -35,25 +27,38 @@ abstract final class AppSpacing {
   static const lg = 16.0;
   static const xl = 20.0;
   static const xxl = 24.0;
+  static const xxxl = 32.0;
   static const page = 20.0;
 }
 
 abstract final class AppRadii {
-  static const input = 14.0;
-  static const card = 20.0;
+  static const input = 16.0;
+  static const card = 22.0;
   static const pill = 999.0;
 }
 
 abstract final class AppTheme {
   static ThemeData get light {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: AppColors.primary,
-      brightness: Brightness.light,
+    const scheme = ColorScheme.light(
       primary: AppColors.primary,
+      onPrimary: Colors.white,
+      primaryContainer: AppColors.softLavender,
+      onPrimaryContainer: AppColors.ink,
       secondary: AppColors.secondary,
+      onSecondary: Colors.white,
+      secondaryContainer: AppColors.softBlush,
+      onSecondaryContainer: AppColors.ink,
+      tertiary: Color(0xFF4D7563),
+      tertiaryContainer: AppColors.softSage,
       surface: AppColors.surface,
+      onSurface: AppColors.ink,
+      onSurfaceVariant: AppColors.muted,
+      outline: AppColors.outline,
+      outlineVariant: Color(0xFFEDE6EF),
+      error: Color(0xFFB3261E),
+      errorContainer: Color(0xFFFFDAD6),
     );
-    final textTheme = Typography.material2021().black.apply(
+    final base = Typography.material2021().black.apply(
       bodyColor: AppColors.ink,
       displayColor: AppColors.ink,
     );
@@ -62,44 +67,36 @@ abstract final class AppTheme {
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: Colors.transparent,
-      textTheme: textTheme.copyWith(
-        headlineMedium: textTheme.headlineMedium?.copyWith(
-          fontFamily: 'Cambria Math',
+      textTheme: base.copyWith(
+        headlineMedium: base.headlineMedium?.copyWith(
           fontWeight: FontWeight.w800,
-          letterSpacing: -0.6,
-          decoration: TextDecoration.underline,
+          letterSpacing: -0.7,
+          height: 1.15,
         ),
-        headlineSmall: textTheme.headlineSmall?.copyWith(
-          fontFamily: 'Cambria Math',
+        headlineSmall: base.headlineSmall?.copyWith(
           fontWeight: FontWeight.w800,
-          letterSpacing: -0.35,
-          decoration: TextDecoration.underline,
+          letterSpacing: -0.4,
+          height: 1.2,
         ),
-        titleLarge: textTheme.titleLarge?.copyWith(
-          fontFamily: 'Cambria Math',
+        titleLarge: base.titleLarge?.copyWith(
           fontWeight: FontWeight.w800,
-          decoration: TextDecoration.underline,
+          letterSpacing: -0.2,
         ),
-        titleMedium: textTheme.titleMedium?.copyWith(
-          fontFamily: 'Cambria Math',
-          fontWeight: FontWeight.w700,
-          decoration: TextDecoration.underline,
-        ),
-        bodyLarge: textTheme.bodyLarge?.copyWith(height: 1.45),
-        bodyMedium: textTheme.bodyMedium?.copyWith(height: 1.45),
+        titleMedium: base.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        bodyLarge: base.bodyLarge?.copyWith(height: 1.5),
+        bodyMedium: base.bodyMedium?.copyWith(height: 1.45),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         foregroundColor: AppColors.ink,
         surfaceTintColor: Colors.transparent,
-        centerTitle: false,
         elevation: 0,
+        centerTitle: false,
         titleTextStyle: TextStyle(
           color: AppColors.ink,
           fontSize: 20,
-          fontFamily: 'Cambria Math',
           fontWeight: FontWeight.w800,
-          decoration: TextDecoration.underline,
+          letterSpacing: -0.2,
         ),
       ),
       cardTheme: const CardThemeData(
@@ -149,16 +146,11 @@ abstract final class AppTheme {
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-      ),
       navigationBarTheme: NavigationBarThemeData(
-        height: 72,
+        height: 70,
         elevation: 0,
-        backgroundColor: AppColors.surface.withValues(alpha: 0.94),
-        indicatorColor: AppColors.softTeal,
+        backgroundColor: AppColors.surface.withValues(alpha: 0.96),
+        indicatorColor: AppColors.softLavender,
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => TextStyle(
             color: states.contains(WidgetState.selected)
@@ -187,15 +179,14 @@ abstract final class AppTheme {
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: AppColors.primary,
-        linearTrackColor: AppColors.softTeal,
+        linearTrackColor: AppColors.softLavender,
       ),
     );
   }
 
-  static OutlineInputBorder _inputBorder(Color color, {double width = 1}) {
-    return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadii.input),
-      borderSide: BorderSide(color: color, width: width),
-    );
-  }
+  static OutlineInputBorder _inputBorder(Color color, {double width = 1}) =>
+      OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadii.input),
+        borderSide: BorderSide(color: color, width: width),
+      );
 }
