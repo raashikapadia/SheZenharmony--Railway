@@ -10,6 +10,7 @@ import '../../assessment/data/assessment_result.dart';
 import '../../assessment/presentation/assessment_detail_screen.dart';
 import '../../assessment/presentation/questionnaire_screen.dart';
 import '../../auth/application/auth_provider.dart';
+import '../../guidance/presentation/personal_guidance_card.dart';
 import '../../profile/presentation/profile_view_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -89,6 +90,8 @@ class _DashboardPage extends StatelessWidget {
           'A quiet place to check in, reset, and support your wellbeing.',
           style: TextStyle(color: AppColors.muted),
         ),
+        const SizedBox(height: AppSpacing.xxl),
+        const PersonalGuidanceCard(),
         const SizedBox(height: AppSpacing.xxl),
         _StressHero(
           onStart: () => Navigator.of(context).push(

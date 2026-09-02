@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\AdminAuthController;
 use App\Http\Controllers\Web\AdminDashboardController;
 use App\Http\Controllers\Web\AdminInterventionController;
+use App\Http\Controllers\Web\AdminPersonalGuidanceController;
 use App\Http\Controllers\Web\AdminQuestionController;
 use App\Http\Controllers\Web\AdminQuestionnaireController;
 use App\Http\Controllers\Web\AdminStudentController;
@@ -31,5 +32,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('questionnaires', AdminQuestionnaireController::class)->except(['show']);
     Route::resource('interventions', AdminInterventionController::class)->except(['show']);
     Route::resource('wellbeing_activities', AdminWellbeingActivityController::class)->except(['show']);
+    Route::resource('personal-guidance', AdminPersonalGuidanceController::class)->except(['show'])->parameters(['personal-guidance' => 'personalGuidance']);
     Route::post('/logout', [AdminAuthController::class, 'destroy'])->name('logout');
 });

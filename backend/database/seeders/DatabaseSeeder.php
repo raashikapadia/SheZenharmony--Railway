@@ -72,5 +72,9 @@ class DatabaseSeeder extends Seeder
         // freshly migrated database can serve an assessment immediately.
         // No-ops once an admin has published a real stress questionnaire.
         $this->call(StressFrameworkSeeder::class);
+
+        // A small curated set of Home Page encouragement. No-ops once any
+        // Personal Guidance row exists.
+        $this->call(PersonalGuidanceSeeder::class);
     }
 }
