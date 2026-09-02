@@ -44,6 +44,13 @@ class StudentIdentity extends Model
         return $this->hasMany(StressAssessment::class);
     }
 
+    public function latestAssessment(): HasOne
+    {
+        return $this->hasOne(StressAssessment::class)
+            ->where('assessment_status', 'completed')
+            ->latestOfMany('completed_at');
+    }
+
     public function interventionUsages(): HasMany
     {
         return $this->hasMany(InterventionUsage::class);

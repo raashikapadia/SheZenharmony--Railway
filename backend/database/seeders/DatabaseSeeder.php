@@ -67,5 +67,10 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+
+        // A runnable starter questionnaire + the canonical score bands, so a
+        // freshly migrated database can serve an assessment immediately.
+        // No-ops once an admin has published a real stress questionnaire.
+        $this->call(StressFrameworkSeeder::class);
     }
 }

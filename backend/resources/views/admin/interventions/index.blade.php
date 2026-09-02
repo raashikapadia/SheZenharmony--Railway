@@ -11,18 +11,19 @@
         </div>
         <a class="button" href="{{ route('admin.interventions.create') }}"><span>＋</span>Add support content</a>
     </div>
-    <div class="table-wrap"><table><thead><tr><th>Content</th><th>Type</th><th>Student section</th><th>Stress tier</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+    <div class="table-wrap"><table><thead><tr><th>Content</th><th>Type</th><th>Student section</th><th>Recommended level</th><th>Status</th><th>Actions</th></tr></thead><tbody>
     @forelse($interventions as $intervention)
         @php
             $positiveTypes = ['journaling', 'affirmation', 'quiz', 'motivation', 'positive_engagement'];
             $studentSection = in_array($intervention->content_type, $positiveTypes, true) ? 'Positive Engagement' : 'Wellbeing Activities';
+            $levels = $intervention->recommendations->map(fn ($rec) => $rec->scoreBand?->label)->filter()->unique()->values();
         @endphp
         <tr>
             <td><div class="item-title">{{ $intervention->title }}</div><span class="muted">{{ Str::limit($intervention->description, 80) }}</span></td>
             <td>{{ Str::headline($intervention->content_type) }}</td>
             <td>{{ $studentSection }}</td>
-            <td>{{ $intervention->stress_level ?: 'All tiers' }}</td>
-            <td><span class="badge {{ $intervention->is_active ? 'active' : '' }}">{{ $intervention->is_active ? 'Active' : 'Inactive' }}</span></td>
+            <td>{{ $levels->isNotEmpty() ? $levels->join(', ') : 'All levels' }}</td>
+            <td><span class="badge {{ $intervention->is_active ? 'active' : '' }}">{{ $intervention->is_active ? 'Published' : 'Draft' }}</span></td>
             <td><div class="actions"><a class="button button-secondary" href="{{ route('admin.interventions.edit', $intervention) }}">Edit</a><form method="POST" action="{{ route('admin.interventions.destroy', $intervention) }}" onsubmit="return confirm('Delete this support content?')">@csrf @method('DELETE')<button class="button button-danger" type="submit">Delete</button></form></div></td>
         </tr>
     @empty

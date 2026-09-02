@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Intervention extends Model
 {
@@ -41,6 +42,22 @@ class Intervention extends Model
     public function recommendations(): HasMany
     {
         return $this->hasMany(InterventionRecommendation::class);
+    }
+
+    /**
+     * Stress bands this intervention is recommended for. No linked bands means
+     * the intervention applies to every level ("all levels").
+     */
+    public function scoreBands(): BelongsToMany
+    {
+        return $this->belongsToMany(StressScoreBand::class, 'intervention_recommendations')
+            ->withPivot(['priority', 'is_active'])
+            ->withTimestamps();
+    }
+
+    public function scopePublished(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
     }
 
     public function categories(): BelongsToMany

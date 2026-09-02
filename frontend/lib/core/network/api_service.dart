@@ -7,6 +7,7 @@ import '../../features/admin_questionnaires/data/questionnaire.dart';
 import '../../features/admin_questionnaires/data/score_band.dart';
 import '../../features/admin_questionnaires/data/stress_question.dart';
 import '../../features/activities/data/support_content.dart';
+import '../../features/assessment/data/assessment_detail.dart';
 import '../../features/assessment/data/assessment_questionnaire.dart';
 import '../../features/assessment/data/assessment_result.dart';
 import '../../features/auth/data/auth_session.dart';
@@ -322,6 +323,16 @@ class ApiService {
         .whereType<Map<String, dynamic>>()
         .map(AssessmentSummary.fromJson)
         .toList();
+  }
+
+  /// One completed assessment belonging to the authenticated student. The
+  /// backend enforces ownership and returns 404 for anyone else's id.
+  Future<AssessmentDetail> assessmentDetail(String token, int id) async {
+    final body = await _getJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/assessments/$id'),
+      token,
+    );
+    return AssessmentDetail.fromJson(body['data'] as Map<String, dynamic>);
   }
 
   Future<List<WellbeingActivity>> wellbeingActivities() async {
