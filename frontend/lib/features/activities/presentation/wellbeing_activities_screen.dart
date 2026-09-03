@@ -7,6 +7,7 @@ import '../../../core/network/api_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_ui.dart';
 import '../data/support_content.dart';
+import 'tiktok_video_player.dart';
 
 class WellbeingActivitiesScreen extends StatefulWidget {
   const WellbeingActivitiesScreen({super.key, ApiService? apiService})
@@ -315,6 +316,9 @@ class _ActivityDetailScreen extends StatefulWidget {
 }
 
 class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
+  /// Expanded height of the artwork header.
+  static const _headerHeight = 330.0;
+
   /// Non-null when the activity points at a YouTube video that this platform
   /// can play inline. Windows and Linux have no webview implementation, so
   /// they keep the tap-to-open card instead.
@@ -326,7 +330,9 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
   void initState() {
     super.initState();
 
-    if (!activity.hasVideo || !_supportsInlinePlayback) return;
+    if (!activity.hasVideo || _isTikTok || !_supportsInlinePlayback) {
+      return;
+    }
 
     final videoId = YoutubePlayerController.convertUrlToId(_normalisedUrl);
     if (videoId == null) return;
@@ -346,6 +352,12 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
     _controller?.close();
     super.dispose();
   }
+
+  /// TikTok links are played through the webview embed rather than the
+  /// YouTube iframe player.
+  bool get _isTikTok =>
+      activity.sourceType.toLowerCase() == 'tiktok' ||
+      TikTokVideoPlayer.isTikTokUrl(_normalisedUrl);
 
   bool get _supportsInlinePlayback {
     if (kIsWeb) return true;
@@ -397,7 +409,12 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
     }
   }
 
-  Widget _buildInlinePlayer(YoutubePlayerController controller) => Column(
+  /// Frames an inline player with the same card treatment as the launch
+  /// tile, plus an escape hatch into the platform's own app.
+  Widget _buildPlayerCard({
+    required Widget player,
+    required String openLabel,
+  }) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Container(
@@ -413,7 +430,7 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
-          child: YoutubePlayer(controller: controller),
+          child: player,
         ),
       ),
       const SizedBox(height: 8),
@@ -422,12 +439,34 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
         child: TextButton.icon(
           onPressed: _launchVideo,
           icon: const Icon(Icons.open_in_new_rounded, size: 18),
-          label: const Text('Open in YouTube'),
+          label: Text(openLabel),
           style: TextButton.styleFrom(foregroundColor: AppColors.primary),
         ),
       ),
     ],
   );
+
+  /// Picks the richest playback this activity and platform can manage:
+  /// the YouTube player, the TikTok embed, or a card that hands off to the
+  /// installed app.
+  Widget _buildVideoSection() {
+    if (_controller case final controller?) {
+      return _buildPlayerCard(
+        player: YoutubePlayer(controller: controller),
+        openLabel: 'Open in YouTube',
+      );
+    }
+    if (_isTikTok && TikTokVideoPlayer.isSupported) {
+      return _buildPlayerCard(
+        player: TikTokVideoPlayer(
+          url: _normalisedUrl,
+          onFallback: (_) => _buildLaunchBody(),
+        ),
+        openLabel: 'Open in TikTok',
+      );
+    }
+    return _buildLaunchCard();
+  }
 
   Widget _buildLaunchCard() => Container(
     decoration: BoxDecoration(
@@ -442,39 +481,41 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
     ),
     child: ClipRRect(
       borderRadius: BorderRadius.circular(16),
-      child: GestureDetector(
-        onTap: _launchVideo,
-        child: Container(
-          height: 220,
-          color: AppColors.softSage,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.play_circle_filled_rounded,
-                  size: 56,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Tap to watch video',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
-              ),
-            ],
+      child: _buildLaunchBody(),
+    ),
+  );
+
+  Widget _buildLaunchBody() => GestureDetector(
+    onTap: _launchVideo,
+    child: Container(
+      height: 220,
+      color: AppColors.softSage,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.play_circle_filled_rounded,
+              size: 56,
+              color: AppColors.primary,
+            ),
           ),
-        ),
+          const SizedBox(height: 16),
+          Text(
+            'Tap to watch video',
+            style: TextStyle(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
+          ),
+        ],
       ),
     ),
   );
@@ -484,16 +525,23 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
     body: CustomScrollView(
       slivers: [
         SliverAppBar(
-          expandedHeight: 300,
+          expandedHeight: _headerHeight,
           floating: false,
           pinned: true,
           stretch: true,
           elevation: 0,
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          // The bar keeps the category's own wash, so collapsing it reads as
+          // the artwork shrinking rather than a different surface sliding in.
+          backgroundColor: _HeaderPalette.tint,
+          foregroundColor: AppColors.ink,
+          leadingWidth: 60,
+          leading: const Padding(
+            padding: EdgeInsets.fromLTRB(12, 8, 8, 8),
+            child: _GlassBackButton(),
+          ),
           // Rounds off the bottom of the whole bar, artwork included.
           shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
           ),
           flexibleSpace: LayoutBuilder(
             builder: (context, constraints) {
@@ -502,7 +550,7 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
               // 1.0 while fully expanded, 0.0 once pinned at collapsed height.
               final expansion =
                   ((constraints.maxHeight - collapsedHeight) /
-                          (300 - collapsedHeight))
+                          (_headerHeight - collapsedHeight))
                       .clamp(0.0, 1.0);
 
               return FlexibleSpaceBar(
@@ -524,9 +572,10 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.ink,
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
                     ),
                   ),
                 ),
@@ -534,7 +583,7 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
                 // the artwork needs its own clip to get a curved bottom.
                 background: ClipRRect(
                   borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(32),
+                    bottom: Radius.circular(36),
                   ),
                   child: _ActivityHeader(
                     activity: activity,
@@ -553,10 +602,7 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
               children: [
                 // Video Section
                 if (activity.hasVideo && activity.sourceUrl.isNotEmpty) ...[
-                  if (_controller case final controller?)
-                    _buildInlinePlayer(controller)
-                  else
-                    _buildLaunchCard(),
+                  _buildVideoSection(),
                   const SizedBox(height: 32),
                 ],
 
@@ -634,9 +680,31 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
   );
 }
 
-/// The expanded artwork behind the activity title: a soft gradient with
-/// floating bubbles, a badged category icon, and a curved lip that melts into
-/// the page below. Fades out as the app bar collapses.
+/// Header artwork palette. One wash for every activity, so the whole feature
+/// reads as a single place; only the icon changes per category.
+abstract final class _HeaderPalette {
+  /// Soft plum the header fades out of.
+  static const tint = Color(0xFFEDE2F1);
+
+  /// Saturated partner to [tint], dark enough to carry small text.
+  static const accent = AppColors.primary;
+
+  static IconData iconFor(String category) => switch (category.toLowerCase()) {
+    'breathing' => Icons.air_rounded,
+    'grounding' => Icons.spa_rounded,
+    'meditation' || 'mindfulness' => Icons.self_improvement_rounded,
+    'relaxation' => Icons.bedtime_rounded,
+    'yoga' => Icons.self_improvement_rounded,
+    'asmr' => Icons.headphones_rounded,
+    'resource' => Icons.menu_book_rounded,
+    _ => Icons.favorite_rounded,
+  };
+}
+
+/// The expanded artwork behind the activity title: the plum wash melting into
+/// the page, drifting blobs and sparkles, a tilted icon tile, and the title set
+/// in ink rather than reversed out of a solid colour. Fades out as the app bar
+/// collapses.
 class _ActivityHeader extends StatelessWidget {
   const _ActivityHeader({required this.activity, required this.expansion});
 
@@ -645,82 +713,90 @@ class _ActivityHeader extends StatelessWidget {
   /// 1.0 when the app bar is fully expanded, 0.0 once it is collapsed.
   final double expansion;
 
-  static IconData _iconFor(String category) => switch (category.toLowerCase()) {
-    'breathing' => Icons.air_rounded,
-    'grounding' => Icons.spa_rounded,
-    'meditation' || 'mindfulness' => Icons.self_improvement_rounded,
-    'relaxation' => Icons.bedtime_rounded,
-    'yoga' => Icons.accessibility_new_rounded,
-    'resource' => Icons.menu_book_rounded,
-    _ => Icons.favorite_rounded,
-  };
-
   @override
   Widget build(BuildContext context) => DecoratedBox(
-    decoration: const BoxDecoration(
+    decoration: BoxDecoration(
       gradient: LinearGradient(
-        colors: [Color(0xFF8E6494), AppColors.primary, AppColors.secondary],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        // Ends on the page colour so the header dissolves into the content
+        // instead of stopping at a hard edge.
+        colors: [
+          _HeaderPalette.tint,
+          Color.lerp(_HeaderPalette.tint, Colors.white, 0.5)!,
+          AppColors.background,
+        ],
+        stops: const [0, 0.62, 1],
       ),
     ),
     child: Stack(
       fit: StackFit.expand,
       children: [
-        Positioned(top: -34, right: -26, child: _Bubble(size: 170, opacity: 0.12)),
-        Positioned(top: 72, left: -44, child: _Bubble(size: 130, opacity: 0.10)),
-        Positioned(bottom: 54, right: 46, child: _Bubble(size: 74, opacity: 0.09)),
-        Positioned(bottom: 96, left: 40, child: _Bubble(size: 38, opacity: 0.12)),
+        Positioned(
+          top: -76,
+          right: -54,
+          child: _Blob(
+            size: 260,
+            color: _HeaderPalette.accent.withValues(alpha: 0.22),
+          ),
+        ),
+        Positioned(
+          top: 84,
+          left: -70,
+          child: _Blob(
+            size: 210,
+            color: _HeaderPalette.accent.withValues(alpha: 0.16),
+          ),
+        ),
+        Positioned(
+          bottom: 10,
+          right: 20,
+          child: _Blob(size: 120, color: Colors.white.withValues(alpha: 0.7)),
+        ),
+
+        Positioned(
+          top: 104,
+          right: 52,
+          child: _Sparkle(
+            size: 20,
+            color: _HeaderPalette.accent.withValues(alpha: 0.35),
+          ),
+        ),
+        Positioned(
+          top: 168,
+          left: 32,
+          child: _Sparkle(
+            size: 12,
+            color: _HeaderPalette.accent.withValues(alpha: 0.24),
+          ),
+        ),
+        // Low enough to clear a two-line description.
+        Positioned(
+          bottom: 34,
+          left: 46,
+          child: _Sparkle(
+            size: 15,
+            color: _HeaderPalette.accent.withValues(alpha: 0.3),
+          ),
+        ),
 
         Opacity(
           opacity: expansion,
           child: SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 40, 24, 44),
+              padding: const EdgeInsets.fromLTRB(28, 18, 28, 30),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 84,
-                    height: 84,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.18),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.4),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Icon(
-                      _iconFor(activity.category),
-                      size: 40,
-                      color: Colors.white,
-                    ),
-                  ),
+                  _IconTile(icon: _HeaderPalette.iconFor(activity.category)),
                   const SizedBox(height: 18),
                   if (activity.category.isNotEmpty) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.22),
-                        borderRadius: BorderRadius.circular(AppRadii.pill),
-                      ),
-                      child: Text(
-                        activity.category.toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.3,
-                        ),
-                      ),
-                    ),
+                    _CategoryChip(label: activity.category),
                     const SizedBox(height: 14),
                   ],
+                  // Flexible so a long title or blurb ellipsises instead of
+                  // overflowing the fixed-height bar.
                   Flexible(
                     child: Text(
                       activity.title,
@@ -728,29 +804,152 @@ class _ActivityHeader extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        height: 1.25,
-                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                        fontSize: 25,
+                        height: 1.2,
+                        letterSpacing: -0.5,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
+                  if (activity.description.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Flexible(
+                      child: Text(
+                        activity.description,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 13.5,
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
         ),
-
       ],
     ),
   );
 }
 
-class _Bubble extends StatelessWidget {
-  const _Bubble({required this.size, required this.opacity});
+/// The category icon on a white squircle, with a tilted twin peeking out
+/// behind it.
+class _IconTile extends StatelessWidget {
+  const _IconTile({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 104,
+    height: 92,
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        Transform.rotate(
+          angle: 0.28,
+          child: Container(
+            width: 84,
+            height: 84,
+            decoration: BoxDecoration(
+              color: _HeaderPalette.accent.withValues(alpha: 0.28),
+              borderRadius: BorderRadius.circular(28),
+            ),
+          ),
+        ),
+        Container(
+          width: 84,
+          height: 84,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: _HeaderPalette.accent.withValues(alpha: 0.16),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Icon(icon, size: 38, color: _HeaderPalette.accent),
+        ),
+      ],
+    ),
+  );
+}
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(11, 6, 14, 6),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.75),
+      borderRadius: BorderRadius.circular(AppRadii.pill),
+      border: Border.all(color: _HeaderPalette.accent.withValues(alpha: 0.18)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: const BoxDecoration(
+            color: _HeaderPalette.accent,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 7),
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(
+            color: _HeaderPalette.accent,
+            fontSize: 10.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Back arrow on a frosted disc, so it stays legible wherever the artwork
+/// happens to be light or dark behind it.
+class _GlassBackButton extends StatelessWidget {
+  const _GlassBackButton();
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white.withValues(alpha: 0.7),
+    shape: const CircleBorder(),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: () => Navigator.of(context).maybePop(),
+      child: const Center(
+        child: Icon(Icons.arrow_back_rounded, size: 20, color: AppColors.ink),
+      ),
+    ),
+  );
+}
+
+/// A wash of colour that fades out at its own edge. A radial gradient rather
+/// than a flat circle: a hard rim reads as a shape sitting on the header
+/// instead of light falling across it.
+class _Blob extends StatelessWidget {
+  const _Blob({required this.size, required this.color});
 
   final double size;
-  final double opacity;
+  final Color color;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -758,7 +957,21 @@ class _Bubble extends StatelessWidget {
     height: size,
     decoration: BoxDecoration(
       shape: BoxShape.circle,
-      color: Colors.white.withOpacity(opacity),
+      gradient: RadialGradient(
+        colors: [color, color.withValues(alpha: 0)],
+        stops: const [0.35, 1],
+      ),
     ),
   );
+}
+
+class _Sparkle extends StatelessWidget {
+  const _Sparkle({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) =>
+      Icon(Icons.auto_awesome_rounded, size: size, color: color);
 }
