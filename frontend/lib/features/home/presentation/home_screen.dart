@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_ui.dart';
 import '../../activities/presentation/positive_engagement_screen.dart';
 import '../../activities/presentation/wellbeing_activities_screen.dart';
+import '../../games/games_quizzes_screen.dart';
 import '../../assessment/data/assessment_result.dart';
 import '../../assessment/presentation/questionnaire_screen.dart';
 import '../../auth/application/auth_provider.dart';
@@ -29,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
       const _ActivitiesPage(),
       const _ProfilePage(),
     ];
+
     const titles = ['Home', 'Stress', 'Activities', 'Profile'];
 
     return Scaffold(
@@ -65,8 +67,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _selectTab(int index) => setState(() => _selectedIndex = index);
+  void _selectTab(int index) {
+    setState(() => _selectedIndex = index);
+  }
 }
+
+// ============================================================
+// DASHBOARD PAGE
+// ============================================================
 
 class _DashboardPage extends StatelessWidget {
   const _DashboardPage({required this.onNavigate});
@@ -76,6 +84,7 @@ class _DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shezenId = context.watch<AuthProvider>().session?.shezenId ?? '';
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       children: [
@@ -83,12 +92,16 @@ class _DashboardPage extends StatelessWidget {
           'Welcome to your space',
           style: Theme.of(context).textTheme.headlineMedium,
         ),
+
         const SizedBox(height: AppSpacing.sm),
+
         const Text(
           'A quiet place to check in, reset, and support your wellbeing.',
           style: TextStyle(color: AppColors.muted),
         ),
+
         const SizedBox(height: AppSpacing.xxl),
+
         _StressHero(
           onStart: () => Navigator.of(context).push(
             MaterialPageRoute(
@@ -96,18 +109,24 @@ class _DashboardPage extends StatelessWidget {
             ),
           ),
         ),
+
         const SizedBox(height: AppSpacing.xxl),
+
         const AppSectionHeader(
           title: 'What would help right now?',
           subtitle: 'Choose one simple next step.',
         ),
+
         const SizedBox(height: AppSpacing.md),
+
         LayoutBuilder(
           builder: (context, constraints) {
             final isNarrow = constraints.maxWidth < 350;
+
             final width = isNarrow
                 ? constraints.maxWidth
                 : (constraints.maxWidth - AppSpacing.md) / 2;
+
             return Wrap(
               spacing: AppSpacing.md,
               runSpacing: AppSpacing.md,
@@ -126,13 +145,30 @@ class _DashboardPage extends StatelessWidget {
                     ),
                   ),
                 ),
+
+                SizedBox(
+                  width: width,
+                  child: AppFeatureCard(
+                    icon: Icons.games_outlined,
+                    title: 'Games & Quizzes',
+                    description:
+                        'Fun games, mindfulness activities, and quizzes.',
+                    tint: AppColors.softBlush,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const GamesQuizzesScreen(),
+                      ),
+                    ),
+                  ),
+                ),
+
                 SizedBox(
                   width: width,
                   child: AppFeatureCard(
                     icon: Icons.auto_awesome_outlined,
                     title: 'Positive engagement',
                     description: 'Affirmations and light positive activities.',
-                    tint: AppColors.softBlush,
+                    tint: AppColors.softLavender,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => const PositiveEngagementScreen(),
@@ -144,9 +180,13 @@ class _DashboardPage extends StatelessWidget {
             );
           },
         ),
+
         const SizedBox(height: AppSpacing.xxl),
+
         AppIdentityCard(shezenId: shezenId),
+
         const SizedBox(height: AppSpacing.lg),
+
         TextButton.icon(
           onPressed: () => onNavigate(3),
           icon: const Icon(Icons.manage_accounts_outlined),
@@ -157,8 +197,13 @@ class _DashboardPage extends StatelessWidget {
   }
 }
 
+// ============================================================
+// STRESS HERO
+// ============================================================
+
 class _StressHero extends StatelessWidget {
   const _StressHero({required this.onStart});
+
   final VoidCallback onStart;
 
   @override
@@ -198,19 +243,25 @@ class _StressHero extends StatelessWidget {
             ),
           ),
         ),
+
         const SizedBox(height: AppSpacing.lg),
+
         Text(
           'How are you feeling today?',
           style: Theme.of(
             context,
           ).textTheme.headlineSmall?.copyWith(color: Colors.white),
         ),
+
         const SizedBox(height: AppSpacing.sm),
+
         const Text(
           'Take a short check-in and receive a supportive, non-diagnostic result.',
           style: TextStyle(color: Color(0xFFF9EEF8), height: 1.45),
         ),
+
         const SizedBox(height: AppSpacing.xl),
+
         FilledButton.icon(
           style: FilledButton.styleFrom(
             backgroundColor: Colors.white,
@@ -224,6 +275,10 @@ class _StressHero extends StatelessWidget {
     ),
   );
 }
+
+// ============================================================
+// STRESS PAGE
+// ============================================================
 
 class _StressPage extends StatefulWidget {
   const _StressPage();
@@ -239,12 +294,15 @@ class _StressPageState extends State<_StressPage> {
   @override
   void initState() {
     super.initState();
+
     _api = ApiService();
+
     _load();
   }
 
   void _load() {
     final token = context.read<AuthProvider>().session!.token;
+
     _history = _api.myAssessments(token);
   }
 
@@ -254,12 +312,16 @@ class _StressPageState extends State<_StressPage> {
         builder: (_) => const QuestionnaireScreen(mandatory: false),
       ),
     );
-    if (mounted) setState(_load);
+
+    if (mounted) {
+      setState(_load);
+    }
   }
 
   @override
   void dispose() {
     _api.close();
+
     super.dispose();
   }
 
@@ -270,6 +332,7 @@ class _StressPageState extends State<_StressPage> {
       if (snapshot.connectionState == ConnectionState.waiting) {
         return const Center(child: CircularProgressIndicator());
       }
+
       if (snapshot.hasError) {
         return AppStateView(
           icon: Icons.cloud_off_outlined,
@@ -279,10 +342,13 @@ class _StressPageState extends State<_StressPage> {
           onAction: () => setState(_load),
         );
       }
+
       final history = snapshot.data ?? const [];
+
       return RefreshIndicator(
         onRefresh: () async {
           setState(_load);
+
           await _history;
         },
         child: ListView(
@@ -294,13 +360,17 @@ class _StressPageState extends State<_StressPage> {
               subtitle:
                   'Private results from questionnaires completed with SheZen.',
             ),
+
             const SizedBox(height: AppSpacing.lg),
+
             FilledButton.icon(
               onPressed: _startCheckIn,
               icon: const Icon(Icons.add_rounded),
               label: const Text('Start a new stress check'),
             ),
+
             const SizedBox(height: AppSpacing.xxl),
+
             if (history.isEmpty)
               const Card(
                 child: Padding(
@@ -324,16 +394,25 @@ class _StressPageState extends State<_StressPage> {
   );
 }
 
+// ============================================================
+// ASSESSMENT CARD
+// ============================================================
+
 class _AssessmentCard extends StatelessWidget {
   const _AssessmentCard({required this.item});
+
   final AssessmentSummary item;
 
   @override
   Widget build(BuildContext context) {
     final date = item.completedAt?.toLocal();
+
     final dateText = date == null
         ? 'Completed'
-        : '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+        : '${date.day.toString().padLeft(2, '0')}/'
+              '${date.month.toString().padLeft(2, '0')}/'
+              '${date.year}';
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -346,7 +425,9 @@ class _AssessmentCard extends StatelessWidget {
                 color: AppColors.primary,
               ),
             ),
+
             const SizedBox(width: AppSpacing.md),
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -357,6 +438,7 @@ class _AssessmentCard extends StatelessWidget {
                         : 'Completed stress check',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
+
                   Text(
                     dateText,
                     style: const TextStyle(color: AppColors.muted),
@@ -364,6 +446,7 @@ class _AssessmentCard extends StatelessWidget {
                 ],
               ),
             ),
+
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -382,6 +465,10 @@ class _AssessmentCard extends StatelessWidget {
   }
 }
 
+// ============================================================
+// ACTIVITIES PAGE
+// ============================================================
+
 class _ActivitiesPage extends StatelessWidget {
   const _ActivitiesPage();
 
@@ -393,7 +480,10 @@ class _ActivitiesPage extends StatelessWidget {
         title: 'Activities',
         subtitle: 'Explore content published by the SheZen wellbeing team.',
       ),
+
       const SizedBox(height: AppSpacing.xl),
+
+      // WELLBEING ACTIVITIES
       _LargeNavigationCard(
         icon: Icons.spa_outlined,
         title: 'Wellbeing activities',
@@ -404,13 +494,30 @@ class _ActivitiesPage extends StatelessWidget {
           MaterialPageRoute(builder: (_) => const WellbeingActivitiesScreen()),
         ),
       ),
+
       const SizedBox(height: AppSpacing.md),
+
+      // GAMES & QUIZZES
+      _LargeNavigationCard(
+        icon: Icons.games_outlined,
+        title: 'Games & Quizzes',
+        description:
+            'Fun games, mindfulness activities, quizzes, and positive challenges.',
+        color: AppColors.softBlush,
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const GamesQuizzesScreen())),
+      ),
+
+      const SizedBox(height: AppSpacing.md),
+
+      // POSITIVE ENGAGEMENT
       _LargeNavigationCard(
         icon: Icons.auto_awesome_outlined,
         title: 'Positive engagement',
         description:
             'Friendly affirmations, quizzes, motivational prompts, and light activities.',
-        color: AppColors.softBlush,
+        color: AppColors.softLavender,
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const PositiveEngagementScreen()),
         ),
@@ -418,6 +525,10 @@ class _ActivitiesPage extends StatelessWidget {
     ],
   );
 }
+
+// ============================================================
+// LARGE NAVIGATION CARD
+// ============================================================
 
 class _LargeNavigationCard extends StatelessWidget {
   const _LargeNavigationCard({
@@ -427,6 +538,7 @@ class _LargeNavigationCard extends StatelessWidget {
     required this.color,
     required this.onTap,
   });
+
   final IconData icon;
   final String title;
   final String description;
@@ -448,13 +560,17 @@ class _LargeNavigationCard extends StatelessWidget {
               backgroundColor: AppColors.surface,
               child: Icon(icon, color: AppColors.primary),
             ),
+
             const SizedBox(width: AppSpacing.lg),
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title, style: Theme.of(context).textTheme.titleLarge),
+
                   const SizedBox(height: AppSpacing.xs),
+
                   Text(
                     description,
                     style: const TextStyle(color: AppColors.muted),
@@ -462,6 +578,7 @@ class _LargeNavigationCard extends StatelessWidget {
                 ],
               ),
             ),
+
             const Icon(Icons.chevron_right_rounded),
           ],
         ),
@@ -470,17 +587,24 @@ class _LargeNavigationCard extends StatelessWidget {
   );
 }
 
+// ============================================================
+// PROFILE PAGE
+// ============================================================
+
 class _ProfilePage extends StatelessWidget {
   const _ProfilePage();
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       children: [
         AppIdentityCard(shezenId: auth.session?.shezenId ?? ''),
+
         const SizedBox(height: AppSpacing.xxl),
+
         _LargeNavigationCard(
           icon: Icons.manage_accounts_outlined,
           title: 'Profile & account',
@@ -491,7 +615,9 @@ class _ProfilePage extends StatelessWidget {
             context,
           ).push(MaterialPageRoute(builder: (_) => const ProfileViewScreen())),
         ),
+
         const SizedBox(height: AppSpacing.xxl),
+
         OutlinedButton.icon(
           onPressed: auth.isLoading ? null : auth.logout,
           icon: const Icon(Icons.logout_rounded),

@@ -1,0 +1,1131 @@
+import 'package:flutter/material.dart';
+
+import '../../core/theme/app_theme.dart';
+import 'gratitude_jar_screen.dart';
+import 'mindful_spark_screen.dart';
+import 'mindful_memory_screen.dart';
+
+class GamesQuizzesScreen extends StatelessWidget {
+  const GamesQuizzesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Games & Quizzes'), centerTitle: true),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ============================================================
+              // HEADER
+              // ============================================================
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: AppColors.softLavender,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 32,
+                        color: AppColors.primary,
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    Text(
+                      'Take a mindful break',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    const Text(
+                      'Explore simple activities and quizzes designed '
+                      'to help you pause, reflect and reset.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.muted, height: 1.45),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              // ============================================================
+              // GAMES
+              // ============================================================
+              Text(
+                'GAMES',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              // Breathing Challenge
+              _GameCard(
+                icon: Icons.air_rounded,
+                title: 'Breathing Challenge',
+                description:
+                    'Follow a simple breathing rhythm and take a calm moment.',
+                color: AppColors.softSage,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const BreathingGameScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              // Gratitude Jar
+              _GameCard(
+                icon: Icons.favorite_rounded,
+                title: 'Gratitude Jar',
+                description:
+                    'Write down something positive and add it to your gratitude jar.',
+                color: AppColors.softBlush,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const GratitudeJarScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              // Mindful Spark
+              _GameCard(
+                icon: Icons.auto_awesome_rounded,
+                title: 'Mindful Spark',
+                description:
+                    'Gently tap the sparks as they appear and practise noticing the moment.',
+                color: AppColors.softLavender,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MindfulSparkScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              // Mindful Memory
+              _GameCard(
+                icon: Icons.psychology_outlined,
+                title: 'Mindful Memory',
+                description:
+                    'Match peaceful symbols and practise your memory mindfully.',
+                color: AppColors.softSage,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MindfulMemoryScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 32),
+
+              // ============================================================
+              // QUIZZES
+              // ============================================================
+              Text(
+                'QUIZZES',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              // Wellbeing Quiz
+              _GameCard(
+                icon: Icons.spa_rounded,
+                title: 'Wellbeing Quiz',
+                description:
+                    'Answer simple questions about healthy wellbeing habits and self-care.',
+                color: AppColors.softBlush,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const WellbeingQuizScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              // Mindfulness Quiz
+              _GameCard(
+                icon: Icons.self_improvement_rounded,
+                title: 'Mindfulness Quiz',
+                description:
+                    'Test your knowledge of mindfulness and mindful habits.',
+                color: AppColors.softLavender,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MindfulnessQuizScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// GAME CARD
+// ============================================================
+
+class _GameCard extends StatelessWidget {
+  const _GameCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Ink(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.08),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.05),
+                blurRadius: 12,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.surface.withValues(alpha: 0.85),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: AppColors.primary, size: 28),
+              ),
+
+              const SizedBox(width: 16),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+
+                    const SizedBox(height: 5),
+
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 8),
+
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.surface.withValues(alpha: 0.75),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 15,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// BREATHING CHALLENGE
+// ============================================================
+
+class BreathingGameScreen extends StatefulWidget {
+  const BreathingGameScreen({super.key});
+
+  @override
+  State<BreathingGameScreen> createState() => _BreathingGameScreenState();
+}
+
+class _BreathingGameScreenState extends State<BreathingGameScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  bool _started = false;
+  int _round = 0;
+
+  final int _totalRounds = 3;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _startBreathing() {
+    setState(() {
+      _started = true;
+      _round = 0;
+    });
+
+    _runRound();
+  }
+
+  Future<void> _runRound() async {
+    for (int i = 0; i < _totalRounds; i++) {
+      if (!mounted) return;
+
+      setState(() {
+        _round = i + 1;
+      });
+
+      await _controller.forward(from: 0);
+
+      if (!mounted) return;
+
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (!mounted) return;
+
+      await _controller.reverse();
+
+      if (!mounted) return;
+
+      await Future.delayed(const Duration(seconds: 2));
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _started = false;
+    });
+
+    _showCompleteDialog();
+  }
+
+  void _showCompleteDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: const Text('Well done'),
+          content: const Text(
+            'You completed the breathing challenge. '
+            'Take a moment to notice how you feel.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Done'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Breathing Challenge')),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+
+              const Icon(Icons.air_rounded, size: 44, color: AppColors.primary),
+
+              const SizedBox(height: 16),
+
+              Text(
+                'Breathe with intention',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              const Text(
+                'Follow the circle and give yourself a quiet moment.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.muted, height: 1.4),
+              ),
+
+              const SizedBox(height: 50),
+
+              Expanded(
+                child: Center(
+                  child: AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, child) {
+                      final double scale = 0.72 + (_controller.value * 0.28);
+
+                      return Transform.scale(
+                        scale: scale,
+                        child: Container(
+                          width: 210,
+                          height: 210,
+                          decoration: BoxDecoration(
+                            color: AppColors.softLavender,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              !_started
+                                  ? 'Ready'
+                                  : _controller.value < 0.5
+                                  ? 'Breathe in'
+                                  : 'Breathe out',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+
+              if (_started)
+                Text(
+                  'Round $_round / $_totalRounds',
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+              const SizedBox(height: 16),
+
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _started ? null : _startBreathing,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Text(_started ? 'Breathing...' : 'Start challenge'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// WELLBEING QUIZ
+// ============================================================
+
+class WellbeingQuizScreen extends StatefulWidget {
+  const WellbeingQuizScreen({super.key});
+
+  @override
+  State<WellbeingQuizScreen> createState() => _WellbeingQuizScreenState();
+}
+
+class _WellbeingQuizScreenState extends State<WellbeingQuizScreen> {
+  final List<_QuizQuestion> _questions = const [
+    _QuizQuestion(
+      question:
+          'Which activity can help you take a healthy break during a busy day?',
+      options: [
+        'Taking a short walk',
+        'Skipping every break',
+        'Ignoring how you feel',
+        'Staying focused without resting',
+      ],
+      correctIndex: 0,
+    ),
+    _QuizQuestion(
+      question: 'What is a positive way to respond when you feel overwhelmed?',
+      options: [
+        'Take a moment to pause and breathe',
+        'Keep everything to yourself',
+        'Ignore the feeling',
+        'Rush through everything',
+      ],
+      correctIndex: 0,
+    ),
+    _QuizQuestion(
+      question: 'Why can getting enough sleep support wellbeing?',
+      options: [
+        'It gives your body and mind time to recover',
+        'It means you never need breaks',
+        'It removes every problem',
+        'It replaces healthy habits',
+      ],
+      correctIndex: 0,
+    ),
+    _QuizQuestion(
+      question: 'Which is an example of positive self-care?',
+      options: [
+        'Making time for activities that help you recharge',
+        'Never asking for help',
+        'Ignoring your needs',
+        'Constantly comparing yourself with others',
+      ],
+      correctIndex: 0,
+    ),
+    _QuizQuestion(
+      question: 'What can help build a positive daily routine?',
+      options: [
+        'Small realistic habits',
+        'Trying to change everything at once',
+        'Skipping meals and breaks',
+        'Never adjusting your routine',
+      ],
+      correctIndex: 0,
+    ),
+  ];
+
+  int _currentQuestion = 0;
+  int _score = 0;
+  int? _selectedAnswer;
+  bool _answered = false;
+
+  void _selectAnswer(int index) {
+    if (_answered) return;
+
+    setState(() {
+      _selectedAnswer = index;
+      _answered = true;
+
+      if (index == _questions[_currentQuestion].correctIndex) {
+        _score++;
+      }
+    });
+  }
+
+  void _nextQuestion() {
+    if (!_answered) return;
+
+    if (_currentQuestion == _questions.length - 1) {
+      _showResults();
+      return;
+    }
+
+    setState(() {
+      _currentQuestion++;
+      _selectedAnswer = null;
+      _answered = false;
+    });
+  }
+
+  void _restartQuiz() {
+    setState(() {
+      _currentQuestion = 0;
+      _score = 0;
+      _selectedAnswer = null;
+      _answered = false;
+    });
+  }
+
+  void _showResults() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: const Text('Quiz complete'),
+          content: Text(
+            'You scored $_score out of '
+            '${_questions.length}.\n\n'
+            'Keep learning about small habits '
+            'that can support your wellbeing.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _restartQuiz();
+              },
+              child: const Text('Try again'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              child: const Text('Done'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final question = _questions[_currentQuestion];
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Wellbeing Quiz')),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              LinearProgressIndicator(
+                value: (_currentQuestion + 1) / _questions.length,
+                minHeight: 7,
+                borderRadius: BorderRadius.circular(20),
+                backgroundColor: AppColors.softLavender,
+                color: AppColors.primary,
+              ),
+
+              const SizedBox(height: 20),
+
+              Text(
+                'Question ${_currentQuestion + 1} '
+                'of ${_questions.length}',
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: AppColors.softLavender,
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Text(
+                  question.question,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              ...List.generate(question.options.length, (index) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _AnswerCard(
+                    text: question.options[index],
+                    optionIndex: index,
+                    selected: _selectedAnswer == index,
+                    answered: _answered,
+                    correct: index == question.correctIndex,
+                    onTap: () => _selectAnswer(index),
+                  ),
+                );
+              }),
+
+              const SizedBox(height: 12),
+
+              if (_answered)
+                Text(
+                  _selectedAnswer == question.correctIndex
+                      ? 'Correct. Good job.'
+                      : 'Keep going. The correct answer is highlighted.',
+                  style: TextStyle(
+                    color: _selectedAnswer == question.correctIndex
+                        ? AppColors.primary
+                        : AppColors.muted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+              const SizedBox(height: 20),
+
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _answered ? _nextQuestion : null,
+                  child: Text(
+                    _currentQuestion == _questions.length - 1
+                        ? 'See results'
+                        : 'Next question',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// MINDFULNESS QUIZ
+// ============================================================
+
+class MindfulnessQuizScreen extends StatefulWidget {
+  const MindfulnessQuizScreen({super.key});
+
+  @override
+  State<MindfulnessQuizScreen> createState() => _MindfulnessQuizScreenState();
+}
+
+class _MindfulnessQuizScreenState extends State<MindfulnessQuizScreen> {
+  final List<_QuizQuestion> _questions = const [
+    _QuizQuestion(
+      question: 'What does mindfulness encourage you to do?',
+      options: [
+        'Notice the present moment',
+        'Think about everything at once',
+        'Avoid every thought',
+        'Rush through activities',
+      ],
+      correctIndex: 0,
+    ),
+    _QuizQuestion(
+      question: 'Which can be part of a mindfulness practice?',
+      options: [
+        'Paying attention to your breathing',
+        'Ignoring your surroundings',
+        'Multitasking constantly',
+        'Trying to control every thought',
+      ],
+      correctIndex: 0,
+    ),
+    _QuizQuestion(
+      question: 'If your mind wanders during mindfulness, what can you do?',
+      options: [
+        'Gently bring your attention back',
+        'Give up immediately',
+        'Become frustrated with yourself',
+        'Try to force your mind to stop',
+      ],
+      correctIndex: 0,
+    ),
+    _QuizQuestion(
+      question: 'Mindfulness can be practised during which activity?',
+      options: [
+        'Everyday activities such as walking or eating',
+        'Only during formal meditation',
+        'Only before sleeping',
+        'Only in complete silence',
+      ],
+      correctIndex: 0,
+    ),
+    _QuizQuestion(
+      question: 'What is a helpful attitude during mindfulness?',
+      options: [
+        'Curiosity and kindness toward your experience',
+        'Judging yourself',
+        'Expecting perfection',
+        'Rushing to finish',
+      ],
+      correctIndex: 0,
+    ),
+  ];
+
+  int _currentQuestion = 0;
+  int _score = 0;
+  int? _selectedAnswer;
+  bool _answered = false;
+
+  void _selectAnswer(int index) {
+    if (_answered) return;
+
+    setState(() {
+      _selectedAnswer = index;
+      _answered = true;
+
+      if (index == _questions[_currentQuestion].correctIndex) {
+        _score++;
+      }
+    });
+  }
+
+  void _nextQuestion() {
+    if (!_answered) return;
+
+    if (_currentQuestion == _questions.length - 1) {
+      _showResults();
+      return;
+    }
+
+    setState(() {
+      _currentQuestion++;
+      _selectedAnswer = null;
+      _answered = false;
+    });
+  }
+
+  void _restartQuiz() {
+    setState(() {
+      _currentQuestion = 0;
+      _score = 0;
+      _selectedAnswer = null;
+      _answered = false;
+    });
+  }
+
+  void _showResults() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: const Text('Quiz complete'),
+          content: Text(
+            'You scored $_score out of '
+            '${_questions.length}.\n\n'
+            'Mindfulness is a skill that can be '
+            'practised through small moments of attention.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _restartQuiz();
+              },
+              child: const Text('Try again'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              child: const Text('Done'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final question = _questions[_currentQuestion];
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Mindfulness Quiz')),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              LinearProgressIndicator(
+                value: (_currentQuestion + 1) / _questions.length,
+                minHeight: 7,
+                borderRadius: BorderRadius.circular(20),
+                backgroundColor: AppColors.softLavender,
+                color: AppColors.primary,
+              ),
+
+              const SizedBox(height: 20),
+
+              Text(
+                'Question ${_currentQuestion + 1} '
+                'of ${_questions.length}',
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: AppColors.softSage,
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Text(
+                  question.question,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              ...List.generate(question.options.length, (index) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _AnswerCard(
+                    text: question.options[index],
+                    optionIndex: index,
+                    selected: _selectedAnswer == index,
+                    answered: _answered,
+                    correct: index == question.correctIndex,
+                    onTap: () => _selectAnswer(index),
+                  ),
+                );
+              }),
+
+              const SizedBox(height: 12),
+
+              if (_answered)
+                Text(
+                  _selectedAnswer == question.correctIndex
+                      ? 'Correct. Well done.'
+                      : 'Keep going. The correct answer is highlighted.',
+                  style: TextStyle(
+                    color: _selectedAnswer == question.correctIndex
+                        ? AppColors.primary
+                        : AppColors.muted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+              const SizedBox(height: 20),
+
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _answered ? _nextQuestion : null,
+                  child: Text(
+                    _currentQuestion == _questions.length - 1
+                        ? 'See results'
+                        : 'Next question',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// QUIZ QUESTION MODEL
+// ============================================================
+
+class _QuizQuestion {
+  const _QuizQuestion({
+    required this.question,
+    required this.options,
+    required this.correctIndex,
+  });
+
+  final String question;
+  final List<String> options;
+  final int correctIndex;
+}
+
+// ============================================================
+// ANSWER CARD
+// ============================================================
+
+class _AnswerCard extends StatelessWidget {
+  const _AnswerCard({
+    required this.text,
+    required this.optionIndex,
+    required this.selected,
+    required this.answered,
+    required this.correct,
+    required this.onTap,
+  });
+
+  final String text;
+  final int optionIndex;
+  final bool selected;
+  final bool answered;
+  final bool correct;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    Color backgroundColor = AppColors.surface;
+
+    Color borderColor = AppColors.primary.withValues(alpha: 0.12);
+
+    if (answered && correct) {
+      backgroundColor = AppColors.softSage;
+      borderColor = AppColors.primary;
+    } else if (answered && selected) {
+      backgroundColor = AppColors.softBlush;
+      borderColor = AppColors.primary;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: answered ? null : onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          width: double.infinity,
+          padding: const EdgeInsets.all(17),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: borderColor, width: 1.5),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: const BoxDecoration(
+                  color: AppColors.softLavender,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    String.fromCharCode(65 + optionIndex),
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              Expanded(
+                child: Text(
+                  text,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 14,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+
+              if (answered && correct)
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.primary,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
