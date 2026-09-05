@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
@@ -44,9 +45,26 @@ class StudentIdentity extends Model
         return $this->hasMany(StressAssessment::class);
     }
 
+    public function latestAssessment(): HasOne
+    {
+        return $this->hasOne(StressAssessment::class)
+            ->where('assessment_status', 'completed')
+            ->latestOfMany('completed_at');
+    }
+
     public function interventionUsages(): HasMany
     {
         return $this->hasMany(InterventionUsage::class);
+    }
+
+    public function favouriteGuidance(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            PersonalGuidance::class,
+            'personal_guidance_favourites',
+            'student_identity_id',
+            'personal_guidance_id',
+        )->withTimestamps();
     }
 
     public function progressEntries(): HasMany

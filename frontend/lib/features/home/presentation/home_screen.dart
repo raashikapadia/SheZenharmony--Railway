@@ -8,8 +8,10 @@ import '../../activities/presentation/positive_engagement_screen.dart';
 import '../../activities/presentation/wellbeing_activities_screen.dart';
 import '../../games/games_quizzes_screen.dart';
 import '../../assessment/data/assessment_result.dart';
+import '../../assessment/presentation/assessment_detail_screen.dart';
 import '../../assessment/presentation/questionnaire_screen.dart';
 import '../../auth/application/auth_provider.dart';
+import '../../guidance/presentation/personal_guidance_card.dart';
 import '../../profile/presentation/profile_view_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -99,6 +101,10 @@ class _DashboardPage extends StatelessWidget {
           'A quiet place to check in, reset, and support your wellbeing.',
           style: TextStyle(color: AppColors.muted),
         ),
+
+        const SizedBox(height: AppSpacing.xxl),
+
+        const PersonalGuidanceCard(),
 
         const SizedBox(height: AppSpacing.xxl),
 
@@ -414,51 +420,62 @@ class _AssessmentCard extends StatelessWidget {
               '${date.year}';
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Row(
-          children: [
-            const CircleAvatar(
-              backgroundColor: AppColors.softLavender,
-              child: Icon(
-                Icons.monitor_heart_outlined,
-                color: AppColors.primary,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => AssessmentDetailScreen(assessmentId: item.id),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Row(
+            children: [
+              const CircleAvatar(
+                backgroundColor: AppColors.softLavender,
+                child: Icon(
+                  Icons.monitor_heart_outlined,
+                  color: AppColors.primary,
+                ),
               ),
-            ),
 
-            const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: AppSpacing.md),
 
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.bandLabel?.isNotEmpty == true
-                        ? item.bandLabel!
-                        : 'Completed stress check',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.bandLabel?.isNotEmpty == true
+                          ? item.bandLabel!
+                          : 'Completed stress check',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
 
-                  Text(
-                    dateText,
-                    style: const TextStyle(color: AppColors.muted),
-                  ),
-                ],
+                    Text(
+                      dateText,
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.softSage,
-                borderRadius: BorderRadius.circular(AppRadii.pill),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.softSage,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+                child: Text(
+                  '${item.totalScore}',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
               ),
-              child: Text(
-                '${item.totalScore}',
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

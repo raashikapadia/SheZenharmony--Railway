@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AssessmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\InterventionController;
+use App\Http\Controllers\Api\PersonalGuidanceController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\QuestionnaireController;
@@ -28,11 +29,18 @@ Route::prefix('v1')->group(function (): void {
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/assessments', [AssessmentController::class, 'index']);
         Route::post('/assessments', [AssessmentController::class, 'store']);
+        Route::get('/assessments/{assessment}', [AssessmentController::class, 'show']);
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::delete('/auth/account', [AuthController::class, 'destroy']);
         Route::get('/profile', [ProfileController::class, 'show']);
         Route::put('/profile', [ProfileController::class, 'update']);
+
+        Route::get('/personal-guidance/current', [PersonalGuidanceController::class, 'current']);
+        Route::get('/personal-guidance/another', [PersonalGuidanceController::class, 'another']);
+        Route::get('/personal-guidance/favourites', [PersonalGuidanceController::class, 'favourites']);
+        Route::post('/personal-guidance/{guidance}/favourite', [PersonalGuidanceController::class, 'favourite']);
+        Route::delete('/personal-guidance/{guidance}/favourite', [PersonalGuidanceController::class, 'unfavourite']);
     });
 
     Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->name('api.admin.')->group(function (): void {

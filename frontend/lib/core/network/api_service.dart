@@ -7,8 +7,10 @@ import '../../features/admin_questionnaires/data/questionnaire.dart';
 import '../../features/admin_questionnaires/data/score_band.dart';
 import '../../features/admin_questionnaires/data/stress_question.dart';
 import '../../features/activities/data/support_content.dart';
+import '../../features/assessment/data/assessment_detail.dart';
 import '../../features/assessment/data/assessment_questionnaire.dart';
 import '../../features/assessment/data/assessment_result.dart';
+import '../../features/guidance/data/personal_guidance.dart';
 import '../../features/auth/data/auth_session.dart';
 import '../../features/auth/data/auth_challenge.dart';
 import '../config/api_config.dart';
@@ -324,6 +326,16 @@ class ApiService {
         .toList();
   }
 
+  /// One completed assessment belonging to the authenticated student. The
+  /// backend enforces ownership and returns 404 for anyone else's id.
+  Future<AssessmentDetail> assessmentDetail(String token, int id) async {
+    final body = await _getJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/assessments/$id'),
+      token,
+    );
+    return AssessmentDetail.fromJson(body['data'] as Map<String, dynamic>);
+  }
+
   Future<List<WellbeingActivity>> wellbeingActivities() async {
     final responses = await Future.wait([
       _getPublicJson(Uri.parse('${ApiConfig.baseUrl}/v1/wellbeing-activities')),
@@ -359,6 +371,62 @@ class ApiService {
         .map(PositiveContent.fromJson)
         .toList();
   }
+
+  // ---------------------------------------------------------------------
+  // Personal Guidance (student Home Page) — small, admin-authored moments
+  // of encouragement. Separate from wellbeing activities and stress content.
+  // ---------------------------------------------------------------------
+
+  /// Today's guidance, or null when the admin has nothing published (the
+  /// caller shows a gentle empty state rather than an error).
+  Future<PersonalGuidance?> currentGuidance(String token) async {
+    final body = await _getJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/personal-guidance/current'),
+      token,
+    );
+    return _guidanceOrNull(body['data']);
+  }
+
+  Future<PersonalGuidance?> anotherGuidance(
+    String token, {
+    int? excludeId,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/v1/personal-guidance/another')
+        .replace(
+          queryParameters: {
+            if (excludeId != null) 'exclude': excludeId.toString(),
+          },
+        );
+    final body = await _getJson(uri, token);
+    return _guidanceOrNull(body['data']);
+  }
+
+  Future<List<PersonalGuidance>> favouriteGuidance(String token) async {
+    final body = await _getJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/personal-guidance/favourites'),
+      token,
+    );
+    return (body['data'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(PersonalGuidance.fromJson)
+        .toList();
+  }
+
+  Future<void> setGuidanceFavourite(
+    String token,
+    int id, {
+    required bool favourite,
+  }) async {
+    await _sendJson(
+      favourite ? 'POST' : 'DELETE',
+      Uri.parse('${ApiConfig.baseUrl}/v1/personal-guidance/$id/favourite'),
+      token,
+      null,
+    );
+  }
+
+  PersonalGuidance? _guidanceOrNull(Object? data) =>
+      data is Map<String, dynamic> ? PersonalGuidance.fromJson(data) : null;
 
   // ---------------------------------------------------------------------
   // Admin: questionnaires

@@ -74,6 +74,7 @@ class _AssessmentApiService extends ApiService {
     return const AssessmentResult(
       assessmentId: 99,
       totalScore: 3,
+      scoreOutOf: 100,
       bandCode: 'demo',
       bandLabel: 'Supportive demo tier',
     );

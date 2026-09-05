@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../activities/presentation/wellbeing_activities_screen.dart';
 import '../../auth/application/auth_provider.dart';
 import '../data/assessment_result.dart';
+import 'widgets/recommended_support.dart';
 
 class AssessmentResultScreen extends StatelessWidget {
   const AssessmentResultScreen({
@@ -68,35 +69,47 @@ class AssessmentResultScreen extends StatelessWidget {
                         child: Column(
                           children: [
                             Text(
-                              'Your current stress result',
+                              'Your Stress Score',
                               style: Theme.of(context).textTheme.titleSmall
                                   ?.copyWith(color: colors.onPrimaryContainer),
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              result.bandLabel,
+                              '${result.totalScore} / ${result.scoreOutOf}',
                               textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.headlineMedium
+                              style: Theme.of(context).textTheme.displaySmall
                                   ?.copyWith(
                                     fontWeight: FontWeight.w800,
                                     color: colors.primary,
                                   ),
                             ),
                             const SizedBox(height: 18),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: colors.surface.withValues(alpha: 0.75),
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: Text(
-                                'Score ${result.totalScore}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            Text(
+                              'Stress Level',
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(color: colors.onPrimaryContainer),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              result.bandLabel,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: colors.primary,
+                                  ),
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              'Assessment Date',
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(color: colors.onPrimaryContainer),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              formatLongDate(result.completedAt),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ],
@@ -128,6 +141,12 @@ class AssessmentResultScreen extends StatelessWidget {
                         ],
                       ),
                     ),
+                    if (result.recommendedInterventions.isNotEmpty) ...[
+                      const SizedBox(height: 22),
+                      RecommendedSupportSection(
+                        items: result.recommendedInterventions,
+                      ),
+                    ],
                     const SizedBox(height: 22),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
