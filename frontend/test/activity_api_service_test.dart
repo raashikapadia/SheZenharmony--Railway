@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shezen_harmony/core/network/api_service.dart';
+import 'package:shezen_harmony/features/activities/data/support_content.dart';
 
 void main() {
   test(
@@ -89,5 +90,29 @@ void main() {
 
     expect(content.single.title, 'Gratitude reflection');
     expect(content.single.contentType, 'journaling');
+  });
+
+  test('video URLs on support content use the video player flow', () {
+    final youtubeActivity = WellbeingActivity.fromInterventionJson({
+      'title': 'New meditation video',
+      'description': 'A newly published video.',
+      'content_type': 'mindfulness',
+      'instructions': 'Find a comfortable place before starting.',
+      'external_url': 'youtu.be/dQw4w9WgXcQ',
+    });
+    final tiktokActivity = WellbeingActivity.fromInterventionJson({
+      'title': 'New movement video',
+      'content_type': 'activity',
+      'external_url': 'https://www.tiktok.com/@example/video/1234567890',
+    });
+
+    expect(youtubeActivity.hasVideo, isTrue);
+    expect(youtubeActivity.sourceType, 'youtube');
+    expect(
+      youtubeActivity.instructions,
+      'Find a comfortable place before starting.',
+    );
+    expect(tiktokActivity.hasVideo, isTrue);
+    expect(tiktokActivity.sourceType, 'tiktok');
   });
 }

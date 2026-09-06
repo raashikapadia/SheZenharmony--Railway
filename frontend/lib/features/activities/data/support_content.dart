@@ -17,27 +17,58 @@ class WellbeingActivity {
   final String instructions;
   final bool hasVideo;
 
-  factory WellbeingActivity.fromJson(Map<String, dynamic> json) =>
-      WellbeingActivity(
-        title: json['title'] as String? ?? 'Wellbeing activity',
-        description: json['description'] as String? ?? '',
-        category: json['category'] as String? ?? 'Wellbeing',
-        sourceUrl: json['video_url'] as String? ?? '',
-        sourceType: json['video_type'] as String? ?? 'video',
-        instructions: '',
-        hasVideo: true,
-      );
+  factory WellbeingActivity.fromJson(Map<String, dynamic> json) {
+    final sourceUrl = json['video_url'] as String? ?? '';
+    final declaredType = (json['video_type'] as String? ?? 'video')
+        .trim()
+        .toLowerCase();
 
-  factory WellbeingActivity.fromInterventionJson(Map<String, dynamic> json) =>
-      WellbeingActivity(
-        title: json['title'] as String? ?? 'Wellbeing activity',
-        description: json['description'] as String? ?? '',
-        category: _categoryLabel(json['content_type'] as String?),
-        sourceUrl: json['external_url'] as String? ?? '',
-        sourceType: 'guided',
-        instructions: json['instructions'] as String? ?? '',
-        hasVideo: false,
-      );
+    return WellbeingActivity(
+      title: json['title'] as String? ?? 'Wellbeing activity',
+      description: json['description'] as String? ?? '',
+      category: json['category'] as String? ?? 'Wellbeing',
+      sourceUrl: sourceUrl,
+      sourceType: _videoTypeFromUrl(sourceUrl) ?? declaredType,
+      instructions: '',
+      hasVideo: sourceUrl.trim().isNotEmpty,
+    );
+  }
+
+  factory WellbeingActivity.fromInterventionJson(Map<String, dynamic> json) {
+    final sourceUrl = json['external_url'] as String? ?? '';
+    final videoType = _videoTypeFromUrl(sourceUrl);
+
+    return WellbeingActivity(
+      title: json['title'] as String? ?? 'Wellbeing activity',
+      description: json['description'] as String? ?? '',
+      category: _categoryLabel(json['content_type'] as String?),
+      sourceUrl: sourceUrl,
+      sourceType: videoType ?? 'guided',
+      instructions: json['instructions'] as String? ?? '',
+      hasVideo: videoType != null,
+    );
+  }
+
+  static String? _videoTypeFromUrl(String sourceUrl) {
+    var url = sourceUrl.trim();
+    if (url.isEmpty) return null;
+    if (!url.startsWith(RegExp(r'[a-zA-Z][a-zA-Z0-9+.-]*:'))) {
+      url = 'https://$url';
+    }
+
+    final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+    if (host == 'youtu.be' ||
+        host == 'youtube.com' ||
+        host.endsWith('.youtube.com') ||
+        host == 'youtube-nocookie.com' ||
+        host.endsWith('.youtube-nocookie.com')) {
+      return 'youtube';
+    }
+    if (host == 'tiktok.com' || host.endsWith('.tiktok.com')) {
+      return 'tiktok';
+    }
+    return null;
+  }
 
   static String _categoryLabel(String? type) => switch (type) {
     'breathing' => 'Breathing',

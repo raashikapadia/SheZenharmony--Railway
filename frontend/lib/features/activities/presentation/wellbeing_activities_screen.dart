@@ -33,6 +33,12 @@ class _WellbeingActivitiesScreenState extends State<WellbeingActivitiesScreen> {
 
   void _load() => _activities = _api.wellbeingActivities();
 
+  Future<void> _refresh() async {
+    final activities = _api.wellbeingActivities();
+    setState(() => _activities = activities);
+    await activities;
+  }
+
   @override
   void dispose() {
     if (widget._injectedApiService == null) _api.close();
@@ -67,23 +73,28 @@ class _WellbeingActivitiesScreenState extends State<WellbeingActivitiesScreen> {
                   'New wellbeing activities will appear here when they are published.',
             );
           }
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-            itemCount: activities.length + 1,
-            separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return const Padding(
-                  padding: EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: AppSectionHeader(
-                    title: 'Choose a moment for you',
-                    subtitle: 'Simple activities published by the SheZen team.',
-                  ),
-                );
-              }
-              final activity = activities[index - 1];
-              return _ActivityCard(activity: activity);
-            },
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              itemCount: activities.length + 1,
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return const Padding(
+                    padding: EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: AppSectionHeader(
+                      title: 'Choose a moment for you',
+                      subtitle:
+                          'Simple activities published by the SheZen team.',
+                    ),
+                  );
+                }
+                final activity = activities[index - 1];
+                return _ActivityCard(activity: activity);
+              },
+            ),
           );
         },
       ),
@@ -100,7 +111,8 @@ class _ActivityCard extends StatefulWidget {
   State<_ActivityCard> createState() => _ActivityCardState();
 }
 
-class _ActivityCardState extends State<_ActivityCard> with SingleTickerProviderStateMixin {
+class _ActivityCardState extends State<_ActivityCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _hoverController;
   late Animation<double> _hoverAnimation;
 
@@ -177,7 +189,8 @@ class _ActivityCardState extends State<_ActivityCard> with SingleTickerProviderS
             child: GestureDetector(
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => _ActivityDetailScreen(activity: widget.activity),
+                  builder: (_) =>
+                      _ActivityDetailScreen(activity: widget.activity),
                 ),
               ),
               child: Container(
@@ -195,9 +208,7 @@ class _ActivityCardState extends State<_ActivityCard> with SingleTickerProviderS
                   borderRadius: BorderRadius.circular(20),
                   child: Stack(
                     children: [
-                      Container(
-                        decoration: BoxDecoration(gradient: gradient),
-                      ),
+                      Container(decoration: BoxDecoration(gradient: gradient)),
                       Padding(
                         padding: const EdgeInsets.all(20),
                         child: Row(
@@ -229,23 +240,32 @@ class _ActivityCardState extends State<_ActivityCard> with SingleTickerProviderS
                                 children: [
                                   Text(
                                     widget.activity.category.toUpperCase(),
-                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: .8,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: .8,
+                                        ),
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
                                     widget.activity.title,
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  if (widget.activity.description.isNotEmpty) ...[
+                                  if (widget
+                                      .activity
+                                      .description
+                                      .isNotEmpty) ...[
                                     const SizedBox(height: 8),
                                     Text(
                                       widget.activity.description,
@@ -390,10 +410,7 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
       final uri = Uri.parse(url);
       // Don't gate on canLaunchUrl: it reports false whenever package
       // visibility hides the handling app, even though the launch succeeds.
-      var launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
+      var launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!launched) {
         launched = await launchUrl(uri, mode: LaunchMode.platformDefault);
       }
