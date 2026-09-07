@@ -312,7 +312,7 @@ class _GratitudeJarVisual extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(32),
-        color: AppColors.softSage.withOpacity(0.25),
+        color: AppColors.softSage.withValues(alpha: 0.25),
         border: Border.all(color: AppColors.softSage, width: 2),
       ),
       child: Stack(
@@ -332,9 +332,9 @@ class _GratitudeJarVisual extends StatelessWidget {
                   topLeft: Radius.circular(25),
                   topRight: Radius.circular(25),
                 ),
-                color: Colors.white.withOpacity(0.75),
+                color: Colors.white.withValues(alpha: 0.75),
                 border: Border.all(
-                  color: AppColors.primary.withOpacity(0.25),
+                  color: AppColors.primary.withValues(alpha: 0.25),
                   width: 2,
                 ),
               ),
@@ -389,7 +389,7 @@ class _GratitudeJarVisual extends StatelessWidget {
             child: Container(
               height: 35,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.85),
+                color: AppColors.primary.withValues(alpha: 0.85),
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
@@ -404,7 +404,7 @@ class _GratitudeJarVisual extends StatelessWidget {
               width: 8,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
-                color: Colors.white.withOpacity(0.6),
+                color: Colors.white.withValues(alpha: 0.6),
               ),
             ),
           ),
@@ -436,12 +436,12 @@ class _JarSymbol extends StatelessWidget {
           height: 55,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white.withOpacity(0.95),
+            color: Colors.white.withValues(alpha: 0.95),
             boxShadow: [
               BoxShadow(
                 blurRadius: 8,
                 spreadRadius: 1,
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withValues(alpha: 0.08),
               ),
             ],
           ),

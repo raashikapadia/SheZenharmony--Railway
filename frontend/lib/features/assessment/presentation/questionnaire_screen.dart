@@ -15,8 +15,11 @@ class QuestionnaireScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final token = context.read<AuthProvider>().session!.token;
     return ChangeNotifierProvider(
-      create: (_) =>
-          AssessmentProvider(apiService: ApiService(), token: token)..load(),
+      create: (_) => AssessmentProvider(
+        apiService: ApiService(),
+        token: token,
+        closeApiServiceOnDispose: true,
+      )..load(),
       child: _QuestionnaireView(mandatory: mandatory),
     );
   }

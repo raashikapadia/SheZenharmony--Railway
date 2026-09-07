@@ -13,12 +13,16 @@ enum AssessmentLoadState { loading, loaded, error }
 /// the flow adapts automatically if the admin changes the question count,
 /// text, or answer scores.
 class AssessmentProvider extends ChangeNotifier {
-  AssessmentProvider({required ApiService apiService, required String token})
-    : _apiService = apiService,
-      _token = token;
+  AssessmentProvider({
+    required ApiService apiService,
+    required String token,
+    this.closeApiServiceOnDispose = false,
+  }) : _apiService = apiService,
+       _token = token;
 
   final ApiService _apiService;
   final String _token;
+  final bool closeApiServiceOnDispose;
 
   AssessmentLoadState _state = AssessmentLoadState.loading;
   AssessmentQuestionnaire? _questionnaire;
@@ -123,5 +127,11 @@ class AssessmentProvider extends ChangeNotifier {
       _isSubmitting = false;
       notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    if (closeApiServiceOnDispose) _apiService.close();
+    super.dispose();
   }
 }

@@ -25,45 +25,6 @@ class AppBackground extends StatelessWidget {
   );
 }
 
-class AppPageScaffold extends StatelessWidget {
-  const AppPageScaffold({
-    super.key,
-    required this.title,
-    required this.child,
-    this.subtitle,
-    this.actions,
-    this.padding = const EdgeInsets.fromLTRB(20, 8, 20, 28),
-  });
-
-  final String title;
-  final String? subtitle;
-  final Widget child;
-  final List<Widget>? actions;
-  final EdgeInsets padding;
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(title), actions: actions),
-    body: SafeArea(
-      child: ListView(
-        padding: padding,
-        children: [
-          if (subtitle != null) ...[
-            Text(
-              subtitle!,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(color: AppColors.muted),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-          ],
-          child,
-        ],
-      ),
-    ),
-  );
-}
-
 class AppSectionHeader extends StatelessWidget {
   const AppSectionHeader({super.key, required this.title, this.subtitle});
 

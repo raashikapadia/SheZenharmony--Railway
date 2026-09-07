@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -225,5 +226,45 @@ void main() {
     );
 
     await api.deleteAccount('a-token');
+  });
+
+  test('authenticated requests fail cleanly when the server stalls', () async {
+    final api = ApiService(
+      client: MockClient((_) => Completer<http.Response>().future),
+      requestTimeout: const Duration(milliseconds: 1),
+    );
+
+    await expectLater(
+      api.getProfile('a-token'),
+      throwsA(
+        isA<ApiException>().having(
+          (error) => error.message,
+          'safe message',
+          contains('Network error'),
+        ),
+      ),
+    );
+
+    await expectLater(
+      api.updateProfile('a-token', {'country': 'Fiji'}),
+      throwsA(isA<ApiException>()),
+    );
+  });
+
+  test('malformed successful responses become safe API errors', () async {
+    final api = ApiService(
+      client: MockClient((_) async => http.Response('<html>error</html>', 200)),
+    );
+
+    await expectLater(
+      api.getProfile('a-token'),
+      throwsA(
+        isA<ApiException>().having(
+          (error) => error.message,
+          'safe message',
+          contains('unexpected response'),
+        ),
+      ),
+    );
   });
 }

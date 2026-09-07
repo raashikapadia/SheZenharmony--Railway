@@ -2,8 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\Questionnaire;
 use App\Models\Intervention;
+use App\Models\Questionnaire;
+use App\Models\StressQuestion;
 use App\Models\User;
 use App\Models\WellbeingActivity;
 use Illuminate\Database\Seeder;
@@ -74,7 +75,7 @@ class DevelopmentSeeder extends Seeder
             $memberships = [];
 
             foreach ($questions as $position => $text) {
-                $question = \App\Models\StressQuestion::query()->updateOrCreate(
+                $question = StressQuestion::query()->updateOrCreate(
                     ['code' => $position],
                     [
                         'question_text' => $text,
@@ -157,13 +158,6 @@ class DevelopmentSeeder extends Seeder
                     'description' => 'Pause and notice three things you appreciate today.',
                     'content_type' => 'journaling',
                     'instructions' => 'Pause and name three things you appreciate today. They can be small: a kind message, a quiet moment, or something you managed well.',
-                ],
-                [
-                    'title' => 'DEMO: A kinder inner voice',
-                    'slug' => 'demo-kinder-inner-voice',
-                    'description' => 'Pause and replace one harsh thought with a fairer one.',
-                    'content_type' => 'affirmation',
-                    'instructions' => 'Notice one difficult thought. Ask what you would say to a friend in the same situation, then offer those words to yourself.',
                 ],
                 [
                     'title' => 'DEMO: Three good moments',

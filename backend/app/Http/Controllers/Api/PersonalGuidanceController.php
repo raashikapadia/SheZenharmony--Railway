@@ -65,6 +65,7 @@ class PersonalGuidanceController extends Controller
         $favouriteIds = $this->favouriteIds($identity);
 
         $items = $identity->favouriteGuidance()
+            ->visible()
             ->orderByDesc('personal_guidance_favourites.created_at')
             ->get()
             ->map(fn (PersonalGuidance $g) => $this->present($g, $identity, $favouriteIds))

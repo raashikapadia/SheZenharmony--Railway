@@ -242,7 +242,7 @@ class _MindfulMemoryScreenState extends State<MindfulMemoryScreen> {
                             BoxShadow(
                               blurRadius: 4,
                               offset: const Offset(0, 2),
-                              color: Colors.black.withOpacity(0.06),
+                              color: Colors.black.withValues(alpha: 0.06),
                             ),
                           ],
                         ),

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Intervention;
 use App\Models\Questionnaire;
 use App\Models\User;
 use Database\Seeders\DevelopmentSeeder;
@@ -46,5 +47,6 @@ class DevelopmentSeederTest extends TestCase
         $this->assertSame(1, User::query()->where('email', DevelopmentSeeder::ADMIN_EMAIL)->count());
         $this->assertSame(1, User::query()->where('email', DevelopmentSeeder::STUDENT_EMAIL)->count());
         $this->assertSame(1, Questionnaire::query()->where('title', DevelopmentSeeder::QUESTIONNAIRE_TITLE)->count());
+        $this->assertFalse(Intervention::query()->where('content_type', 'affirmation')->exists());
     }
 }

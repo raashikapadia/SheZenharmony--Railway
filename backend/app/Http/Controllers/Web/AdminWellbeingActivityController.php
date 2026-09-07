@@ -50,7 +50,7 @@ class AdminWellbeingActivityController extends Controller
 
     private function validated(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
             'video_url' => ['required', 'url', 'max:2000'],
@@ -58,5 +58,9 @@ class AdminWellbeingActivityController extends Controller
             'category' => ['nullable', 'string', 'max:100'],
             'is_active' => ['nullable', 'boolean'],
         ]);
+
+        $data['is_active'] = $request->boolean('is_active');
+
+        return $data;
     }
 }

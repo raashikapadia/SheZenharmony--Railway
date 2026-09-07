@@ -16,6 +16,12 @@ class QuestionController extends Controller
             ->orderBy('position')
             ->get();
 
+        $questions->each(function (StressQuestion $question): void {
+            $question->options->each(
+                fn ($option) => $option->makeHidden('score')
+            );
+        });
+
         return response()->json([
             'data' => $questions,
             'notice' => 'Development/demo questions only until the client supplies the approved assessment framework.',

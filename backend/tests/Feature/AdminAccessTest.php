@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Intervention;
+use App\Models\StressAssessment;
 use App\Models\StressQuestion;
 use App\Models\User;
+use App\Models\WellbeingActivity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
@@ -34,6 +36,27 @@ class AdminAccessTest extends TestCase
             ->assertOk()
             ->assertSee('SheZen Harmony')
             ->assertSee('Administration');
+    }
+
+    public function test_dashboard_counts_only_completed_assessments_and_labels_all_students(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $activeStudent = User::factory()->create(['role' => User::ROLE_STUDENT, 'account_status' => 'active']);
+        $heldStudent = User::factory()->create(['role' => User::ROLE_STUDENT, 'account_status' => 'suspended']);
+        StressAssessment::query()->create([
+            'student_identity_id' => $activeStudent->studentIdentity->id,
+            'assessment_status' => 'completed',
+        ]);
+        StressAssessment::query()->create([
+            'student_identity_id' => $heldStudent->studentIdentity->id,
+            'assessment_status' => 'in_progress',
+        ]);
+
+        $this->actingAs($admin)->get('/admin')
+            ->assertOk()
+            ->assertViewHas('studentCount', 2)
+            ->assertViewHas('assessmentCount', 1)
+            ->assertSee('Across all account statuses');
     }
 
     public function test_admin_sidebar_uses_the_reorganised_sections_and_placeholder_pages(): void
@@ -247,6 +270,28 @@ class AdminAccessTest extends TestCase
             'content_type' => 'journaling',
             'is_active' => true,
         ]);
+    }
+
+    public function test_admin_can_make_a_video_activity_inactive(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $activity = WellbeingActivity::query()->create([
+            'title' => 'A short reset',
+            'video_url' => 'https://www.youtube.com/watch?v=example',
+            'video_type' => 'youtube',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)->put(route('admin.wellbeing_activities.update', $activity), [
+            'title' => 'A short reset',
+            'video_url' => 'https://www.youtube.com/watch?v=example',
+            'video_type' => 'youtube',
+        ])->assertRedirect(route('admin.wellbeing_activities.index'));
+
+        $this->assertFalse($activity->fresh()->is_active);
+        $this->getJson('/api/v1/wellbeing-activities')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_support_content_admin_is_limited_to_journaling(): void

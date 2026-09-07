@@ -15,7 +15,9 @@ class AdminDashboardController extends Controller
     {
         return view('admin.dashboard', [
             'studentCount' => User::query()->withRole(User::ROLE_STUDENT)->count(),
-            'assessmentCount' => StressAssessment::query()->count(),
+            'assessmentCount' => StressAssessment::query()
+                ->where('assessment_status', 'completed')
+                ->count(),
             'questionCount' => StressQuestion::query()->where('is_active', true)->count(),
             'interventionCount' => Intervention::query()->where('is_active', true)->count(),
         ]);

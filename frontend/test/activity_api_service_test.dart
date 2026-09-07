@@ -34,6 +34,10 @@ void main() {
             request.url.queryParameters['content_type'],
             contains('breathing'),
           );
+          expect(
+            request.url.queryParameters['content_type'],
+            contains('journaling'),
+          );
           return http.Response(
             jsonEncode({
               'data': [
@@ -42,6 +46,13 @@ void main() {
                   'description': 'A guided breathing activity.',
                   'content_type': 'breathing',
                   'instructions': 'Breathe in for four counts.',
+                  'external_url': null,
+                },
+                {
+                  'title': 'Private reflection',
+                  'description': 'A journaling prompt.',
+                  'content_type': 'journaling',
+                  'instructions': 'Write down what is on your mind.',
                   'external_url': null,
                 },
               ],
@@ -55,46 +66,51 @@ void main() {
 
       expect(activities.map((item) => item.title), [
         'Box breathing',
+        'Private reflection',
         'Grounding video',
       ]);
       expect(activities.first.instructions, 'Breathe in for four counts.');
       expect(activities.first.hasVideo, isFalse);
+      expect(activities[1].category, 'Journaling');
       expect(activities.last.hasVideo, isTrue);
     },
   );
 
-  test('journaling content is included in positive engagement', () async {
-    final api = ApiService(
-      client: MockClient((request) async {
-        expect(
-          request.url.queryParameters['content_type'],
-          contains('journaling'),
-        );
-        expect(
-          request.url.queryParameters['content_type'],
-          isNot(contains('affirmation')),
-        );
-        return http.Response(
-          jsonEncode({
-            'data': [
-              {
-                'title': 'Gratitude reflection',
-                'description': 'Notice three good things.',
-                'content_type': 'journaling',
-                'instructions': 'Write down three small things.',
-              },
-            ],
-          }),
-          200,
-        );
-      }),
-    );
+  test(
+    'positive engagement excludes support journaling and affirmations',
+    () async {
+      final api = ApiService(
+        client: MockClient((request) async {
+          expect(
+            request.url.queryParameters['content_type'],
+            isNot(contains('journaling')),
+          );
+          expect(
+            request.url.queryParameters['content_type'],
+            isNot(contains('affirmation')),
+          );
+          return http.Response(
+            jsonEncode({
+              'data': [
+                {
+                  'title': 'A positive prompt',
+                  'description': 'Notice one good thing.',
+                  'content_type': 'motivation',
+                  'instructions': 'Pause and reflect.',
+                },
+              ],
+            }),
+            200,
+          );
+        }),
+      );
 
-    final content = await api.positiveEngagement();
+      final content = await api.positiveEngagement();
 
-    expect(content.single.title, 'Gratitude reflection');
-    expect(content.single.contentType, 'journaling');
-  });
+      expect(content.single.title, 'A positive prompt');
+      expect(content.single.contentType, 'motivation');
+    },
+  );
 
   test('video URLs on support content use the video player flow', () {
     final youtubeActivity = WellbeingActivity.fromInterventionJson({

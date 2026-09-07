@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/network/api_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -164,6 +165,19 @@ class _PositiveEngagementScreenState extends State<PositiveEngagementScreen> {
                   : item.description,
               style: Theme.of(context).textTheme.bodyLarge,
             ),
+            if (item.externalUrl.trim().isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.lg),
+              SelectableText(
+                item.externalUrl,
+                style: const TextStyle(color: AppColors.muted),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton.icon(
+                onPressed: () => _openRelatedLink(context, item.externalUrl),
+                icon: const Icon(Icons.open_in_new_rounded),
+                label: const Text('Open related link'),
+              ),
+            ],
             const SizedBox(height: AppSpacing.xxl),
             SizedBox(
               width: double.infinity,
@@ -177,4 +191,31 @@ class _PositiveEngagementScreenState extends State<PositiveEngagementScreen> {
       ),
     ),
   );
+
+  static Future<void> _openRelatedLink(
+    BuildContext context,
+    String value,
+  ) async {
+    final uri = Uri.tryParse(value.trim());
+    if (uri == null || (uri.scheme != 'https' && uri.scheme != 'http')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This related link is not valid.')),
+      );
+      return;
+    }
+
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open the related link.')),
+        );
+      }
+    } on Exception {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the related link.')),
+      );
+    }
+  }
 }

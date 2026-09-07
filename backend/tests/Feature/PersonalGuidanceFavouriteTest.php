@@ -71,4 +71,23 @@ class PersonalGuidanceFavouriteTest extends TestCase
 
         $this->postJson("/api/v1/personal-guidance/{$draft->id}/favourite")->assertNotFound();
     }
+
+    public function test_saved_item_disappears_when_admin_unpublishes_it(): void
+    {
+        $student = User::factory()->create(['role' => User::ROLE_STUDENT]);
+        Sanctum::actingAs($student, ['student']);
+        $item = $this->guidance();
+
+        $this->postJson("/api/v1/personal-guidance/{$item->id}/favourite")->assertCreated();
+        $item->update(['status' => PersonalGuidance::STATUS_UNPUBLISHED]);
+
+        $this->getJson('/api/v1/personal-guidance/favourites')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+
+        $this->assertDatabaseHas('personal_guidance_favourites', [
+            'student_identity_id' => $student->studentIdentity->id,
+            'personal_guidance_id' => $item->id,
+        ]);
+    }
 }

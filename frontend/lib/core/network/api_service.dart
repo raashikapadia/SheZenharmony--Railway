@@ -16,11 +16,15 @@ import '../../features/auth/data/auth_challenge.dart';
 import '../config/api_config.dart';
 
 class ApiService {
-  ApiService({http.Client? client}) : _client = client ?? http.Client();
+  ApiService({
+    http.Client? client,
+    this.requestTimeout = const Duration(seconds: 10),
+  }) : _client = client ?? http.Client();
 
   static const _emailRequestTimeout = Duration(seconds: 30);
 
   final http.Client _client;
+  final Duration requestTimeout;
 
   Future<AuthChallenge> register({
     required String email,
@@ -197,17 +201,12 @@ class ApiService {
   }
 
   Future<void> logout(String token) async {
-    final response = await _client.post(
+    await _sendJson(
+      'POST',
       Uri.parse('${ApiConfig.baseUrl}/v1/auth/logout'),
-      headers: _authorizedHeaders(token),
+      token,
+      null,
     );
-
-    if (response.statusCode != 200) {
-      throw ApiException(
-        'Could not sign out (${response.statusCode}).',
-        statusCode: response.statusCode,
-      );
-    }
   }
 
   Future<void> deleteAccount(String token) async {
@@ -343,7 +342,7 @@ class ApiService {
         Uri.parse('${ApiConfig.baseUrl}/v1/interventions').replace(
           queryParameters: {
             'content_type':
-                'breathing,grounding,mindfulness,relaxation,activity,resource',
+                'journaling,breathing,grounding,mindfulness,relaxation,activity,resource',
           },
         ),
       ),
@@ -360,9 +359,7 @@ class ApiService {
 
   Future<List<PositiveContent>> positiveEngagement() async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/v1/interventions').replace(
-      queryParameters: {
-        'content_type': 'journaling,quiz,motivation,positive_engagement',
-      },
+      queryParameters: {'content_type': 'quiz,motivation,positive_engagement'},
     );
     final body = await _getPublicJson(uri);
     return (body['data'] as List<dynamic>? ?? const [])
@@ -780,7 +777,9 @@ class ApiService {
   Future<Map<String, dynamic>> _getJson(Uri uri, String token) async {
     final http.Response response;
     try {
-      response = await _client.get(uri, headers: _authorizedHeaders(token));
+      response = await _client
+          .get(uri, headers: _authorizedHeaders(token))
+          .timeout(requestTimeout);
     } on http.ClientException {
       throw const ApiException(
         'Network error — check your connection and that the server is reachable.',
@@ -809,13 +808,21 @@ class ApiService {
     try {
       switch (method) {
         case 'POST':
-          response = await _client.post(uri, headers: headers, body: body);
+          response = await _client
+              .post(uri, headers: headers, body: body)
+              .timeout(requestTimeout);
         case 'PUT':
-          response = await _client.put(uri, headers: headers, body: body);
+          response = await _client
+              .put(uri, headers: headers, body: body)
+              .timeout(requestTimeout);
         case 'PATCH':
-          response = await _client.patch(uri, headers: headers, body: body);
+          response = await _client
+              .patch(uri, headers: headers, body: body)
+              .timeout(requestTimeout);
         case 'DELETE':
-          response = await _client.delete(uri, headers: headers, body: body);
+          response = await _client
+              .delete(uri, headers: headers, body: body)
+              .timeout(requestTimeout);
         default:
           throw ArgumentError('Unsupported method: $method');
       }
@@ -835,6 +842,11 @@ class ApiService {
     final body = _decodeObject(response);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.statusCode != 204 && !_hasJsonObjectBody(response)) {
+        throw const ApiException(
+          'Backend returned an unexpected response. Please try again.',
+        );
+      }
       return body;
     }
 
@@ -875,6 +887,14 @@ class ApiService {
     }
 
     return const {};
+  }
+
+  bool _hasJsonObjectBody(http.Response response) {
+    try {
+      return jsonDecode(response.body) is Map<String, dynamic>;
+    } on FormatException {
+      return false;
+    }
   }
 
   String _errorMessage(Map<String, dynamic> body, String fallback) {

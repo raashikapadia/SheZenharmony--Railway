@@ -71,6 +71,7 @@ class WellbeingActivity {
   }
 
   static String _categoryLabel(String? type) => switch (type) {
+    'journaling' => 'Journaling',
     'breathing' => 'Breathing',
     'grounding' => 'Grounding',
     'mindfulness' => 'Mindfulness',

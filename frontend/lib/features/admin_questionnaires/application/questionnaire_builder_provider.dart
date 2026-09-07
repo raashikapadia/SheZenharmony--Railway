@@ -11,11 +11,10 @@ enum BuilderLoadState { loading, loaded, error }
 /// never assumes an operation succeeded without confirmation.
 class QuestionnaireBuilderProvider extends ChangeNotifier {
   QuestionnaireBuilderProvider({
-    required ApiService apiService,
-    required String token,
+    required this._apiService,
+    required this._token,
     required this.questionnaireId,
-  }) : _apiService = apiService,
-       _token = token;
+  });
 
   final ApiService _apiService;
   final String _token;

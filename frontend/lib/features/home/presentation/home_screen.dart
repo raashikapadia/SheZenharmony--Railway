@@ -173,7 +173,8 @@ class _DashboardPage extends StatelessWidget {
                   child: AppFeatureCard(
                     icon: Icons.auto_awesome_outlined,
                     title: 'Positive engagement',
-                    description: 'Affirmations and light positive activities.',
+                    description:
+                        'Friendly quizzes, motivational prompts, and light activities.',
                     tint: AppColors.softLavender,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(

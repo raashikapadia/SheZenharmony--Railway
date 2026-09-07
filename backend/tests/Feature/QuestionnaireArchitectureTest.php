@@ -136,6 +136,17 @@ class QuestionnaireArchitectureTest extends TestCase
         $this->assertNotSame($inactive->id, $response->json('data.id'));
     }
 
+    public function test_legacy_question_endpoint_does_not_expose_option_scores(): void
+    {
+        [, $activeOption] = $this->questionWithOptions();
+
+        $response = $this->getJson('/api/v1/questions')
+            ->assertOk()
+            ->assertJsonPath('data.0.options.0.id', $activeOption->id);
+
+        $this->assertArrayNotHasKey('score', $response->json('data.0.options.0'));
+    }
+
     public function test_question_edit_preserves_historical_option_and_updates_existing_rows(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);

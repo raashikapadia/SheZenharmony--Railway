@@ -12,10 +12,9 @@ enum ListLoadState { loading, loaded, error }
 /// patching local state, so the UI always reflects actual persisted data.
 class QuestionnaireListProvider extends ChangeNotifier {
   QuestionnaireListProvider({
-    required ApiService apiService,
-    required String token,
-  }) : _apiService = apiService,
-       _token = token;
+    required this._apiService,
+    required this._token,
+  });
 
   final ApiService _apiService;
   final String _token;
