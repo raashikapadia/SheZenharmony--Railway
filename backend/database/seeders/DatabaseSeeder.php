@@ -73,6 +73,10 @@ class DatabaseSeeder extends Seeder
         // No-ops once an admin has published a real stress questionnaire.
         $this->call(StressFrameworkSeeder::class);
 
+        // The supplied 74-question / 8-category wellbeing instrument. Publishes
+        // and activates itself (archiving the starter). No-ops once seeded.
+        $this->call(WellbeingQuestionnaireSeeder::class);
+
         // A small curated set of Home Page encouragement. No-ops once any
         // Personal Guidance row exists.
         $this->call(PersonalGuidanceSeeder::class);

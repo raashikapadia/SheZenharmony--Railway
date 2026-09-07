@@ -28,12 +28,13 @@ class QuestionController extends Controller
             $question = StressQuestion::query()->create([
                 'question_text' => $data['question_text'],
                 'dimension' => $data['dimension'] ?? null,
+                'help_text' => $data['help_text'] ?? null,
                 'question_type' => $data['question_type'],
                 'position' => $data['position'] ?? 0,
                 'is_active' => (bool) ($data['is_active'] ?? true),
                 'is_sensitive' => (bool) ($data['is_sensitive'] ?? false),
                 'created_by_user_id' => $request->user()->id,
-            ]);
+            ] + $this->scoringConfig($data));
 
             foreach (array_values($data['options']) as $index => $option) {
                 $question->options()->create([
@@ -49,6 +50,7 @@ class QuestionController extends Controller
             $questionnaire->questions()->attach($question->id, [
                 'position' => $nextPosition,
                 'is_required' => (bool) ($data['is_required'] ?? true),
+                'questionnaire_section_id' => $data['questionnaire_section_id'] ?? null,
             ]);
 
             return $question;
@@ -83,10 +85,11 @@ class QuestionController extends Controller
             $question->fill([
                 'question_text' => $data['question_text'],
                 'dimension' => $data['dimension'] ?? null,
+                'help_text' => $data['help_text'] ?? null,
                 'question_type' => $data['question_type'],
                 'is_active' => (bool) ($data['is_active'] ?? true),
                 'is_sensitive' => (bool) ($data['is_sensitive'] ?? false),
-            ])->save();
+            ] + $this->scoringConfig($data))->save();
 
             $retainedIds = [];
             foreach (array_values($data['options']) as $index => $option) {
@@ -185,6 +188,31 @@ class QuestionController extends Controller
         ]);
     }
 
+    /**
+     * The optional per-question scoring configuration, normalised so the
+     * stress direction is only stored when the question actually feeds the
+     * stress sub-score.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function scoringConfig(array $data): array
+    {
+        $stressRelevant = (bool) ($data['stress_relevant'] ?? false);
+
+        return [
+            'min_score' => $data['min_score'] ?? null,
+            'max_score' => $data['max_score'] ?? null,
+            'wellbeing_weight' => $data['wellbeing_weight'] ?? 1,
+            'is_reverse_scored' => (bool) ($data['is_reverse_scored'] ?? false),
+            'stress_relevant' => $stressRelevant,
+            'stress_direction' => $stressRelevant
+                ? ($data['stress_direction'] ?? StressQuestion::STRESS_DIRECTION_MORE)
+                : null,
+            'stress_weight' => $data['stress_weight'] ?? 1,
+        ];
+    }
+
     private function ensureBelongsToQuestionnaire(Questionnaire $questionnaire, StressQuestion $question): void
     {
         abort_unless(
@@ -213,7 +241,7 @@ class QuestionController extends Controller
      * question with assessment history while still blocking anything that
      * would make historical scores mean something different.
      *
-     * @param array<int, array<string, mixed>> $submittedOptions
+     * @param  array<int, array<string, mixed>>  $submittedOptions
      */
     private function isStructuralOptionChange(StressQuestion $question, array $submittedOptions): bool
     {

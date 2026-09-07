@@ -7,8 +7,8 @@ use App\Http\Requests\Admin\StoreQuestionnaireRequest;
 use App\Http\Requests\Admin\UpdateQuestionnaireRequest;
 use App\Http\Resources\Admin\QuestionnaireResource;
 use App\Models\Questionnaire;
-use App\Models\StressQuestion;
 use App\Services\QuestionnaireActivationService;
+use App\Services\QuestionnaireVersioner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -85,11 +85,12 @@ class QuestionnaireController extends Controller
     public function show(Questionnaire $questionnaire): JsonResponse
     {
         $questionnaire->loadCount('questions')->load([
+            'sections' => fn ($query) => $query->orderBy('position'),
             'questions' => function ($query): void {
                 $query->orderBy('questionnaire_questions.position')
                     ->with(['options' => fn ($options) => $options->orderBy('position')]);
             },
-            'scoreBands' => fn ($query) => $query->orderBy('position'),
+            'scoreBands' => fn ($query) => $query->orderBy('scope')->orderBy('position'),
         ]);
 
         return response()->json(['data' => new QuestionnaireResource($questionnaire)]);
@@ -160,68 +161,12 @@ class QuestionnaireController extends Controller
      * The clone is fully independent — editing it later never affects the
      * original version or any assessment already recorded against it.
      */
-    public function createNewVersion(Questionnaire $questionnaire, Request $request): JsonResponse
+    public function createNewVersion(Questionnaire $questionnaire, Request $request, QuestionnaireVersioner $versioner): JsonResponse
     {
-        $questionnaire->load(['questions.options', 'scoreBands']);
-
-        $clone = DB::transaction(function () use ($questionnaire, $request): Questionnaire {
-            $nextVersion = (int) Questionnaire::query()->where('type', $questionnaire->type)->max('version') + 1;
-
-            $clone = Questionnaire::query()->create([
-                'title' => $questionnaire->title,
-                'description' => $questionnaire->description,
-                'period' => $questionnaire->period,
-                'type' => $questionnaire->type,
-                'version' => $nextVersion,
-                'status' => 'draft',
-                'is_active' => false,
-                'created_by_user_id' => $request->user()->id,
-            ]);
-
-            foreach ($questionnaire->questions as $question) {
-                $newQuestion = StressQuestion::query()->create([
-                    'question_text' => $question->question_text,
-                    'dimension' => $question->dimension,
-                    'help_text' => $question->help_text,
-                    'question_type' => $question->question_type,
-                    'position' => $question->position,
-                    'is_active' => true,
-                    'is_sensitive' => $question->is_sensitive,
-                    'created_by_user_id' => $request->user()->id,
-                ]);
-
-                foreach ($question->options as $option) {
-                    $newQuestion->options()->create([
-                        'label' => $option->label,
-                        'value' => $option->value,
-                        'score' => $option->score,
-                        'position' => $option->position,
-                        'is_active' => true,
-                    ]);
-                }
-
-                $clone->questions()->attach($newQuestion->id, [
-                    'position' => $question->pivot->position,
-                    'is_required' => $question->pivot->is_required,
-                ]);
-            }
-
-            foreach ($questionnaire->scoreBands as $band) {
-                $clone->scoreBands()->create([
-                    'code' => $band->code,
-                    'label' => $band->label,
-                    'min_score' => $band->min_score,
-                    'max_score' => $band->max_score,
-                    'position' => $band->position,
-                    'is_active' => $band->is_active,
-                    'created_by_user_id' => $request->user()->id,
-                ]);
-            }
-
-            return $clone;
-        });
+        $clone = $versioner->draftFrom($questionnaire, $request->user()->id);
 
         $clone->loadCount('questions')->load([
+            'sections' => fn ($query) => $query->orderBy('position'),
             'questions' => fn ($query) => $query->orderBy('questionnaire_questions.position')
                 ->with(['options' => fn ($options) => $options->orderBy('position')]),
             'scoreBands' => fn ($query) => $query->orderBy('position'),

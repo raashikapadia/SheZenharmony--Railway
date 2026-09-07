@@ -72,7 +72,7 @@ class AdminQuestionnaireApiTest extends TestCase
         $this->assertFalse($questionnaire->fresh()->is_active);
     }
 
-    public function test_activation_archives_the_previous_active_version_of_the_same_type(): void
+    public function test_activation_returns_the_previous_active_version_to_draft(): void
     {
         $admin = $this->actingAsAdmin();
         $first = $this->configuredQuestionnaire($admin, 1, [[0, 4]]);
@@ -81,7 +81,8 @@ class AdminQuestionnaireApiTest extends TestCase
         $this->patchJson("/api/v1/admin/questionnaires/{$first->id}/activate")->assertOk();
         $this->patchJson("/api/v1/admin/questionnaires/{$second->id}/activate")->assertOk();
 
-        $this->assertDatabaseHas('questionnaires', ['id' => $first->id, 'status' => 'archived', 'is_active' => false]);
+        // Publishing one turns every other version into a draft.
+        $this->assertDatabaseHas('questionnaires', ['id' => $first->id, 'status' => 'draft', 'is_active' => false]);
         $this->assertDatabaseHas('questionnaires', ['id' => $second->id, 'status' => 'published', 'is_active' => true]);
         $this->assertSame(1, Questionnaire::query()->where('type', 'stress')->where('is_active', true)->count());
     }

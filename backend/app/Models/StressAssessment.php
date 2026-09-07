@@ -32,6 +32,15 @@ class StressAssessment extends Model
         'assessment_status',
         'total_score',
         'stress_level',
+        'overall_raw_score',
+        'overall_weighted_score',
+        'overall_max_weighted_score',
+        'overall_percentage',
+        'wellbeing_result_band_id',
+        'stress_score',
+        'stress_percentage',
+        'stress_result_band_id',
+        'config_snapshot',
         'started_at',
         'completed_at',
     ];
@@ -40,6 +49,13 @@ class StressAssessment extends Model
     {
         return [
             'total_score' => 'integer',
+            'overall_raw_score' => 'decimal:2',
+            'overall_weighted_score' => 'decimal:2',
+            'overall_max_weighted_score' => 'decimal:2',
+            'overall_percentage' => 'decimal:2',
+            'stress_score' => 'decimal:2',
+            'stress_percentage' => 'decimal:2',
+            'config_snapshot' => 'array',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
@@ -73,6 +89,21 @@ class StressAssessment extends Model
     public function scoreBand(): BelongsTo
     {
         return $this->belongsTo(StressScoreBand::class, 'stress_score_band_id');
+    }
+
+    public function categoryResults(): HasMany
+    {
+        return $this->hasMany(CategoryResult::class);
+    }
+
+    public function wellbeingBand(): BelongsTo
+    {
+        return $this->belongsTo(StressScoreBand::class, 'wellbeing_result_band_id');
+    }
+
+    public function stressBand(): BelongsTo
+    {
+        return $this->belongsTo(StressScoreBand::class, 'stress_result_band_id');
     }
 
     protected function anonymousOwnerColumns(): array

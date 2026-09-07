@@ -19,6 +19,11 @@ class InterventionRecommendation extends Model
         return $this->belongsTo(StressScoreBand::class, 'stress_score_band_id');
     }
 
+    public function section(): BelongsTo
+    {
+        return $this->belongsTo(QuestionnaireSection::class, 'questionnaire_section_id');
+    }
+
     public function intervention(): BelongsTo
     {
         return $this->belongsTo(Intervention::class);

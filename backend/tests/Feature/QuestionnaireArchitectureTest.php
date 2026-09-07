@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Questionnaire;
-use App\Models\QuestionOption;
 use App\Models\StressAssessment;
 use App\Models\StressQuestion;
 use App\Models\StressResponse;
@@ -20,30 +19,95 @@ class QuestionnaireArchitectureTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_create_questionnaire_with_ordered_questions_and_bands(): void
+    public function test_creating_a_questionnaire_makes_a_draft_and_opens_the_editor(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
-        [$first, , $firstSecondOption] = $this->questionWithOptions('First');
-        [$second, , $secondSecondOption] = $this->questionWithOptions('Second');
-        $firstSecondOption->update(['is_active' => true]);
-        $secondSecondOption->update(['is_active' => true]);
 
-        $this->actingAs($admin)->post('/admin/questionnaires', [
-            'title' => 'Stress check', 'type' => 'stress', 'version' => 1,
-            'status' => 'published', 'is_active' => '1',
-            'questions' => [
-                ['id' => $second->id, 'position' => 1, 'is_required' => '1'],
-                ['id' => $first->id, 'position' => 2, 'is_required' => '1'],
-            ],
-            'bands' => [
-                ['code' => 'low', 'label' => 'Low', 'min_score' => 2, 'max_score' => 3, 'position' => 1, 'is_active' => '1'],
-                ['code' => 'high', 'label' => 'High', 'min_score' => 4, 'max_score' => 4, 'position' => 2, 'is_active' => '1'],
-            ],
-        ])->assertRedirect(route('admin.questionnaires.index'));
+        $response = $this->actingAs($admin)->post('/admin/questionnaires', [
+            'title' => 'Stress check',
+            'description' => 'A quick wellbeing check-in.',
+        ]);
 
         $questionnaire = Questionnaire::query()->firstOrFail();
-        $this->assertSame([$second->id, $first->id], $questionnaire->questions()->orderBy('questionnaire_questions.position')->pluck('stress_questions.id')->all());
-        $this->assertCount(2, $questionnaire->scoreBands);
+
+        // Creation is name-only; sections, questions and publishing happen in the editor.
+        $response->assertRedirect(route('admin.questionnaires.sections.index', $questionnaire));
+        $this->assertSame('stress', $questionnaire->type);
+        $this->assertSame(1, $questionnaire->version);
+        $this->assertSame('draft', $questionnaire->status);
+        $this->assertFalse((bool) $questionnaire->is_active);
+
+        // Standard wellbeing result ranges are seeded so the publish step opens pre-filled.
+        $bands = $questionnaire->scoreBands()->where('scope', 'overall')->orderBy('min_score')->get();
+        $this->assertCount(3, $bands);
+        $this->assertSame(0, $bands->first()->min_score);
+        $this->assertSame(40, $bands->last()->max_score);
+    }
+
+    public function test_new_questionnaire_version_number_follows_the_highest_existing(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        Questionnaire::query()->create(['title' => 'Existing', 'type' => 'stress', 'version' => 4]);
+
+        $this->actingAs($admin)->post('/admin/questionnaires', ['title' => 'Next one'])->assertRedirect();
+
+        $this->assertSame(5, Questionnaire::query()->where('title', 'Next one')->value('version'));
+    }
+
+    public function test_delete_moves_a_questionnaire_to_trash_with_a_purge_date(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $questionnaire = Questionnaire::query()->create(['title' => 'Scrap', 'type' => 'stress', 'version' => 1]);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.questionnaires.destroy', $questionnaire))
+            ->assertRedirect(route('admin.questionnaires.index'));
+
+        $questionnaire->refresh();
+        $this->assertNotNull($questionnaire->trashed_at);
+        $this->assertNotNull($questionnaire->purge_after);
+        $this->assertEqualsWithDelta(
+            now()->addDays(Questionnaire::TRASH_RETENTION_DAYS)->timestamp,
+            $questionnaire->purge_after->timestamp,
+            60,
+        );
+        $this->assertSame('archived', $questionnaire->status);
+        $this->assertFalse((bool) $questionnaire->is_active);
+
+        // Not counted in the live list; shown in trash.
+        $this->assertSame(0, Questionnaire::query()->notInTrash()->count());
+        $this->assertSame(1, Questionnaire::query()->inTrash()->count());
+        $this->actingAs($admin)->get(route('admin.questionnaires.trash'))->assertOk()->assertSee('Scrap');
+    }
+
+    public function test_delete_falls_back_to_archive_when_assessment_history_exists(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $questionnaire = Questionnaire::query()->create(['title' => 'Kept', 'type' => 'stress', 'version' => 1, 'status' => 'published', 'is_active' => true]);
+        StressAssessment::query()->create([
+            'user_id' => $admin->id, 'questionnaire_id' => $questionnaire->id,
+            'assessment_status' => 'completed', 'total_score' => 3, 'completed_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.questionnaires.destroy', $questionnaire))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('questionnaires', [
+            'id' => $questionnaire->id, 'status' => 'archived', 'is_active' => false, 'trashed_at' => null,
+        ]);
+    }
+
+    public function test_archive_action_soft_archives_without_deleting(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $questionnaire = Questionnaire::query()->create(['title' => 'Live', 'type' => 'stress', 'version' => 1, 'status' => 'published', 'is_active' => true]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.questionnaires.archive', $questionnaire))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('questionnaires', ['id' => $questionnaire->id, 'status' => 'archived', 'is_active' => false]);
     }
 
     public function test_duplicate_question_membership_is_prevented(): void

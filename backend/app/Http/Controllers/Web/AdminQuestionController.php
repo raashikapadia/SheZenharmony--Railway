@@ -2,17 +2,22 @@
 
 namespace App\Http\Controllers\Web;
 
-use App\Enums\QuestionType;
 use App\Http\Controllers\Controller;
 use App\Models\StressQuestion;
+use App\Services\QuestionnaireAuditLogger;
+use App\Services\QuestionWriter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class AdminQuestionController extends Controller
 {
+    public function __construct(
+        private readonly QuestionnaireAuditLogger $audit,
+        private readonly QuestionWriter $writer,
+    ) {}
+
     public function index(): View
     {
         return view('admin.questions.index', [
@@ -28,7 +33,9 @@ class AdminQuestionController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validated($request);
-        DB::transaction(fn () => $this->saveQuestion(new StressQuestion, $data));
+        $question = new StressQuestion;
+        DB::transaction(fn () => $this->writer->save($question, $data));
+        $this->audit->log(null, 'question.created', "Created question \"{$question->question_text}\".", $question, null, $data);
 
         return redirect()->route('admin.questions.index')->with('status', 'Question created.');
     }
@@ -41,7 +48,12 @@ class AdminQuestionController extends Controller
     public function update(Request $request, StressQuestion $question): RedirectResponse
     {
         $data = $this->validated($request);
-        DB::transaction(fn () => $this->saveQuestion($question, $data));
+        $old = $question->only([
+            'question_text', 'question_type', 'wellbeing_weight', 'is_reverse_scored',
+            'stress_relevant', 'stress_direction', 'stress_weight', 'min_score', 'max_score',
+        ]);
+        DB::transaction(fn () => $this->writer->save($question, $data));
+        $this->audit->log(null, 'question.updated', "Updated question \"{$question->question_text}\".", $question, $old, $data);
 
         return redirect()->route('admin.questions.index')->with('status', 'Question updated.');
     }
@@ -50,10 +62,12 @@ class AdminQuestionController extends Controller
     {
         if ($question->responses()->exists()) {
             $question->update(['is_active' => false]);
+            $this->audit->log(null, 'question.archived', "Archived question \"{$question->question_text}\" (has response history).", $question);
 
             return back()->with('status', 'Question has response history and was deactivated instead of deleted.');
         }
 
+        $this->audit->log(null, 'question.deleted', "Deleted question \"{$question->question_text}\".", $question);
         DB::transaction(function () use ($question): void {
             $question->options()->delete();
             $question->delete();
@@ -62,49 +76,12 @@ class AdminQuestionController extends Controller
         return back()->with('status', 'Question deleted.');
     }
 
+    /** @return array<string, mixed> */
     private function validated(Request $request): array
     {
-        return $request->validate([
-            'question_text' => ['required', 'string', 'max:2000'],
-            'dimension' => ['nullable', 'string', 'max:100'],
-            'question_type' => ['required', Rule::in(QuestionType::values())],
-            'position' => ['required', 'integer', 'min:0', 'max:10000'],
-            'is_active' => ['nullable', 'boolean'],
-            'is_sensitive' => ['nullable', 'boolean'],
-            'options' => ['required', 'array', 'min:2', 'max:20'],
-            'options.*.label' => ['required', 'string', 'max:255'],
-            'options.*.id' => ['nullable', 'integer'],
-            'options.*.value' => ['required', 'string', 'max:100', 'distinct'],
-            'options.*.score' => ['nullable', 'integer', 'min:-1000', 'max:1000'],
-        ]);
-    }
-
-    private function saveQuestion(StressQuestion $question, array $data): void
-    {
-        $question->fill([
-            'question_text' => $data['question_text'],
-            'dimension' => $data['dimension'] ?? null,
-            'question_type' => $data['question_type'],
-            'position' => $data['position'],
-            'is_active' => (bool) ($data['is_active'] ?? false),
-            'is_sensitive' => (bool) ($data['is_sensitive'] ?? false),
-        ])->save();
-
-        $retainedIds = [];
-        foreach (array_values($data['options']) as $position => $option) {
-            $optionId = $option['id'] ?? null;
-            unset($option['id']);
-            $values = $option + ['position' => $position + 1, 'is_active' => true];
-
-            if ($optionId !== null) {
-                $existing = $question->options()->whereKey($optionId)->firstOrFail();
-                $existing->update($values);
-                $retainedIds[] = $existing->id;
-            } else {
-                $retainedIds[] = $question->options()->create($values)->id;
-            }
-        }
-
-        $question->options()->whereNotIn('id', $retainedIds)->update(['is_active' => false]);
+        // The standalone bank form always carries an explicit position.
+        return $request->validate(
+            array_merge(QuestionWriter::rules(), ['position' => ['required', 'integer', 'min:0', 'max:10000']]),
+        );
     }
 }

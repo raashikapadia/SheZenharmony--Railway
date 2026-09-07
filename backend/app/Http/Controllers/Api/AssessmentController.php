@@ -50,6 +50,22 @@ class AssessmentController extends Controller
 
         $assessment = $result['assessment'];
         $band = $result['score_band'];
+        $breakdown = $result['scored']['breakdown'] ?? null;
+
+        $resultPayload = [
+            'total_score' => $assessment->total_score,
+            'score_out_of' => $this->scoreOutOf($assessment->questionnaire_id),
+            'band' => [
+                'code' => $band->code,
+                'label' => $band->label,
+            ],
+        ];
+
+        // Only present for questionnaires configured with weighted sections;
+        // flat questionnaires keep the exact original response shape.
+        if ($breakdown !== null) {
+            $resultPayload['breakdown'] = $breakdown;
+        }
 
         return response()->json([
             'assessment' => [
@@ -57,14 +73,7 @@ class AssessmentController extends Controller
                 'questionnaire_id' => $assessment->questionnaire_id,
                 'completed_at' => $assessment->completed_at?->toISOString(),
             ],
-            'result' => [
-                'total_score' => $assessment->total_score,
-                'score_out_of' => $this->scoreOutOf($assessment->questionnaire_id),
-                'band' => [
-                    'code' => $band->code,
-                    'label' => $band->label,
-                ],
-            ],
+            'result' => $resultPayload,
             'recommended_interventions' => $recommendations->forBand($band)
                 ->map($recommendations->payload(...))
                 ->values(),
@@ -115,6 +124,7 @@ class AssessmentController extends Controller
 
         $max = StressScoreBand::query()
             ->where('questionnaire_id', $questionnaireId)
+            ->where('scope', StressScoreBand::SCOPE_OVERALL)
             ->where('is_active', true)
             ->max('max_score');
 

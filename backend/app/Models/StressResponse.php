@@ -14,6 +14,7 @@ class StressResponse extends Model
         'numeric_value',
         'answer_text',
         'score',
+        'scored_value',
         'question_text_snapshot',
         'option_text_snapshot',
     ];
@@ -23,6 +24,7 @@ class StressResponse extends Model
         return [
             'numeric_value' => 'decimal:2',
             'score' => 'integer',
+            'scored_value' => 'decimal:2',
         ];
     }
 

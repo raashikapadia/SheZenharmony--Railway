@@ -1,12 +1,13 @@
 @extends('layouts.admin')
-@section('title', 'Student Stress Scores')
+@section('title', 'Stress level assessment')
 @section('body')
 <main class="content">
+    @include('admin.student-stress._nav')
     <section class="panel">
         <div class="page-intro">
             <div>
-                <h2>Student Stress Scores</h2>
-                <p class="muted">Latest completed stress result per student, by pseudonymous SheZen ID. Names and emails are never shown here.</p>
+                <h2>Results</h2>
+                <p class="muted">Latest completed result per student, live, by pseudonymous SheZen ID. Names and emails are never shown here. Open a student to see every answer.</p>
             </div>
             <form method="GET" class="actions">
                 <select name="band" onchange="this.form.submit()">
