@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\PersonalGuidanceController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\QuestionnaireController;
+use App\Http\Controllers\Api\QuizController;
 use App\Http\Controllers\Api\WellbeingActivityController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,6 +26,8 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/questionnaires/active', [QuestionnaireController::class, 'active']);
     Route::get('/interventions', [InterventionController::class, 'index']);
     Route::get('/wellbeing-activities', [WellbeingActivityController::class, 'index']);
+    Route::get('/quizzes', [QuizController::class, 'index']);
+    Route::get('/quizzes/{quiz}', [QuizController::class, 'show']);
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -38,6 +41,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::get('/profile', [ProfileController::class, 'show']);
         Route::put('/profile', [ProfileController::class, 'update']);
+        Route::post('/quizzes/{quiz}/complete', [QuizController::class, 'complete']);
 
         Route::get('/personal-guidance/current', [PersonalGuidanceController::class, 'current']);
         Route::get('/personal-guidance/another', [PersonalGuidanceController::class, 'another']);

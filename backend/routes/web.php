@@ -5,6 +5,7 @@ use App\Http\Controllers\Web\AdminDashboardController;
 use App\Http\Controllers\Web\AdminInterventionController;
 use App\Http\Controllers\Web\AdminPersonalGuidanceController;
 use App\Http\Controllers\Web\AdminPositiveEngagementController;
+use App\Http\Controllers\Web\AdminQuizController;
 use App\Http\Controllers\Web\AdminQuestionController;
 use App\Http\Controllers\Web\AdminQuestionnaireController;
 use App\Http\Controllers\Web\AdminSectionController;
@@ -65,6 +66,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('positive-engagement', AdminPositiveEngagementController::class)
         ->except(['show'])
         ->parameters(['positive-engagement' => 'intervention']);
+    Route::resource('games-quizzes', AdminQuizController::class)->except(['show'])->parameters(['games-quizzes' => 'quiz']);
     Route::view('chatbuddy', 'admin.coming-soon', [
         'title' => 'ChatBuddy / Rule-Based Chatbot',
         'description' => 'Future administration tools for the rule-based ChatBuddy will be available here.',
