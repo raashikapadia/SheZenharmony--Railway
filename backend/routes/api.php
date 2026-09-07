@@ -27,12 +27,15 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/wellbeing-activities', [WellbeingActivityController::class, 'index']);
 
     Route::middleware('auth:sanctum')->group(function (): void {
+        Route::post('/auth/logout', [AuthController::class, 'logout']);
+        Route::delete('/auth/account', [AuthController::class, 'destroy']);
+    });
+
+    Route::middleware(['auth:sanctum', 'student.active'])->group(function (): void {
         Route::get('/assessments', [AssessmentController::class, 'index']);
         Route::post('/assessments', [AssessmentController::class, 'store']);
         Route::get('/assessments/{assessment}', [AssessmentController::class, 'show']);
         Route::get('/auth/me', [AuthController::class, 'me']);
-        Route::post('/auth/logout', [AuthController::class, 'logout']);
-        Route::delete('/auth/account', [AuthController::class, 'destroy']);
         Route::get('/profile', [ProfileController::class, 'show']);
         Route::put('/profile', [ProfileController::class, 'update']);
 

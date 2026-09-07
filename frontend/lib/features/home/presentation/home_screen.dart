@@ -533,7 +533,7 @@ class _ActivitiesPage extends StatelessWidget {
         icon: Icons.auto_awesome_outlined,
         title: 'Positive engagement',
         description:
-            'Friendly affirmations, quizzes, motivational prompts, and light activities.',
+            'Friendly quizzes, motivational prompts, and light activities.',
         color: AppColors.softLavender,
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const PositiveEngagementScreen()),

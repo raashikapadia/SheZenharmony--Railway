@@ -7,6 +7,35 @@ import 'package:shezen_harmony/features/activities/data/support_content.dart';
 import 'package:shezen_harmony/features/activities/presentation/wellbeing_activities_screen.dart';
 
 void main() {
+  testWidgets('box breathing is hidden from the student activity list', (
+    tester,
+  ) async {
+    final api = _FakeApiService([
+      WellbeingActivity.fromInterventionJson({
+        'title': 'Box breathing',
+        'description': 'A short guided breathing activity.',
+        'content_type': 'breathing',
+      }),
+      WellbeingActivity.fromInterventionJson({
+        'title': 'Yoga part 2',
+        'description': 'Part 2',
+        'content_type': 'activity',
+      }),
+    ]);
+    addTearDown(api.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: WellbeingActivitiesScreen(apiService: api),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Box breathing'), findsNothing);
+    expect(find.text('Yoga part 2'), findsOneWidget);
+  });
+
   testWidgets('a newly published video opens the redesigned detail screen', (
     tester,
   ) async {

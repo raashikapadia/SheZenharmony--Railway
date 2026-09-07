@@ -47,6 +47,37 @@ void main() {
     expect(provider.status, AuthStatus.signedIn);
     expect(storage.savedToken, 'verified-token');
   });
+
+  testWidgets('held account receives a clear dialog instead of continuing', (
+    tester,
+  ) async {
+    final provider = AuthProvider(
+      apiService: _HeldAccountApiService(),
+      storage: _MemoryStorage(),
+    );
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: provider,
+        child: const MaterialApp(home: LoginScreen()),
+      ),
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'USP student email'),
+      's12345678@student.usp.ac.fj',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Password'),
+      'safe-password',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Account on hold'), findsOneWidget);
+    expect(find.textContaining('Community rules violation'), findsOneWidget);
+    expect(find.text('I understand'), findsOneWidget);
+    expect(provider.status, isNot(AuthStatus.signedIn));
+  });
 }
 
 class _MfaApiService extends ApiService {
@@ -72,6 +103,20 @@ class _MfaApiService extends ApiService {
     role: 'student',
     shezenId: 'SZ-TESTIDENTITY',
     hasCompletedRequiredAssessment: false,
+  );
+}
+
+class _HeldAccountApiService extends ApiService {
+  @override
+  Future<AuthChallenge> login({
+    required String email,
+    required String password,
+    String deviceName = 'SheZen mobile app',
+  }) => Future.error(
+    const ApiException(
+      'Your SheZen Harmony account is currently on hold. Reason: Community rules violation.',
+      statusCode: 423,
+    ),
   );
 }
 

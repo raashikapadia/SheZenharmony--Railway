@@ -62,7 +62,7 @@ class _PositiveEngagementScreenState extends State<PositiveEngagementScreen> {
               icon: Icons.auto_awesome_outlined,
               title: 'Positive content is coming soon',
               message:
-                  'Published affirmations, quizzes, and light activities will appear here.',
+                  'Published quizzes, motivational prompts, and light activities will appear here.',
             );
           }
           return ListView.separated(
@@ -138,7 +138,6 @@ class _PositiveEngagementScreenState extends State<PositiveEngagementScreen> {
 
   static String _label(String type) => switch (type) {
     'journaling' => 'REFLECTION',
-    'affirmation' => 'AFFIRMATION',
     'quiz' => 'LIGHT QUIZ',
     'motivation' => 'MOTIVATION',
     _ => 'POSITIVE ACTIVITY',

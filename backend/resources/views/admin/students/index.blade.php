@@ -16,7 +16,7 @@
                 @forelse($students as $student)
                     <tr>
                         <td><div class="item-title" style="font-family:ui-monospace,monospace;overflow-wrap:anywhere">{{ $student->displayId() }}</div></td>
-                        <td><span class="badge {{ $student->user?->account_status === 'active' ? 'active' : '' }}">{{ $student->user?->account_status ?? 'unavailable' }}</span></td>
+                        <td><span class="badge {{ $student->user?->account_status === 'active' ? 'active' : '' }}">{{ $student->user?->account_status === 'suspended' ? 'On hold' : ($student->user?->account_status ?? 'unavailable') }}</span></td>
                         <td>{{ $student->profile?->country ?? '—' }}</td>
                         <td>{{ $student->profile?->gender ?? '—' }}</td>
                         <td>{{ $student->profile?->employment_status ?? '—' }}</td>
@@ -24,7 +24,6 @@
                         <td>{{ $student->created_at->format('d M Y') }}</td>
                         <td class="actions">
                             <a class="button-link" href="{{ route('admin.students.show', $student) }}">View</a>
-                            <a class="button-link" href="{{ route('admin.students.edit', $student) }}">Edit</a>
                         </td>
                     </tr>
                 @empty

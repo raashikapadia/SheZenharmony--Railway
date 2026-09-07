@@ -27,6 +27,33 @@ void main() {
   });
 
   test(
+    'account hold during restoration clears storage and exposes notice',
+    () async {
+      final storage = _FakeStorage(stored);
+      final provider = AuthProvider(
+        apiService: _FakeApiService(
+          const ApiException(
+            'Your account is on hold. Reason: Community rules violation.',
+            statusCode: 423,
+          ),
+        ),
+        storage: storage,
+      );
+
+      await provider.restoreSession();
+
+      expect(provider.status, AuthStatus.signedOut);
+      expect(storage.wasCleared, isTrue);
+      expect(provider.accountHoldNotice, contains('Community rules violation'));
+      expect(
+        provider.takeAccountHoldNotice(),
+        contains('Community rules violation'),
+      );
+      expect(provider.accountHoldNotice, isNull);
+    },
+  );
+
+  test(
     'transient restoration failure never reports an authenticated session',
     () async {
       final storage = _FakeStorage(stored);

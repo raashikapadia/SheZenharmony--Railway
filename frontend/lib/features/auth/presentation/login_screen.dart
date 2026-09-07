@@ -24,6 +24,18 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final notice = context.read<AuthProvider>().takeAccountHoldNotice();
+      if (notice != null) {
+        _showAccountHoldDialog(notice);
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -49,12 +61,34 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       return;
     }
+    final holdNotice = context.read<AuthProvider>().takeAccountHoldNotice();
+    if (holdNotice != null) {
+      await _showAccountHoldDialog(holdNotice);
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           context.read<AuthProvider>().error ??
               'We couldn\'t sign you in. Check your details and try again.',
         ),
+      ),
+    );
+  }
+
+  Future<void> _showAccountHoldDialog(String message) {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.pause_circle_outline, color: _teal),
+        title: const Text('Account on hold'),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('I understand'),
+          ),
+        ],
       ),
     );
   }

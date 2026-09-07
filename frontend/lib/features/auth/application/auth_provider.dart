@@ -30,6 +30,7 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isDeletingAccount = false;
   String? _error;
+  String? _accountHoldNotice;
   Map<String, List<String>>? _fieldErrors;
 
   AuthStatus get status => _status;
@@ -38,6 +39,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isDeletingAccount => _isDeletingAccount;
   String? get error => _error;
+  String? get accountHoldNotice => _accountHoldNotice;
   Map<String, List<String>>? get fieldErrors => _fieldErrors;
   bool get isAdmin => _session?.isAdmin ?? false;
   bool get hasCompletedRequiredAssessment =>
@@ -63,11 +65,14 @@ class AuthProvider extends ChangeNotifier {
       _status = AuthStatus.signedIn;
     } on ApiException catch (error, stackTrace) {
       _session = null;
+      if (error.statusCode == 423) {
+        _accountHoldNotice = error.message;
+      }
       _logRestoreFailure(
         'API failure (HTTP ${error.statusCode ?? 'unknown'})',
         stackTrace,
       );
-      if (error.statusCode == 401) {
+      if (error.statusCode == 401 || error.statusCode == 423) {
         await _clearStoredSession();
       }
     } on TimeoutException catch (_, stackTrace) {
@@ -109,6 +114,7 @@ class AuthProvider extends ChangeNotifier {
     _isLoading = true;
     _pendingMfa = null;
     _error = null;
+    _accountHoldNotice = null;
     _fieldErrors = null;
     notifyListeners();
 
@@ -135,6 +141,7 @@ class AuthProvider extends ChangeNotifier {
     _isLoading = true;
     _pendingMfa = null;
     _error = null;
+    _accountHoldNotice = null;
     _fieldErrors = null;
     notifyListeners();
 
@@ -143,6 +150,9 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } on ApiException catch (e) {
       _error = e.message;
+      if (e.statusCode == 423) {
+        _accountHoldNotice = e.message;
+      }
       return false;
     } finally {
       _isLoading = false;
@@ -206,6 +216,12 @@ class AuthProvider extends ChangeNotifier {
     if (_session == null || _session!.hasCompletedRequiredAssessment) return;
     _session = _session!.copyWith(hasCompletedRequiredAssessment: true);
     notifyListeners();
+  }
+
+  String? takeAccountHoldNotice() {
+    final notice = _accountHoldNotice;
+    _accountHoldNotice = null;
+    return notice;
   }
 
   Future<void> logout() async {

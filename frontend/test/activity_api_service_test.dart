@@ -70,6 +70,10 @@ void main() {
           request.url.queryParameters['content_type'],
           contains('journaling'),
         );
+        expect(
+          request.url.queryParameters['content_type'],
+          isNot(contains('affirmation')),
+        );
         return http.Response(
           jsonEncode({
             'data': [

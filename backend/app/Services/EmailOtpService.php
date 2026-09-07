@@ -94,6 +94,10 @@ class EmailOtpService
             $user = $challenge->user;
 
             if ($challenge->purpose === EmailOtpChallenge::PURPOSE_REGISTRATION) {
+                if ($user->account_status !== 'pending_verification') {
+                    $this->invalidCode();
+                }
+
                 $user->forceFill([
                     'account_status' => 'active',
                 ])->save();

@@ -21,6 +21,8 @@ class WellbeingActivitiesScreen extends StatefulWidget {
 }
 
 class _WellbeingActivitiesScreenState extends State<WellbeingActivitiesScreen> {
+  static const _hiddenActivityTitles = {'box breathing'};
+
   late final ApiService _api;
   late Future<List<WellbeingActivity>> _activities;
 
@@ -64,7 +66,13 @@ class _WellbeingActivitiesScreenState extends State<WellbeingActivitiesScreen> {
               onAction: () => setState(_load),
             );
           }
-          final activities = snapshot.data ?? const [];
+          final activities = (snapshot.data ?? const <WellbeingActivity>[])
+              .where(
+                (activity) => !_hiddenActivityTitles.contains(
+                  activity.title.trim().toLowerCase(),
+                ),
+              )
+              .toList();
           if (activities.isEmpty) {
             return const AppStateView(
               icon: Icons.spa_outlined,
@@ -198,7 +206,7 @@ class _ActivityCardState extends State<_ActivityCard>
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.15),
+                      color: AppColors.primary.withValues(alpha: 0.15),
                       blurRadius: 12 + _hoverAnimation.value,
                       offset: Offset(0, 4 + _hoverAnimation.value),
                     ),
@@ -218,11 +226,11 @@ class _ActivityCardState extends State<_ActivityCard>
                               width: 60,
                               height: 60,
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.7),
+                                color: Colors.white.withValues(alpha: 0.7),
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.primary.withOpacity(0.2),
+                                    color: AppColors.primary.withValues(alpha: 0.2),
                                     blurRadius: 8,
                                   ),
                                 ],
@@ -285,7 +293,7 @@ class _ActivityCardState extends State<_ActivityCard>
                                       vertical: 6,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.6),
+                                      color: Colors.white.withValues(alpha: 0.6),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Row(
@@ -439,7 +447,7 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.15),
+              color: AppColors.primary.withValues(alpha: 0.15),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -490,7 +498,7 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
       borderRadius: BorderRadius.circular(16),
       boxShadow: [
         BoxShadow(
-          color: AppColors.primary.withOpacity(0.15),
+          color: AppColors.primary.withValues(alpha: 0.15),
           blurRadius: 12,
           offset: const Offset(0, 4),
         ),
@@ -514,7 +522,7 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.2),
+              color: AppColors.primary.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -639,7 +647,7 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: AppColors.primary.withValues(alpha: 0.1),
                       ),
                     ),
                     child: Text(
@@ -658,10 +666,10 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3E0).withOpacity(0.5),
+                    color: const Color(0xFFFFF3E0).withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFFFFB74D).withOpacity(0.3),
+                      color: const Color(0xFFFFB74D).withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(

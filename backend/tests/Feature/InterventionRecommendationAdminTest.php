@@ -19,21 +19,21 @@ class InterventionRecommendationAdminTest extends TestCase
         [$low, $high] = $this->bands();
 
         $this->actingAs($admin)->post('/admin/interventions', [
-            'title' => 'Progressive relaxation',
-            'content_type' => 'relaxation',
-            'instructions' => 'Tense and release each muscle group.',
+            'title' => 'Guided journal reflection',
+            'content_type' => 'journaling',
+            'instructions' => 'Write down one thing that helped today.',
             'is_active' => '1',
             'recommended_band_ids' => [$high->id],
         ])->assertRedirect(route('admin.interventions.index'));
 
-        $intervention = Intervention::query()->where('title', 'Progressive relaxation')->sole();
+        $intervention = Intervention::query()->where('title', 'Guided journal reflection')->sole();
         $this->assertSame([$high->id], $intervention->recommendations()->where('is_active', true)->pluck('stress_score_band_id')->all());
 
         // Retarget to the low band only — the high-band row is deactivated, not deleted.
         $this->actingAs($admin)->put("/admin/interventions/{$intervention->id}", [
-            'title' => 'Progressive relaxation',
-            'content_type' => 'relaxation',
-            'instructions' => 'Tense and release each muscle group.',
+            'title' => 'Guided journal reflection',
+            'content_type' => 'journaling',
+            'instructions' => 'Write down one thing that helped today.',
             'is_active' => '1',
             'recommended_band_ids' => [$low->id],
         ])->assertRedirect(route('admin.interventions.index'));
@@ -45,9 +45,9 @@ class InterventionRecommendationAdminTest extends TestCase
 
         // "All levels" clears every specific band.
         $this->actingAs($admin)->put("/admin/interventions/{$intervention->id}", [
-            'title' => 'Progressive relaxation',
-            'content_type' => 'relaxation',
-            'instructions' => 'Tense and release each muscle group.',
+            'title' => 'Guided journal reflection',
+            'content_type' => 'journaling',
+            'instructions' => 'Write down one thing that helped today.',
             'is_active' => '1',
             'all_levels' => '1',
             'recommended_band_ids' => [$low->id],
@@ -61,7 +61,7 @@ class InterventionRecommendationAdminTest extends TestCase
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
         $this->actingAs($admin)->post('/admin/interventions', [
-            'title' => 'Broken', 'content_type' => 'resource', 'is_active' => '1',
+            'title' => 'Broken', 'content_type' => 'journaling', 'is_active' => '1',
             'recommended_band_ids' => [999999],
         ])->assertSessionHasErrors('recommended_band_ids.0');
 

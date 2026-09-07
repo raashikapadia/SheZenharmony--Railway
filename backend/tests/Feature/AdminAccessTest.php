@@ -6,7 +6,6 @@ use App\Models\Intervention;
 use App\Models\StressQuestion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
@@ -35,6 +34,62 @@ class AdminAccessTest extends TestCase
             ->assertOk()
             ->assertSee('SheZen Harmony')
             ->assertSee('Administration');
+    }
+
+    public function test_admin_sidebar_uses_the_reorganised_sections_and_placeholder_pages(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAs($admin)->get('/admin')
+            ->assertOk()
+            ->assertSeeInOrder([
+                'Assessment',
+                'Questionnaire Management',
+                'Stress Level Assessment',
+                'Wellbeing Activities',
+                'Support Content',
+                'Video Activities',
+                'Personal Guidance',
+                'Positive Engagement',
+                'Future Scope',
+                'ChatBuddy / Rule-Based Chatbot',
+                'Users',
+                'Registered Students',
+                'Demographic Reports',
+            ])
+            ->assertDontSee('Categories');
+
+        foreach ([
+            'admin.interventions.index' => 'Support Content',
+            'admin.wellbeing_activities.index' => 'Video Activities',
+            'admin.personal-guidance.index' => 'Personal Guidance',
+        ] as $routeName => $label) {
+            $this->actingAs($admin)->get(route($routeName))
+                ->assertOk()
+                ->assertSee($label)
+                ->assertSee(
+                    'class="side-link active" href="'.route($routeName).'"',
+                    false,
+                );
+        }
+
+        $this->actingAs($admin)->get(route('admin.positive-engagement.index'))
+            ->assertOk()
+            ->assertSee('Positive Engagement')
+            ->assertSee('Add positive engagement item')
+            ->assertSee(
+                'class="side-link active" href="'.route('admin.positive-engagement.index').'"',
+                false,
+            );
+
+        $this->actingAs($admin)->get(route('admin.chatbuddy.index'))
+            ->assertOk()
+            ->assertSee('ChatBuddy / Rule-Based Chatbot')
+            ->assertSee('Coming Soon')
+            ->assertSee(
+                'class="side-link active" href="'.route('admin.chatbuddy.index').'"',
+                false,
+            );
     }
 
     public function test_invalid_or_inactive_admin_cannot_sign_in(): void
@@ -98,7 +153,7 @@ class AdminAccessTest extends TestCase
         $this->get('/admin/students')->assertRedirect(route('admin.login'));
     }
 
-    public function test_admin_can_view_and_edit_student_demographics_without_seeing_identity(): void
+    public function test_admin_can_view_student_demographics_read_only_without_seeing_identity(): void
     {
         $student = User::factory()->create([
             'name' => 'Hidden Student Name',
@@ -123,44 +178,32 @@ class AdminAccessTest extends TestCase
             ->assertDontSee($student->name)
             ->assertDontSee($student->email);
 
-        $this->actingAs($admin)->put("/admin/students/{$identity->id}", [
-            'date_of_birth' => '2000-01-01',
-            'country' => 'Samoa',
-            'year_of_study' => 'Year 3',
-            'employment_status' => 'Part-time',
-            'relationship_status' => 'Single',
-            'has_children' => '0',
-            'living_situation' => 'Living alone',
-        ])->assertRedirect(route('admin.students.show', $identity));
+        $this->actingAs($admin)
+            ->get("/admin/students/{$identity->id}/edit")
+            ->assertNotFound();
+        $this->actingAs($admin)
+            ->put("/admin/students/{$identity->id}", ['country' => 'Samoa'])
+            ->assertMethodNotAllowed();
 
         $this->assertDatabaseHas('user_profiles', [
             'student_identity_id' => $identity->id,
-            'country' => 'Samoa',
-            'year_of_study' => 'Year 3',
-            'living_situation' => 'Living alone',
+            'country' => 'Fiji',
+            'year_of_study' => 'Year 2',
+            'living_situation' => 'With family',
         ]);
         $this->assertSame('active', $student->fresh()->account_status);
     }
 
-    public function test_admin_cannot_directly_edit_calculated_age_and_non_admin_cannot_reach_student_routes(): void
+    public function test_non_admin_cannot_reach_student_management_routes(): void
     {
         $student = User::factory()->create(['role' => User::ROLE_STUDENT]);
         $identity = $student->studentIdentity;
-        $identity->profile()->create(['date_of_birth' => '2000-01-01']);
-        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
-        $expectedAge = Carbon::parse('2000-01-01')->age;
-
-        $this->actingAs($admin)->put("/admin/students/{$identity->id}", [
-            'date_of_birth' => '2000-01-01',
-            'age' => 999,
-        ])->assertRedirect(route('admin.students.show', $identity));
-
-        $this->assertSame($expectedAge, $identity->fresh()->profile->age);
-        $this->assertNotEquals(999, $identity->fresh()->profile->age);
 
         $this->actingAs($student)->get("/admin/students/{$identity->id}")->assertForbidden();
-        $this->actingAs($student)->get("/admin/students/{$identity->id}/edit")->assertForbidden();
-        $this->actingAs($student)->put("/admin/students/{$identity->id}", [])->assertForbidden();
+        $this->actingAs($student)->patch("/admin/students/{$identity->id}/hold", [
+            'reason' => 'Repeated violation of the community rules.',
+        ])->assertForbidden();
+        $this->actingAs($student)->patch("/admin/students/{$identity->id}/reactivate")->assertForbidden();
 
         Auth::logout();
         $this->get("/admin/students/{$identity->id}")->assertRedirect(route('admin.login'));
@@ -192,15 +235,60 @@ class AdminAccessTest extends TestCase
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
         $this->actingAs($admin)->post('/admin/interventions', [
-            'title' => 'Guided breathing',
-            'description' => 'Follow a short breathing exercise.',
-            'content_type' => 'breathing',
+            'title' => 'Guided journal reflection',
+            'description' => 'Write about one helpful moment.',
+            'content_type' => 'journaling',
             'stress_level' => 'high',
             'is_active' => '1',
         ])->assertRedirect(route('admin.interventions.index'));
 
         $this->assertDatabaseHas('interventions', [
-            'title' => 'Guided breathing',
+            'title' => 'Guided journal reflection',
+            'content_type' => 'journaling',
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_support_content_admin_is_limited_to_journaling(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $existingAffirmation = Intervention::query()->create([
+            'title' => 'Existing affirmation',
+            'content_type' => 'affirmation',
+            'is_active' => true,
+        ]);
+        Intervention::query()->create([
+            'title' => 'Journal prompt',
+            'content_type' => 'journaling',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)->get(route('admin.interventions.index'))
+            ->assertOk()
+            ->assertSee('Journal prompt')
+            ->assertDontSee('Existing affirmation');
+
+        $this->actingAs($admin)->get(route('admin.interventions.create'))
+            ->assertOk()
+            ->assertSee('<option value="journaling"', false)
+            ->assertDontSee('value="affirmation"', false)
+            ->assertDontSee('value="quiz"', false)
+            ->assertDontSee('value="motivation"', false);
+
+        $this->actingAs($admin)->post('/admin/interventions', [
+            'title' => 'Rejected affirmation',
+            'content_type' => 'affirmation',
+            'is_active' => '1',
+        ])->assertSessionHasErrors('content_type');
+
+        $this->actingAs($admin)
+            ->get(route('admin.interventions.edit', $existingAffirmation))
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('interventions', [
+            'id' => $existingAffirmation->id,
+            'title' => 'Existing affirmation',
+            'content_type' => 'affirmation',
             'is_active' => true,
         ]);
     }

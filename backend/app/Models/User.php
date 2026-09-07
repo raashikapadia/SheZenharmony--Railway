@@ -18,7 +18,17 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'role', 'pseudonymous_uuid', 'account_status'])]
+#[Fillable([
+    'name',
+    'email',
+    'password',
+    'role',
+    'pseudonymous_uuid',
+    'account_status',
+    'account_hold_reason',
+    'account_held_at',
+    'account_held_by_user_id',
+])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -132,6 +142,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'deleted_at' => 'datetime',
+            'account_held_at' => 'datetime',
         ];
     }
 }

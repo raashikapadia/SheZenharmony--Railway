@@ -4,6 +4,7 @@ use App\Http\Controllers\Web\AdminAuthController;
 use App\Http\Controllers\Web\AdminDashboardController;
 use App\Http\Controllers\Web\AdminInterventionController;
 use App\Http\Controllers\Web\AdminPersonalGuidanceController;
+use App\Http\Controllers\Web\AdminPositiveEngagementController;
 use App\Http\Controllers\Web\AdminQuestionController;
 use App\Http\Controllers\Web\AdminQuestionnaireController;
 use App\Http\Controllers\Web\AdminSectionController;
@@ -25,8 +26,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/', AdminDashboardController::class)->name('dashboard');
     Route::get('/students', [AdminStudentController::class, 'index'])->name('students.index');
     Route::get('/students/{student}', [AdminStudentController::class, 'show'])->name('students.show');
-    Route::get('/students/{student}/edit', [AdminStudentController::class, 'edit'])->name('students.edit');
-    Route::put('/students/{student}', [AdminStudentController::class, 'update'])->name('students.update');
+    Route::patch('/students/{student}/hold', [AdminStudentController::class, 'hold'])->name('students.hold');
+    Route::patch('/students/{student}/reactivate', [AdminStudentController::class, 'reactivate'])->name('students.reactivate');
     Route::get('/student-stress/overview', [AdminStudentStressController::class, 'overview'])->name('student-stress.overview');
     Route::get('/student-stress', [AdminStudentStressController::class, 'index'])->name('student-stress.index');
     Route::get('/student-stress/analytics', [AdminStudentStressController::class, 'analytics'])->name('student-stress.analytics');
@@ -61,5 +62,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('interventions', AdminInterventionController::class)->except(['show']);
     Route::resource('wellbeing_activities', AdminWellbeingActivityController::class)->except(['show']);
     Route::resource('personal-guidance', AdminPersonalGuidanceController::class)->except(['show'])->parameters(['personal-guidance' => 'personalGuidance']);
+    Route::resource('positive-engagement', AdminPositiveEngagementController::class)
+        ->except(['show'])
+        ->parameters(['positive-engagement' => 'intervention']);
+    Route::view('chatbuddy', 'admin.coming-soon', [
+        'title' => 'ChatBuddy / Rule-Based Chatbot',
+        'description' => 'Future administration tools for the rule-based ChatBuddy will be available here.',
+    ])->name('chatbuddy.index');
     Route::post('/logout', [AdminAuthController::class, 'destroy'])->name('logout');
 });

@@ -28,7 +28,7 @@ completed safely without an approved product/privacy rule.
 | Stress history/check-ins | Implemented foundation | Authenticated students can repeat the active check-in and view their completed assessment summaries. Clinical interpretation and production content remain unapproved. |
 | Mood tracking | Missing | No distinct mood model, API, or active screen. Dashboard entry is a labelled future feature. |
 | Wellbeing activities | Implemented prototype | Active admin-managed wellbeing activities have a privacy-safe student endpoint and Flutter list/detail experience. Completion tracking is not included. |
-| Positive engagement | Implemented prototype | Active affirmation, quiz, motivation, and positive-engagement interventions are filtered through the existing intervention endpoint and shown in a dedicated Flutter experience. |
+| Positive engagement | Implemented prototype | Active journaling, quiz, motivation, and positive-engagement interventions are filtered through the existing intervention endpoint and shown in a dedicated Flutter experience. Affirmations are managed and displayed through Personal Guidance. |
 | Rule-based Chat Buddy | Partial foundation | Chat/session/message/crisis schema models exist, but no approved conversation tree, API, or Flutter flow is active. It must remain menu/path driven rather than unrestricted AI. |
 | Resources/categories | Partial foundation | Content category/tag relationships exist around interventions. A dedicated student resources experience and complete admin management are not active. |
 | Academic support | Missing | Dashboard placeholder only; courses, deadlines, and reminder persistence are not implemented. |

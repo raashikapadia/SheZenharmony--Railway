@@ -77,19 +77,22 @@ class MobileAuthTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('email');
     }
 
-    public function test_inactive_student_cannot_use_the_student_mobile_login(): void
+    public function test_held_student_receives_an_account_hold_response(): void
     {
         $student = User::factory()->create([
             'password' => 'student-password',
             'role' => User::ROLE_STUDENT,
             'account_status' => 'suspended',
+            'account_hold_reason' => 'Repeated violation of the community rules.',
         ]);
 
         $this->postJson('/api/v1/auth/login', [
             'email' => $student->email,
             'password' => 'student-password',
             'device_name' => 'test device',
-        ])->assertUnprocessable()->assertJsonValidationErrors('email');
+        ])->assertStatus(423)
+            ->assertJsonPath('code', 'account_on_hold')
+            ->assertJsonPath('message', fn (string $message) => str_contains($message, 'Repeated violation'));
     }
 
     public function test_invalid_mobile_credentials_fail(): void

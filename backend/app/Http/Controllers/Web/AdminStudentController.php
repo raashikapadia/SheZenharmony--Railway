@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\StudentIdentity;
+use App\Models\User;
+use App\Notifications\AccountHoldNotification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,7 +17,7 @@ class AdminStudentController extends Controller
     {
         $students = StudentIdentity::query()
             ->with([
-                'user:id,account_status',
+                'user:id,account_status,account_hold_reason,account_held_at',
                 'profile:id,student_identity_id,gender,country,employment_status',
             ])
             ->withExists([
@@ -30,35 +32,52 @@ class AdminStudentController extends Controller
 
     public function show(StudentIdentity $student): View
     {
-        $student->load('user:id,account_status', 'profile');
+        $student->load('user:id,account_status,account_hold_reason,account_held_at', 'profile');
 
         return view('admin.students.show', compact('student'));
     }
 
-    public function edit(StudentIdentity $student): View
-    {
-        $student->load('profile');
-
-        return view('admin.students.edit', compact('student'));
-    }
-
-    public function update(Request $request, StudentIdentity $student): RedirectResponse
+    public function hold(Request $request, StudentIdentity $student): RedirectResponse
     {
         $data = $request->validate([
-            'date_of_birth' => ['nullable', 'date', 'before:today'],
-            'country' => ['nullable', 'string', 'max:100'],
-            'year_of_study' => ['nullable', 'string', 'max:30'],
-            'employment_status' => ['nullable', 'string', 'max:100'],
-            'relationship_status' => ['nullable', 'string', 'max:100'],
-            'has_children' => ['nullable', 'boolean'],
-            'living_situation' => ['nullable', 'string', 'max:150'],
-        ], [
-            'date_of_birth.before' => 'Date of birth cannot be in the future.',
+            'reason' => ['required', 'string', 'min:10', 'max:1000'],
         ]);
 
-        $student->profile()->updateOrCreate([], $data);
+        $user = $this->studentUser($student);
+        abort_unless($user->account_status === 'active', 409, 'Only an active student account can be placed on hold.');
+        $user->forceFill([
+            'account_status' => 'suspended',
+            'account_hold_reason' => trim($data['reason']),
+            'account_held_at' => now(),
+            'account_held_by_user_id' => $request->user()->id,
+        ])->save();
+
+        $user->notify(new AccountHoldNotification);
 
         return redirect()->route('admin.students.show', $student)
-            ->with('status', 'Student profile updated successfully.');
+            ->with('status', 'The student account is now on hold and the student has been notified.');
+    }
+
+    public function reactivate(StudentIdentity $student): RedirectResponse
+    {
+        $user = $this->studentUser($student);
+        abort_unless($user->account_status === 'suspended', 409, 'Only an account on hold can be reactivated.');
+        $user->forceFill([
+            'account_status' => 'active',
+            'account_hold_reason' => null,
+            'account_held_at' => null,
+            'account_held_by_user_id' => null,
+        ])->save();
+
+        return redirect()->route('admin.students.show', $student)
+            ->with('status', 'The student account has been reactivated.');
+    }
+
+    private function studentUser(StudentIdentity $student): User
+    {
+        $user = $student->user()->firstOrFail();
+        abort_unless($user->isStudent(), 404);
+
+        return $user;
     }
 }

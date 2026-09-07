@@ -1,12 +1,12 @@
 @extends('layouts.admin')
-@section('title', $intervention->exists ? 'Edit support content' : 'Add support content')
+@section('title', ($intervention->exists ? 'Edit ' : 'Add ').strtolower($configuration['singular']))
 @section('body')
 <main class="content">
-    <a href="{{ route('admin.interventions.index') }}">← Support Content</a>
-    <h1>{{ $intervention->exists ? 'Edit support content' : 'Add support content' }}</h1>
-    <p class="muted">The content type determines where this appears in the student application.</p>
+    <a href="{{ route($configuration['route'].'.index') }}">← {{ $configuration['title'] }}</a>
+    <h1>{{ $intervention->exists ? 'Edit '.$configuration['singular'] : 'Add '.strtolower($configuration['singular']) }}</h1>
+    <p class="muted">{{ $configuration['description'] }}</p>
     @if($errors->any())<div class="alert error"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-    <form method="POST" action="{{ $intervention->exists ? route('admin.interventions.update', $intervention) : route('admin.interventions.store') }}">
+    <form method="POST" action="{{ $intervention->exists ? route($configuration['route'].'.update', $intervention) : route($configuration['route'].'.store') }}">
         @csrf
         @if($intervention->exists) @method('PUT') @endif
         <label for="title">Title</label>
@@ -19,20 +19,8 @@
             <div>
                 <label for="content_type">Content type</label>
                 <select id="content_type" name="content_type" required>
-                    @foreach([
-                        'breathing' => 'Breathing · Wellbeing Activities',
-                        'grounding' => 'Grounding · Wellbeing Activities',
-                        'mindfulness' => 'Mindfulness · Wellbeing Activities',
-                        'relaxation' => 'Relaxation · Wellbeing Activities',
-                        'activity' => 'General activity · Wellbeing Activities',
-                        'resource' => 'Resource · Wellbeing Activities',
-                        'journaling' => 'Journaling · Positive Engagement',
-                        'affirmation' => 'Affirmation · Positive Engagement',
-                        'quiz' => 'Light quiz · Positive Engagement',
-                        'motivation' => 'Motivation · Positive Engagement',
-                        'positive_engagement' => 'Positive activity · Positive Engagement',
-                    ] as $value => $label)
-                        <option value="{{ $value }}" @selected(old('content_type', $intervention->content_type ?? 'activity') === $value)>{{ $label }}</option>
+                    @foreach($configuration['contentTypes'] as $value => $label)
+                        <option value="{{ $value }}" @selected(old('content_type', $intervention->content_type ?? array_key_first($configuration['contentTypes'])) === $value)>{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
@@ -58,7 +46,7 @@
         </fieldset>
 
         <label class="remember"><input name="is_active" type="checkbox" value="1" @checked(old('is_active', $intervention->exists ? $intervention->is_active : true))> Published (visible to students)</label>
-        <div class="actions"><button class="button" type="submit">Save support content</button><a class="button button-secondary" href="{{ route('admin.interventions.index') }}">Cancel</a></div>
+        <div class="actions"><button class="button" type="submit">Save {{ strtolower($configuration['singular']) }}</button><a class="button button-secondary" href="{{ route($configuration['route'].'.index') }}">Cancel</a></div>
     </form>
 </main>
 @endsection

@@ -14,11 +14,15 @@ class AdminInterventionController extends Controller
 {
     public function index(): View
     {
+        $configuration = $this->configuration();
+
         return view('admin.interventions.index', [
             'interventions' => Intervention::query()
+                ->whereIn('content_type', array_keys($configuration['contentTypes']))
                 ->with(['recommendations' => fn ($query) => $query->where('is_active', true), 'recommendations.scoreBand'])
                 ->orderBy('title')
                 ->paginate(20),
+            'configuration' => $configuration,
         ]);
     }
 
@@ -28,6 +32,7 @@ class AdminInterventionController extends Controller
             'intervention' => new Intervention,
             'bands' => $this->bands(),
             'selectedBandIds' => [],
+            'configuration' => $this->configuration(),
         ]);
     }
 
@@ -38,11 +43,16 @@ class AdminInterventionController extends Controller
             $this->syncRecommendations($intervention, $request);
         });
 
-        return redirect()->route('admin.interventions.index')->with('status', 'Support content created.');
+        $configuration = $this->configuration();
+
+        return redirect()->route($configuration['route'].'.index')
+            ->with('status', $configuration['singular'].' created.');
     }
 
     public function edit(Intervention $intervention): View
     {
+        $this->ensureManaged($intervention);
+
         return view('admin.interventions.form', [
             'intervention' => $intervention,
             'bands' => $this->bands(),
@@ -50,30 +60,40 @@ class AdminInterventionController extends Controller
                 ->where('is_active', true)
                 ->pluck('stress_score_band_id')
                 ->all(),
+            'configuration' => $this->configuration(),
         ]);
     }
 
     public function update(Request $request, Intervention $intervention): RedirectResponse
     {
+        $this->ensureManaged($intervention);
+
         DB::transaction(function () use ($request, $intervention): void {
             $intervention->update($this->validated($request));
             $this->syncRecommendations($intervention, $request);
         });
 
-        return redirect()->route('admin.interventions.index')->with('status', 'Support content updated.');
+        $configuration = $this->configuration();
+
+        return redirect()->route($configuration['route'].'.index')
+            ->with('status', $configuration['singular'].' updated.');
     }
 
     public function destroy(Intervention $intervention): RedirectResponse
     {
+        $this->ensureManaged($intervention);
+
+        $configuration = $this->configuration();
+
         if ($intervention->usages()->exists()) {
             $intervention->update(['is_active' => false]);
 
-            return back()->with('status', 'Support content has usage history and was deactivated instead of deleted.');
+            return back()->with('status', $configuration['singular'].' has usage history and was deactivated instead of deleted.');
         }
 
         $intervention->delete();
 
-        return back()->with('status', 'Support content deleted.');
+        return back()->with('status', $configuration['singular'].' deleted.');
     }
 
     private function validated(Request $request): array
@@ -81,7 +101,7 @@ class AdminInterventionController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'content_type' => ['required', 'in:breathing,grounding,mindfulness,relaxation,activity,resource,journaling,affirmation,quiz,motivation,positive_engagement'],
+            'content_type' => ['required', 'in:'.implode(',', array_keys($this->configuration()['contentTypes']))],
             'stress_level' => ['nullable', 'string', 'max:100'],
             'external_url' => ['nullable', 'url', 'max:2000'],
             'instructions' => ['nullable', 'string', 'max:10000'],
@@ -93,6 +113,26 @@ class AdminInterventionController extends Controller
         $data['is_active'] = (bool) ($data['is_active'] ?? false);
 
         return collect($data)->except(['all_levels', 'recommended_band_ids'])->all();
+    }
+
+    /** @return array{route: string, title: string, singular: string, heading: string, description: string, empty: string, studentSection: string, contentTypes: array<string, string>} */
+    protected function configuration(): array
+    {
+        return [
+            'route' => 'admin.interventions',
+            'title' => 'Support Content',
+            'singular' => 'Support content',
+            'heading' => 'Journaling prompts',
+            'description' => 'Manage guided journaling content shown to students. Stress-level targeting can also support future result recommendations.',
+            'empty' => 'No journaling content configured.',
+            'studentSection' => 'Positive Engagement',
+            'contentTypes' => ['journaling' => 'Journaling'],
+        ];
+    }
+
+    private function ensureManaged(Intervention $intervention): void
+    {
+        abort_unless(array_key_exists($intervention->content_type, $this->configuration()['contentTypes']), 404);
     }
 
     private function syncRecommendations(Intervention $intervention, Request $request): void

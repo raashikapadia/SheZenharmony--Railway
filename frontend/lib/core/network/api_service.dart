@@ -361,8 +361,7 @@ class ApiService {
   Future<List<PositiveContent>> positiveEngagement() async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/v1/interventions').replace(
       queryParameters: {
-        'content_type':
-            'journaling,affirmation,quiz,motivation,positive_engagement',
+        'content_type': 'journaling,quiz,motivation,positive_engagement',
       },
     );
     final body = await _getPublicJson(uri);
@@ -853,6 +852,7 @@ class ApiService {
       404 => 'That item could not be found — it may have been removed.',
       409 =>
         'This could not be completed due to a conflict with existing data.',
+      423 => 'Your SheZen Harmony account is currently on hold.',
       422 => 'Please correct the highlighted fields.',
       >= 500 => 'The server ran into a problem. Please try again shortly.',
       _ => 'Something went wrong (HTTP $statusCode).',

@@ -104,6 +104,13 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($user->isStudent() && $user->account_status === 'suspended') {
+            return response()->json([
+                'code' => 'account_on_hold',
+                'message' => $this->accountHoldMessage($user),
+            ], 423);
+        }
+
         if (! $user->isStudent() || ! in_array($user->account_status, ['active', 'pending_verification'], true)) {
             throw ValidationException::withMessages([
                 'email' => ['This account cannot sign in to the student application.'],
@@ -207,5 +214,16 @@ class AuthController extends Controller
                 ->where('assessment_status', 'completed')
                 ->exists(),
         ];
+    }
+
+    private function accountHoldMessage(User $user): string
+    {
+        $message = 'Your SheZen Harmony account is currently on hold.';
+
+        if ($user->account_hold_reason) {
+            $message .= ' Reason: '.$user->account_hold_reason;
+        }
+
+        return $message.' Please contact SheZen Harmony support if you believe this is a mistake.';
     }
 }
