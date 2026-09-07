@@ -5,7 +5,7 @@ import '../../../core/network/api_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_ui.dart';
 import '../../activities/presentation/positive_engagement_screen.dart';
-import '../../activities/presentation/wellbeing_activities_screen.dart';
+import '../../activities/presentation/wellbeing_hub_screen.dart';
 import '../../games/games_quizzes_screen.dart';
 import '../../assessment/data/assessment_result.dart';
 import '../../assessment/presentation/assessment_detail_screen.dart';
@@ -146,7 +146,7 @@ class _DashboardPage extends StatelessWidget {
                     tint: AppColors.softSage,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const WellbeingActivitiesScreen(),
+                        builder: (_) => const WellbeingHubScreen(),
                       ),
                     ),
                   ),
@@ -508,9 +508,9 @@ class _ActivitiesPage extends StatelessWidget {
         description:
             'Breathing, mindfulness, grounding, relaxation, and healthy breaks.',
         color: AppColors.softSage,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const WellbeingActivitiesScreen()),
-        ),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const WellbeingHubScreen())),
       ),
 
       const SizedBox(height: AppSpacing.md),

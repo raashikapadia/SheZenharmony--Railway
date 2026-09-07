@@ -7,6 +7,7 @@ import '../../../core/network/api_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_ui.dart';
 import '../data/support_content.dart';
+import 'activity_palette.dart';
 import 'tiktok_video_player.dart';
 
 class WellbeingActivitiesScreen extends StatefulWidget {
@@ -21,8 +22,6 @@ class WellbeingActivitiesScreen extends StatefulWidget {
 }
 
 class _WellbeingActivitiesScreenState extends State<WellbeingActivitiesScreen> {
-  static const _hiddenActivityTitles = {'box breathing'};
-
   late final ApiService _api;
   late Future<List<WellbeingActivity>> _activities;
 
@@ -68,7 +67,7 @@ class _WellbeingActivitiesScreenState extends State<WellbeingActivitiesScreen> {
           }
           final activities = (snapshot.data ?? const <WellbeingActivity>[])
               .where(
-                (activity) => !_hiddenActivityTitles.contains(
+                (activity) => !hiddenWellbeingActivityTitles.contains(
                   activity.title.trim().toLowerCase(),
                 ),
               )
@@ -198,7 +197,7 @@ class _ActivityCardState extends State<_ActivityCard>
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) =>
-                      _ActivityDetailScreen(activity: widget.activity),
+                      ActivityDetailScreen(activity: widget.activity),
                 ),
               ),
               child: Container(
@@ -230,7 +229,9 @@ class _ActivityCardState extends State<_ActivityCard>
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.2),
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.2,
+                                    ),
                                     blurRadius: 8,
                                   ),
                                 ],
@@ -293,7 +294,9 @@ class _ActivityCardState extends State<_ActivityCard>
                                       vertical: 6,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.6),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.6,
+                                      ),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Row(
@@ -334,16 +337,16 @@ class _ActivityCardState extends State<_ActivityCard>
   }
 }
 
-class _ActivityDetailScreen extends StatefulWidget {
-  const _ActivityDetailScreen({required this.activity});
+class ActivityDetailScreen extends StatefulWidget {
+  const ActivityDetailScreen({super.key, required this.activity});
 
   final WellbeingActivity activity;
 
   @override
-  State<_ActivityDetailScreen> createState() => _ActivityDetailScreenState();
+  State<ActivityDetailScreen> createState() => _ActivityDetailScreenState();
 }
 
-class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
+class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   /// Expanded height of the artwork header.
   static const _headerHeight = 330.0;
 
@@ -394,14 +397,7 @@ class _ActivityDetailScreenState extends State<_ActivityDetailScreen> {
         defaultTargetPlatform == TargetPlatform.macOS;
   }
 
-  /// Admins often paste links without a scheme ("youtu.be/..."), which parse
-  /// as relative URIs that neither the id parser nor an external app handles.
-  String get _normalisedUrl {
-    final url = activity.sourceUrl.trim();
-    if (url.isEmpty) return url;
-    if (url.startsWith(RegExp(r'[a-zA-Z][a-zA-Z0-9+.-]*:'))) return url;
-    return 'https://$url';
-  }
+  String get _normalisedUrl => activity.normalisedSourceUrl;
 
   void _launchVideo() async {
     final messenger = ScaffoldMessenger.of(context);
@@ -714,16 +710,8 @@ abstract final class _HeaderPalette {
   /// Saturated partner to [tint], dark enough to carry small text.
   static const accent = AppColors.primary;
 
-  static IconData iconFor(String category) => switch (category.toLowerCase()) {
-    'breathing' => Icons.air_rounded,
-    'grounding' => Icons.spa_rounded,
-    'meditation' || 'mindfulness' => Icons.self_improvement_rounded,
-    'relaxation' => Icons.bedtime_rounded,
-    'yoga' => Icons.self_improvement_rounded,
-    'asmr' => Icons.headphones_rounded,
-    'resource' => Icons.menu_book_rounded,
-    _ => Icons.favorite_rounded,
-  };
+  static IconData iconFor(String category) =>
+      WellbeingPalette.iconFor(category);
 }
 
 /// The expanded artwork behind the activity title: the plum wash melting into
@@ -760,7 +748,7 @@ class _ActivityHeader extends StatelessWidget {
         Positioned(
           top: -76,
           right: -54,
-          child: _Blob(
+          child: WellbeingBlob(
             size: 260,
             color: _HeaderPalette.accent.withValues(alpha: 0.22),
           ),
@@ -768,7 +756,7 @@ class _ActivityHeader extends StatelessWidget {
         Positioned(
           top: 84,
           left: -70,
-          child: _Blob(
+          child: WellbeingBlob(
             size: 210,
             color: _HeaderPalette.accent.withValues(alpha: 0.16),
           ),
@@ -776,13 +764,16 @@ class _ActivityHeader extends StatelessWidget {
         Positioned(
           bottom: 10,
           right: 20,
-          child: _Blob(size: 120, color: Colors.white.withValues(alpha: 0.7)),
+          child: WellbeingBlob(
+            size: 120,
+            color: Colors.white.withValues(alpha: 0.7),
+          ),
         ),
 
         Positioned(
           top: 104,
           right: 52,
-          child: _Sparkle(
+          child: WellbeingSparkle(
             size: 20,
             color: _HeaderPalette.accent.withValues(alpha: 0.35),
           ),
@@ -790,7 +781,7 @@ class _ActivityHeader extends StatelessWidget {
         Positioned(
           top: 168,
           left: 32,
-          child: _Sparkle(
+          child: WellbeingSparkle(
             size: 12,
             color: _HeaderPalette.accent.withValues(alpha: 0.24),
           ),
@@ -799,7 +790,7 @@ class _ActivityHeader extends StatelessWidget {
         Positioned(
           bottom: 34,
           left: 46,
-          child: _Sparkle(
+          child: WellbeingSparkle(
             size: 15,
             color: _HeaderPalette.accent.withValues(alpha: 0.3),
           ),
@@ -814,7 +805,9 @@ class _ActivityHeader extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _IconTile(icon: _HeaderPalette.iconFor(activity.category)),
+                  WellbeingIconTile(
+                    icon: _HeaderPalette.iconFor(activity.category),
+                  ),
                   const SizedBox(height: 18),
                   if (activity.category.isNotEmpty) ...[
                     _CategoryChip(label: activity.category),
@@ -857,52 +850,6 @@ class _ActivityHeader extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
-
-/// The category icon on a white squircle, with a tilted twin peeking out
-/// behind it.
-class _IconTile extends StatelessWidget {
-  const _IconTile({required this.icon});
-
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 104,
-    height: 92,
-    child: Stack(
-      alignment: Alignment.center,
-      children: [
-        Transform.rotate(
-          angle: 0.28,
-          child: Container(
-            width: 84,
-            height: 84,
-            decoration: BoxDecoration(
-              color: _HeaderPalette.accent.withValues(alpha: 0.28),
-              borderRadius: BorderRadius.circular(28),
-            ),
-          ),
-        ),
-        Container(
-          width: 84,
-          height: 84,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: _HeaderPalette.accent.withValues(alpha: 0.16),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Icon(icon, size: 38, color: _HeaderPalette.accent),
         ),
       ],
     ),
@@ -965,38 +912,4 @@ class _GlassBackButton extends StatelessWidget {
       ),
     ),
   );
-}
-
-/// A wash of colour that fades out at its own edge. A radial gradient rather
-/// than a flat circle: a hard rim reads as a shape sitting on the header
-/// instead of light falling across it.
-class _Blob extends StatelessWidget {
-  const _Blob({required this.size, required this.color});
-
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: RadialGradient(
-        colors: [color, color.withValues(alpha: 0)],
-        stops: const [0.35, 1],
-      ),
-    ),
-  );
-}
-
-class _Sparkle extends StatelessWidget {
-  const _Sparkle({required this.size, required this.color});
-
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) =>
-      Icon(Icons.auto_awesome_rounded, size: size, color: color);
 }

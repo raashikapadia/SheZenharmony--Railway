@@ -1,3 +1,6 @@
+/// Titles withheld from the student-facing activity lists.
+const hiddenWellbeingActivityTitles = <String>{'box breathing'};
+
 class WellbeingActivity {
   const WellbeingActivity({
     required this.title,
@@ -47,6 +50,15 @@ class WellbeingActivity {
       instructions: json['instructions'] as String? ?? '',
       hasVideo: videoType != null,
     );
+  }
+
+  /// Admins often paste links without a scheme ("youtu.be/..."), which parse
+  /// as relative URIs that neither the id parser nor an external app handles.
+  String get normalisedSourceUrl {
+    final url = sourceUrl.trim();
+    if (url.isEmpty) return url;
+    if (url.startsWith(RegExp(r'[a-zA-Z][a-zA-Z0-9+.-]*:'))) return url;
+    return 'https://$url';
   }
 
   static String? _videoTypeFromUrl(String sourceUrl) {
