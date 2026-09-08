@@ -74,8 +74,7 @@ class AdminAccessTest extends TestCase
                 'Video Activities',
                 'Personal Guidance',
                 'Positive Engagement',
-                'Future Scope',
-                'ChatBuddy / Rule-Based Chatbot',
+                'Shezen Chat Buddy',
                 'Users',
                 'Registered Students',
                 'Demographic Reports',
@@ -105,10 +104,14 @@ class AdminAccessTest extends TestCase
                 false,
             );
 
+        // Shezen is now a managed content section rather than a placeholder:
+        // the student experience is still "Coming Soon", but administrators can
+        // write its rule-based conversation here already.
         $this->actingAs($admin)->get(route('admin.chatbuddy.index'))
             ->assertOk()
-            ->assertSee('ChatBuddy / Rule-Based Chatbot')
+            ->assertSee('Shezen Chat Buddy')
             ->assertSee('Coming Soon')
+            ->assertSee('Add category')
             ->assertSee(
                 'class="side-link active" href="'.route('admin.chatbuddy.index').'"',
                 false,
