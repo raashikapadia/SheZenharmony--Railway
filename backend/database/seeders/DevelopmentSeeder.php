@@ -3,8 +3,11 @@
 namespace Database\Seeders;
 
 use App\Models\Intervention;
+use App\Models\PersonalGuidance;
 use App\Models\Questionnaire;
+use App\Models\QuestionnaireSection;
 use App\Models\StressQuestion;
+use App\Models\StressScoreBand;
 use App\Models\User;
 use App\Models\WellbeingActivity;
 use Illuminate\Database\Seeder;
@@ -166,13 +169,179 @@ class DevelopmentSeeder extends Seeder
                     'content_type' => 'positive_engagement',
                     'instructions' => 'Think of three moments that felt helpful, peaceful, or simply okay today. They can be very small.',
                 ],
+                // Short motivational messages shown under Positive Engagement.
+                // The title carries the whole message; admins add, edit and
+                // remove these from /admin/positive-engagement.
+                [
+                    'title' => 'You are doing great — keep going! 🌟',
+                    'slug' => 'motivation-keep-going',
+                    'description' => null,
+                    'content_type' => 'motivation',
+                    'instructions' => null,
+                ],
+                [
+                    'title' => 'Small steps still count. You have got this! 💪',
+                    'slug' => 'motivation-small-steps',
+                    'description' => null,
+                    'content_type' => 'motivation',
+                    'instructions' => null,
+                ],
+                [
+                    'title' => 'Take a breath, smile, and enjoy the little things today 😊',
+                    'slug' => 'motivation-little-things',
+                    'description' => null,
+                    'content_type' => 'motivation',
+                    'instructions' => null,
+                ],
+                [
+                    'title' => 'Today is another chance to do something good for yourself 🌸',
+                    'slug' => 'motivation-something-good',
+                    'description' => null,
+                    'content_type' => 'motivation',
+                    'instructions' => null,
+                ],
+                [
+                    'title' => 'Rest is productive too. Give yourself the break you would give a friend ☕',
+                    'slug' => 'motivation-rest-is-productive',
+                    'description' => null,
+                    'content_type' => 'motivation',
+                    'instructions' => null,
+                ],
+                [
+                    'title' => 'You have handled hard days before. This one is no different 🌤️',
+                    'slug' => 'motivation-handled-before',
+                    'description' => null,
+                    'content_type' => 'motivation',
+                    'instructions' => null,
+                ],
             ] as $content) {
                 Intervention::query()->updateOrCreate(
                     ['title' => $content['title']],
                     $content + ['is_active' => true, 'created_by_user_id' => $admin->id],
                 );
             }
+
+            $this->seedGuidanceToolkit($admin);
         });
+    }
+
+    /**
+     * Coping strategies for the Personal Guidance toolkit, each matched to the
+     * focus areas it suits. Admins can edit, re-match, or remove any of these
+     * from /admin/personal-guidance without a release.
+     */
+    private function seedGuidanceToolkit(User $admin): void
+    {
+        $sectionId = fn (string $title): ?int => QuestionnaireSection::query()
+            ->where('title', 'like', '%'.$title.'%')
+            ->value('id');
+
+        $breathing = Intervention::query()->where('content_type', 'breathing')->value('id');
+
+        // Bands where a practical coping strategy is most likely to help.
+        $supportBandIds = StressScoreBand::query()
+            ->where('is_active', true)
+            ->where(fn ($query) => $query->where('code', 'like', '%low%')->orWhere('code', 'like', '%moderate%'))
+            ->pluck('id')
+            ->all();
+
+        $strategies = [
+            [
+                'title' => 'Name what needs you first',
+                'summary' => 'Feeling pulled in every direction? Pick the one thing that actually needs you right now.',
+                'when_it_helps' => 'When everything feels urgent and you are not sure where to start.',
+                'steps' => "Write down everything on your mind, unsorted\nCircle the one item with a real deadline today\nPut the rest on a \"later\" list you can close\nStart with that one item for ten minutes",
+                'duration_minutes' => 10,
+                'content' => 'When a lot is competing for your attention, the pressure often comes from holding it all at once rather than from any single task. Getting it out of your head and choosing one starting point makes the load visible and finite. The rest is still there — it just does not need you this minute.',
+                'category' => 'Managing pressure',
+                'sections' => ['Personal Growth', 'Environmental'],
+                'related' => null,
+            ],
+            [
+                'title' => 'Slow your breathing for two minutes',
+                'summary' => 'A short, steady breathing pattern to settle a racing mind.',
+                'when_it_helps' => 'When your thoughts feel fast and hard to slow down.',
+                'steps' => "Sit somewhere you can be still\nBreathe in gently for four counts\nHold for four\nBreathe out for four, and hold for four\nRepeat four rounds without forcing it",
+                'duration_minutes' => 2,
+                'content' => 'Lengthening your out-breath is one of the quickest ways to signal to your body that it can ease off. You do not need to clear your mind or feel calm straight away — following the count is enough. If four counts feels long, use three.',
+                'category' => 'Grounding',
+                'sections' => ['Physical Health'],
+                'related' => $breathing,
+            ],
+            [
+                'title' => 'Take the break before you need it',
+                'summary' => 'Short, planned pauses hold up better than pushing until you run out.',
+                'when_it_helps' => 'During long study or work stretches.',
+                'steps' => "Choose a stopping point about 45 minutes away\nWhen you reach it, step away from the screen\nMove, stretch, or get a drink for five minutes\nCome back and pick the next single task",
+                'duration_minutes' => 5,
+                'content' => 'Breaks taken on purpose tend to be shorter and more restoring than the ones taken when concentration has already gone. Deciding the stopping point in advance also removes the small negotiation of whether you have earned it.',
+                'category' => 'Healthy routines',
+                'sections' => ['Digital Well-Being', 'Physical Health'],
+                'related' => null,
+            ],
+            [
+                'title' => 'Notice the early signs',
+                'summary' => 'Catching the first signals of overwhelm gives you more choices.',
+                'when_it_helps' => 'When stress tends to build up before you notice it.',
+                'steps' => "Think back to a recent stretch that felt heavy\nName one body signal you noticed (tight shoulders, shallow breath)\nName one behaviour change (skipping meals, scrolling late)\nDecide the one small thing you will do next time you spot it",
+                'duration_minutes' => 5,
+                'content' => 'Overwhelm usually announces itself before it peaks, but the signals are easy to miss while you are busy. Knowing your own two or three early signs turns a vague feeling into something you can respond to sooner, when smaller adjustments still work.',
+                'category' => 'Self-awareness',
+                'sections' => ['Social Well-Being', 'Support'],
+                'related' => null,
+            ],
+            [
+                'title' => 'Make the first step smaller',
+                'summary' => 'When starting feels heavy, shrink the step until it feels almost easy.',
+                'when_it_helps' => 'When motivation is low and tasks keep getting pushed back.',
+                'steps' => "Pick the task you keep postponing\nName the smallest possible first action\nIf it still feels heavy, halve it again\nDo only that, and let stopping there be fine",
+                'duration_minutes' => 5,
+                'content' => 'Motivation often arrives after starting rather than before it. Making the first step small enough to feel unremarkable lowers the barrier, and finishing something small tends to make the next step easier to reach for.',
+                'category' => 'Getting started',
+                'sections' => ['Personal Growth', 'Happiness'],
+                'related' => null,
+            ],
+        ];
+
+        foreach ($strategies as $strategy) {
+            $guidance = PersonalGuidance::query()->updateOrCreate(
+                ['type' => PersonalGuidance::TYPE_GUIDANCE, 'title' => $strategy['title']],
+                [
+                    'summary' => $strategy['summary'],
+                    'when_it_helps' => $strategy['when_it_helps'],
+                    'steps' => $strategy['steps'],
+                    'duration_minutes' => $strategy['duration_minutes'],
+                    'content' => $strategy['content'],
+                    'category' => $strategy['category'],
+                    'related_intervention_id' => $strategy['related'],
+                    'status' => PersonalGuidance::STATUS_PUBLISHED,
+                    'created_by_user_id' => $admin->id,
+                ],
+            );
+
+            $guidance->recommendations()->delete();
+
+            foreach ($strategy['sections'] as $title) {
+                $id = $sectionId($title);
+
+                if ($id !== null) {
+                    $guidance->recommendations()->create([
+                        'questionnaire_section_id' => $id,
+                        'is_active' => true,
+                    ]);
+                }
+            }
+
+            // Also match on the check-in result itself, so students still get
+            // relevant strategies when a questionnaire produces no per-section
+            // breakdown. Practical strategies suit the lower wellbeing bands.
+            foreach ($supportBandIds as $bandId) {
+                $guidance->recommendations()->create([
+                    'stress_score_band_id' => $bandId,
+                    'is_active' => true,
+                ]);
+            }
+        }
     }
 
     private function developmentUser(string $email, string $name, string $password, string $role): User

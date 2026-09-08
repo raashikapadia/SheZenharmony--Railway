@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A small piece of encouragement shown on the student Home Page. Content is
@@ -33,6 +34,12 @@ class PersonalGuidance extends Model
 
     protected $fillable = [
         'type',
+        'title',
+        'summary',
+        'when_it_helps',
+        'steps',
+        'duration_minutes',
+        'related_intervention_id',
         'content',
         'author',
         'category',
@@ -47,7 +54,30 @@ class PersonalGuidance extends Model
         return [
             'publish_at' => 'datetime',
             'expires_at' => 'datetime',
+            'duration_minutes' => 'integer',
         ];
+    }
+
+    /** Rules matching this guidance to assessment outcomes. */
+    public function recommendations(): HasMany
+    {
+        return $this->hasMany(PersonalGuidanceRecommendation::class, 'personal_guidance_id');
+    }
+
+    /** An optional wellbeing activity to try alongside this guidance. */
+    public function relatedIntervention(): BelongsTo
+    {
+        return $this->belongsTo(Intervention::class, 'related_intervention_id');
+    }
+
+    /** The steps stored as one per line, ready to render as a list. */
+    public function stepList(): array
+    {
+        return collect(preg_split('/\r\n|\r|\n/', (string) $this->steps))
+            ->map(fn (string $step): string => trim($step))
+            ->filter()
+            ->values()
+            ->all();
     }
 
     /**

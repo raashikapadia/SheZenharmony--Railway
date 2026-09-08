@@ -11,12 +11,12 @@ class AdminPositiveEngagementController extends AdminInterventionController
             'title' => 'Positive Engagement',
             'singular' => 'Positive engagement item',
             'heading' => 'Positive activities',
-            'description' => 'Manage quizzes, motivational prompts, and other positive activities shown in the student application.',
+            'description' => 'Manage motivational messages and other positive activities shown in the student application. For a motivational message, put the whole message in the title and keep it short — it is shown to students exactly as written.',
             'empty' => 'No positive engagement content configured.',
             'studentSection' => 'Positive Engagement',
             'contentTypes' => [
                 'quiz' => 'Quiz / mini-game',
-                'motivation' => 'Motivational content',
+                'motivation' => 'Motivational message (short — title is the message)',
                 'positive_engagement' => 'Other positive activity',
             ],
         ];

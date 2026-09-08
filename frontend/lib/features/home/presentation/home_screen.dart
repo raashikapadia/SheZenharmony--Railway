@@ -6,13 +6,14 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_ui.dart';
 import '../../activities/presentation/positive_engagement_screen.dart';
 import '../../activities/presentation/wellbeing_hub_screen.dart';
-import '../../games/games_quizzes_screen.dart';
 import '../../assessment/data/assessment_result.dart';
 import '../../assessment/presentation/assessment_detail_screen.dart';
 import '../../assessment/presentation/questionnaire_screen.dart';
 import '../../auth/application/auth_provider.dart';
 import '../../guidance/presentation/personal_guidance_card.dart';
+import '../../guidance/presentation/personal_guidance_screen.dart';
 import '../../profile/presentation/profile_view_screen.dart';
+import '../../shezen/presentation/shezen_feature_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,12 +29,19 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final pages = [
       _DashboardPage(onNavigate: _selectTab),
-      const _StressPage(),
-      const _ActivitiesPage(),
+      const PersonalGuidanceScreen(),
+      const WellbeingHubScreen(embedded: true),
+      const PositiveEngagementScreen(embedded: true),
       const _ProfilePage(),
     ];
 
-    const titles = ['Home', 'Stress', 'Activities', 'Profile'];
+    const titles = [
+      'Home',
+      'Personal guidance',
+      'Wellbeing activities',
+      'Positive engagement',
+      'Profile',
+    ];
 
     return Scaffold(
       appBar: AppBar(title: Text(titles[_selectedIndex])),
@@ -50,14 +58,19 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.monitor_heart_outlined),
-            selectedIcon: Icon(Icons.monitor_heart_rounded),
-            label: 'Stress',
+            icon: Icon(Icons.favorite_outline_rounded),
+            selectedIcon: Icon(Icons.favorite_rounded),
+            label: 'Guidance',
           ),
           NavigationDestination(
             icon: Icon(Icons.spa_outlined),
             selectedIcon: Icon(Icons.spa_rounded),
             label: 'Activities',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.auto_awesome_outlined),
+            selectedIcon: Icon(Icons.auto_awesome_rounded),
+            label: 'Positive',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),
@@ -108,12 +121,28 @@ class _DashboardPage extends StatelessWidget {
 
         const SizedBox(height: AppSpacing.xxl),
 
+        const ShezenFeatureCard(),
+
+        const SizedBox(height: AppSpacing.xxl),
+
         _StressHero(
           onStart: () => Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => const QuestionnaireScreen(mandatory: false),
             ),
           ),
+        ),
+
+        const SizedBox(height: AppSpacing.sm),
+
+        // Stress history lives here now that the bottom bar carries the three
+        // wellbeing sections.
+        TextButton.icon(
+          onPressed: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const StressHistoryScreen())),
+          icon: const Icon(Icons.history_rounded),
+          label: const Text('See your past check-ins'),
         ),
 
         const SizedBox(height: AppSpacing.xxl),
@@ -155,26 +184,10 @@ class _DashboardPage extends StatelessWidget {
                 SizedBox(
                   width: width,
                   child: AppFeatureCard(
-                    icon: Icons.games_outlined,
-                    title: 'Games & Quizzes',
-                    description:
-                        'Fun games, mindfulness activities, and quizzes.',
-                    tint: AppColors.softBlush,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const GamesQuizzesScreen(),
-                      ),
-                    ),
-                  ),
-                ),
-
-                SizedBox(
-                  width: width,
-                  child: AppFeatureCard(
                     icon: Icons.auto_awesome_outlined,
                     title: 'Positive engagement',
                     description:
-                        'Friendly quizzes, motivational prompts, and light activities.',
+                        'Games, quizzes, motivational prompts, and light activities.',
                     tint: AppColors.softLavender,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
@@ -195,7 +208,8 @@ class _DashboardPage extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
 
         TextButton.icon(
-          onPressed: () => onNavigate(3),
+          // Profile is the last tab (index 4) since Guidance joined the bar.
+          onPressed: () => onNavigate(4),
           icon: const Icon(Icons.manage_accounts_outlined),
           label: const Text('Manage profile and account'),
         ),
@@ -484,67 +498,6 @@ class _AssessmentCard extends StatelessWidget {
 }
 
 // ============================================================
-// ACTIVITIES PAGE
-// ============================================================
-
-class _ActivitiesPage extends StatelessWidget {
-  const _ActivitiesPage();
-
-  @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-    children: [
-      const AppSectionHeader(
-        title: 'Activities',
-        subtitle: 'Explore content published by the SheZen wellbeing team.',
-      ),
-
-      const SizedBox(height: AppSpacing.xl),
-
-      // WELLBEING ACTIVITIES
-      _LargeNavigationCard(
-        icon: Icons.spa_outlined,
-        title: 'Wellbeing activities',
-        description:
-            'Breathing, mindfulness, grounding, relaxation, and healthy breaks.',
-        color: AppColors.softSage,
-        onTap: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const WellbeingHubScreen())),
-      ),
-
-      const SizedBox(height: AppSpacing.md),
-
-      // GAMES & QUIZZES
-      _LargeNavigationCard(
-        icon: Icons.games_outlined,
-        title: 'Games & Quizzes',
-        description:
-            'Fun games, mindfulness activities, quizzes, and positive challenges.',
-        color: AppColors.softBlush,
-        onTap: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const GamesQuizzesScreen())),
-      ),
-
-      const SizedBox(height: AppSpacing.md),
-
-      // POSITIVE ENGAGEMENT
-      _LargeNavigationCard(
-        icon: Icons.auto_awesome_outlined,
-        title: 'Positive engagement',
-        description:
-            'Friendly quizzes, motivational prompts, and light activities.',
-        color: AppColors.softLavender,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const PositiveEngagementScreen()),
-        ),
-      ),
-    ],
-  );
-}
-
-// ============================================================
 // LARGE NAVIGATION CARD
 // ============================================================
 
@@ -644,4 +597,21 @@ class _ProfilePage extends StatelessWidget {
       ],
     );
   }
+}
+
+// ============================================================
+// STRESS HISTORY
+// ============================================================
+
+/// The student's past check-ins. This is the screen that used to be the
+/// "Stress" tab — the list itself is unchanged, it is now reached from the
+/// Home dashboard so the bottom bar can carry the three wellbeing sections.
+class StressHistoryScreen extends StatelessWidget {
+  const StressHistoryScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Your check-ins')),
+    body: const SafeArea(child: _StressPage()),
+  );
 }

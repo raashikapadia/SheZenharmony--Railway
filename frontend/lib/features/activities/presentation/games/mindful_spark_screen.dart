@@ -3,7 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_theme.dart';
 
 class MindfulSparkScreen extends StatefulWidget {
   const MindfulSparkScreen({super.key});

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Web\AdminAuthController;
+use App\Http\Controllers\Web\AdminChatBuddyController;
 use App\Http\Controllers\Web\AdminDashboardController;
 use App\Http\Controllers\Web\AdminInterventionController;
 use App\Http\Controllers\Web\AdminPersonalGuidanceController;
@@ -63,13 +64,18 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('interventions', AdminInterventionController::class)->except(['show']);
     Route::resource('wellbeing_activities', AdminWellbeingActivityController::class)->except(['show']);
     Route::resource('personal-guidance', AdminPersonalGuidanceController::class)->except(['show'])->parameters(['personal-guidance' => 'personalGuidance']);
+    // Games and quizzes live under Positive Engagement. Declared before the
+    // positive-engagement resource so the literal segment is not swallowed by
+    // the resource's {intervention} parameter.
+    Route::resource('positive-engagement/games-quizzes', AdminQuizController::class)
+        ->except(['show'])
+        ->parameters(['games-quizzes' => 'quiz'])
+        ->names('positive-engagement.games-quizzes');
     Route::resource('positive-engagement', AdminPositiveEngagementController::class)
         ->except(['show'])
         ->parameters(['positive-engagement' => 'intervention']);
-    Route::resource('games-quizzes', AdminQuizController::class)->except(['show'])->parameters(['games-quizzes' => 'quiz']);
-    Route::view('chatbuddy', 'admin.coming-soon', [
-        'title' => 'ChatBuddy / Rule-Based Chatbot',
-        'description' => 'Future administration tools for the rule-based ChatBuddy will be available here.',
-    ])->name('chatbuddy.index');
+    // Shezen, the rule-based chat buddy. The student experience ships as
+    // "Coming Soon"; the conversation content is managed here in the meantime.
+    Route::resource('chatbuddy', AdminChatBuddyController::class)->except(['show']);
     Route::post('/logout', [AdminAuthController::class, 'destroy'])->name('logout');
 });

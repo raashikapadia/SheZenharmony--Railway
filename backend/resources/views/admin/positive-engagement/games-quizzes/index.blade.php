@@ -5,7 +5,7 @@
     @if(session('status'))<div class="status">{{ session('status') }}</div>@endif
     <div class="page-intro">
         <div><h1>Games &amp; Quizzes</h1><p class="lede">Manage quizzes independently from the existing student games.</p></div>
-        <a class="button" href="{{ route('admin.games-quizzes.create') }}">+ Add quiz</a>
+        <a class="button" href="{{ route('admin.positive-engagement.games-quizzes.create') }}">+ Add quiz</a>
     </div>
     <div class="cards" style="margin-bottom:20px">
         <article class="card"><div class="muted">Total Games</div><div class="metric">Existing</div><div class="metric-note">Existing games are unchanged</div></article>
@@ -18,7 +18,7 @@
         <div class="panel-head"><h2>Quiz library</h2><p class="muted">Create, edit, publish, or remove quizzes and their questions.</p></div>
         <div class="table-wrap"><table><thead><tr><th>Name</th><th>Category</th><th>Status</th><th>Questions</th><th>Times Used</th><th>Updated</th><th>Actions</th></tr></thead><tbody>
         @forelse($quizzes as $quiz)
-            <tr><td><div class="item-title">{{ $quiz->name }}</div><span class="muted">{{ Str::limit($quiz->description, 70) }}</span></td><td>{{ $quiz->category }}</td><td><span class="badge {{ $quiz->status === 'active' ? 'active' : '' }}">{{ ucfirst($quiz->status) }}</span></td><td>{{ $quiz->questions_count }}</td><td>{{ $quiz->attempts_count }}</td><td>{{ $quiz->updated_at?->format('d M Y') }}</td><td><div class="actions"><a class="button button-secondary" href="{{ route('admin.games-quizzes.edit', $quiz) }}">Edit</a><form method="POST" action="{{ route('admin.games-quizzes.destroy', $quiz) }}" onsubmit="return confirm('Delete this quiz and its questions and completion records?')">@csrf @method('DELETE')<button class="button button-danger" type="submit">Delete</button></form></div></td></tr>
+            <tr><td><div class="item-title">{{ $quiz->name }}</div><span class="muted">{{ Str::limit($quiz->description, 70) }}</span></td><td>{{ $quiz->category }}</td><td><span class="badge {{ $quiz->status === 'active' ? 'active' : '' }}">{{ ucfirst($quiz->status) }}</span></td><td>{{ $quiz->questions_count }}</td><td>{{ $quiz->attempts_count }}</td><td>{{ $quiz->updated_at?->format('d M Y') }}</td><td><div class="actions"><a class="button button-secondary" href="{{ route('admin.positive-engagement.games-quizzes.edit', $quiz) }}">Edit</a><form method="POST" action="{{ route('admin.positive-engagement.games-quizzes.destroy', $quiz) }}" onsubmit="return confirm('Delete this quiz and its questions and completion records?')">@csrf @method('DELETE')<button class="button button-danger" type="submit">Delete</button></form></div></td></tr>
         @empty
             <tr><td colspan="7">No quizzes configured.</td></tr>
         @endforelse

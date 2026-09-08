@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Quiz;
+use App\Models\QuizQuestion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,12 +20,12 @@ class AdminQuizController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('admin.games-quizzes.index', [
+        return view('admin.positive-engagement.games-quizzes.index', [
             'quizzes' => $quizzes,
             'stats' => [
                 'totalQuizzes' => Quiz::count(),
                 'activeQuizzes' => Quiz::where('status', 'active')->count(),
-                'totalQuestions' => DB::table('quiz_questions')->count(),
+                'totalQuestions' => QuizQuestion::count(),
                 'totalCompletions' => DB::table('quiz_attempts')->count(),
             ],
         ]);
@@ -32,7 +33,7 @@ class AdminQuizController extends Controller
 
     public function create(): View
     {
-        return view('admin.games-quizzes.form', ['quiz' => new Quiz, 'questions' => collect()]);
+        return view('admin.positive-engagement.games-quizzes.form', ['quiz' => new Quiz, 'questions' => collect()]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -43,12 +44,12 @@ class AdminQuizController extends Controller
             return $quiz;
         });
 
-        return redirect()->route('admin.games-quizzes.edit', $quiz)->with('status', 'Quiz created.');
+        return redirect()->route('admin.positive-engagement.games-quizzes.edit', $quiz)->with('status', 'Quiz created.');
     }
 
     public function edit(Quiz $quiz): View
     {
-        return view('admin.games-quizzes.form', [
+        return view('admin.positive-engagement.games-quizzes.form', [
             'quiz' => $quiz,
             'questions' => $quiz->questions()->get(),
         ]);
@@ -61,7 +62,7 @@ class AdminQuizController extends Controller
             $this->syncQuestions($quiz, $request);
         });
 
-        return redirect()->route('admin.games-quizzes.edit', $quiz)->with('status', 'Quiz updated.');
+        return redirect()->route('admin.positive-engagement.games-quizzes.edit', $quiz)->with('status', 'Quiz updated.');
     }
 
     public function destroy(Quiz $quiz): RedirectResponse

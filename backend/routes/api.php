@@ -26,8 +26,9 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/questionnaires/active', [QuestionnaireController::class, 'active']);
     Route::get('/interventions', [InterventionController::class, 'index']);
     Route::get('/wellbeing-activities', [WellbeingActivityController::class, 'index']);
-    Route::get('/quizzes', [QuizController::class, 'index']);
-    Route::get('/quizzes/{quiz}', [QuizController::class, 'show']);
+    // Games and quizzes are part of Positive Engagement.
+    Route::get('/positive-engagement/quizzes', [QuizController::class, 'index']);
+    Route::get('/positive-engagement/quizzes/{quiz}', [QuizController::class, 'show']);
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -41,8 +42,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::get('/profile', [ProfileController::class, 'show']);
         Route::put('/profile', [ProfileController::class, 'update']);
-        Route::post('/quizzes/{quiz}/complete', [QuizController::class, 'complete']);
+        Route::post('/positive-engagement/quizzes/{quiz}/complete', [QuizController::class, 'complete']);
 
+        Route::get('/personal-guidance/for-you', [PersonalGuidanceController::class, 'forYou']);
         Route::get('/personal-guidance/current', [PersonalGuidanceController::class, 'current']);
         Route::get('/personal-guidance/another', [PersonalGuidanceController::class, 'another']);
         Route::get('/personal-guidance/favourites', [PersonalGuidanceController::class, 'favourites']);

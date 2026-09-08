@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\PersonalGuidance;
 use App\Models\StudentIdentity;
+use App\Services\RecommendedGuidanceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -35,6 +36,36 @@ class PersonalGuidanceController extends Controller
         mt_srand();
 
         return response()->json(['data' => $this->present($item, $identity)]);
+    }
+
+    /**
+     * The student's personal toolkit: guidance matched to their latest
+     * check-in, plus a supportive lead-in. The wording is drawn from the
+     * admin-authored score band so nothing here labels or diagnoses anyone,
+     * and students with no assessment still get useful general guidance.
+     */
+    public function forYou(Request $request, RecommendedGuidanceService $service): JsonResponse
+    {
+        $identity = $this->identity($request);
+        $assessment = $service->latestAssessment($identity);
+        $guidance = $service->forAssessment($assessment, limit: 6);
+        $favouriteIds = $this->favouriteIds($identity);
+
+        return response()->json([
+            'has_check_in' => $assessment !== null,
+            'headline' => $assessment !== null
+                ? 'A little support for you today'
+                : 'A place to start',
+            'subline' => $assessment !== null
+                ? 'Based on your recent check-in, here are a few things that may help.'
+                : 'Take a check-in whenever you are ready, and this will start to fit you better.',
+            'band_message' => $assessment?->scoreBand?->harmony_message,
+            'data' => $guidance
+                ->map(fn (PersonalGuidance $item): array => $service->payload($item) + [
+                    'is_favourite' => $favouriteIds->contains($item->id),
+                ])
+                ->values(),
+        ]);
     }
 
     /**

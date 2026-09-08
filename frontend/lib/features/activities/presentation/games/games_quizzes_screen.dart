@@ -1,12 +1,41 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_theme.dart';
 import 'gratitude_jar_screen.dart';
 import 'mindful_spark_screen.dart';
 import 'mindful_memory_screen.dart';
 
-class GamesQuizzesScreen extends StatelessWidget {
-  const GamesQuizzesScreen({super.key});
+/// Which part of the screen to bring into view when it opens. Positive
+/// Engagement lists Games and Quizzes as separate areas, and both land here.
+enum GamesQuizzesSection { games, quizzes }
+
+class GamesQuizzesScreen extends StatefulWidget {
+  const GamesQuizzesScreen({super.key, this.focus = GamesQuizzesSection.games});
+
+  final GamesQuizzesSection focus;
+
+  @override
+  State<GamesQuizzesScreen> createState() => _GamesQuizzesScreenState();
+}
+
+class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
+  final GlobalKey _quizzesKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.focus != GamesQuizzesSection.quizzes) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _quizzesKey.currentContext;
+      if (context == null) return;
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOut,
+        alignment: 0.05,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -160,6 +189,7 @@ class GamesQuizzesScreen extends StatelessWidget {
               // QUIZZES
               // ============================================================
               Text(
+                key: _quizzesKey,
                 'QUIZZES',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w800,

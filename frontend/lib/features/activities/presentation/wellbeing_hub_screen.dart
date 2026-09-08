@@ -16,10 +16,17 @@ import 'wellbeing_collection_screen.dart';
 /// counts on these cards and the lists behind them always agree, and searching
 /// never waits on the network.
 class WellbeingHubScreen extends StatefulWidget {
-  const WellbeingHubScreen({super.key, ApiService? apiService})
-    : _injectedApiService = apiService;
+  const WellbeingHubScreen({
+    super.key,
+    ApiService? apiService,
+    this.embedded = false,
+  }) : _injectedApiService = apiService;
 
   final ApiService? _injectedApiService;
+
+  /// True when shown inside the bottom-navigation shell, which supplies its
+  /// own app bar. Pushed routes keep their own.
+  final bool embedded;
 
   @override
   State<WellbeingHubScreen> createState() => _WellbeingHubScreenState();
@@ -81,7 +88,9 @@ class _WellbeingHubScreenState extends State<WellbeingHubScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Wellbeing activities')),
+    appBar: widget.embedded
+        ? null
+        : AppBar(title: const Text('Wellbeing activities')),
     body: SafeArea(
       child: FutureBuilder<List<WellbeingActivity>>(
         future: _activities,

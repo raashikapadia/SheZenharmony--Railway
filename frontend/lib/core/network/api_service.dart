@@ -397,6 +397,17 @@ class ApiService {
     return _guidanceOrNull(body['data']);
   }
 
+  /// The student's personalised toolkit, matched to their latest check-in by
+  /// the admin's rules. Always returns something usable — the backend falls
+  /// back to general guidance when nothing matches.
+  Future<GuidanceToolkit> guidanceToolkit(String token) async {
+    final body = await _getJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/personal-guidance/for-you'),
+      token,
+    );
+    return GuidanceToolkit.fromJson(body);
+  }
+
   Future<List<PersonalGuidance>> favouriteGuidance(String token) async {
     final body = await _getJson(
       Uri.parse('${ApiConfig.baseUrl}/v1/personal-guidance/favourites'),

@@ -64,6 +64,78 @@
         </div>
         <p class="muted" style="font-size:.8rem">No publish date means it is live as soon as it is published. No expiry means it stays until unpublished.</p>
 
+        <h2 style="margin-top:26px">Coping strategy details <span class="muted" style="font-weight:400;font-size:.85rem">— all optional</span></h2>
+        <p class="muted" style="font-size:.8rem">Fill these in to turn this into a practical strategy in the student toolkit. Leave them empty for a short tip or affirmation.</p>
+
+        <div class="field-row" style="margin-top:12px">
+            <div>
+                <label for="title">Short title</label>
+                <input id="title" name="title" type="text" maxlength="255" value="{{ old('title', $guidance->title) }}" placeholder="e.g. Box breathing for a racing mind">
+            </div>
+            <div>
+                <label for="duration_minutes">Takes about (minutes)</label>
+                <input id="duration_minutes" name="duration_minutes" type="number" min="1" max="600" value="{{ old('duration_minutes', $guidance->duration_minutes) }}" placeholder="e.g. 2">
+            </div>
+        </div>
+
+        <div style="margin-top:12px">
+            <label for="summary">Quick tip <span class="muted">(one or two lines shown before the student opens it)</span></label>
+            <textarea id="summary" name="summary" maxlength="500" placeholder="e.g. Pause and focus only on what needs your attention right now.">{{ old('summary', $guidance->summary) }}</textarea>
+        </div>
+
+        <div style="margin-top:12px">
+            <label for="when_it_helps">When it may help</label>
+            <input id="when_it_helps" name="when_it_helps" type="text" maxlength="500" value="{{ old('when_it_helps', $guidance->when_it_helps) }}" placeholder="e.g. When your thoughts feel busy and hard to slow down">
+        </div>
+
+        <div style="margin-top:12px">
+            <label for="steps">Steps to try <span class="muted">(one step per line)</span></label>
+            <textarea id="steps" name="steps" rows="4" maxlength="4000" placeholder="Sit somewhere comfortable&#10;Breathe in for four counts&#10;Hold for four&#10;Breathe out for four">{{ old('steps', $guidance->steps) }}</textarea>
+        </div>
+
+        <div style="margin-top:12px">
+            <label for="related_intervention_id">Related wellbeing activity <span class="muted">(optional)</span></label>
+            <select id="related_intervention_id" name="related_intervention_id">
+                <option value="">— none —</option>
+                @foreach($activities as $activity)
+                    <option value="{{ $activity->id }}" @selected((int) old('related_intervention_id', $guidance->related_intervention_id) === $activity->id)>{{ $activity->title }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <h2 style="margin-top:26px">Who should see this</h2>
+        <p class="muted" style="font-size:.8rem">Choose the check-in outcomes and focus areas this guidance suits. Select nothing to show it to everyone.</p>
+
+        @php
+            $selectedBands = collect(old('band_ids', $guidance->recommendations?->pluck('stress_score_band_id')->filter()->all() ?? []))->map(fn ($id) => (int) $id);
+            $selectedSections = collect(old('section_ids', $guidance->recommendations?->pluck('questionnaire_section_id')->filter()->all() ?? []))->map(fn ($id) => (int) $id);
+        @endphp
+
+        <div class="field-row" style="margin-top:12px">
+            <div>
+                <label>Check-in result levels</label>
+                @forelse($bands as $band)
+                    <label style="display:block;font-weight:400;margin:4px 0">
+                        <input type="checkbox" name="band_ids[]" value="{{ $band->id }}" @checked($selectedBands->contains($band->id))>
+                        {{ $band->label }}
+                    </label>
+                @empty
+                    <p class="muted" style="font-size:.8rem">No score bands configured yet.</p>
+                @endforelse
+            </div>
+            <div>
+                <label>Focus areas</label>
+                @forelse($sections as $section)
+                    <label style="display:block;font-weight:400;margin:4px 0">
+                        <input type="checkbox" name="section_ids[]" value="{{ $section->id }}" @checked($selectedSections->contains($section->id))>
+                        {{ $section->title }}
+                    </label>
+                @empty
+                    <p class="muted" style="font-size:.8rem">No questionnaire sections configured yet.</p>
+                @endforelse
+            </div>
+        </div>
+
         <div class="actions" style="margin-top:18px">
             <button class="button" type="submit">Save guidance</button>
             <a class="button button-secondary" href="{{ route('admin.personal-guidance.index') }}">Cancel</a>
