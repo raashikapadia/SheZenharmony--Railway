@@ -2,8 +2,30 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 
+/// The artwork every screen sits on.
+///
+/// Three layers, bottom to top: the plum wash that shows through wherever the
+/// artwork cannot reach, the artwork itself, and a veil.
+///
+/// The veil is the important part. The artwork is a photograph — bright
+/// sparkles, dark ripples, high local contrast — and body text laid straight
+/// over it is unreadable in patches, which is the opposite of what the rest of
+/// the app is tuned for. Softening it to a wash keeps the mood while letting
+/// the type stay legible, and it is stronger towards the bottom where the
+/// scrolling content sits and lighter at the top where the artwork reads as
+/// atmosphere behind the heading.
 class AppBackground extends StatelessWidget {
   const AppBackground({super.key, required this.child});
+
+  /// Replace this file to change the artwork; nothing else needs to move.
+  static const artwork = 'assets/images/shezen_background.png';
+
+  /// The plum wash, and what the veil tints the artwork towards.
+  static const _wash = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFFFFFBFF), Color(0xFFF8F1F9), Color(0xFFF5F8F5)],
+  );
 
   final Widget child;
 
@@ -11,15 +33,34 @@ class AppBackground extends StatelessWidget {
   Widget build(BuildContext context) => Stack(
     fit: StackFit.expand,
     children: [
+      const DecoratedBox(decoration: BoxDecoration(gradient: _wash)),
+
+      // Cover rather than fill: the artwork is portrait, and letting it crop
+      // keeps the ripples circular instead of stretching them into ovals on a
+      // wide window.
+      Image.asset(
+        artwork,
+        fit: BoxFit.cover,
+        // A background is decoration. If the file is missing or unreadable the
+        // app must still open, on the wash alone.
+        errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+      ),
+
       const DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFFFFBFF), Color(0xFFF8F1F9), Color(0xFFF5F8F5)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            // Light enough that the water and blossoms still read. The
+            // artwork is uniformly pale, so ink-on-artwork keeps its contrast;
+            // what the veil is really for is knocking back the bright
+            // sparkles, which are the only places type would get lost.
+            colors: [Color(0x40FFFBFF), Color(0x70F8F1F9), Color(0x99FBF8FC)],
+            stops: [0, 0.45, 1],
           ),
         ),
       ),
+
       child,
     ],
   );
