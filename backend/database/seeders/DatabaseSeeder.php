@@ -80,5 +80,9 @@ class DatabaseSeeder extends Seeder
         // A small curated set of Home Page encouragement. No-ops once any
         // Personal Guidance row exists.
         $this->call(PersonalGuidanceSeeder::class);
+
+        // Starter helplines for the student Resource tab. No-ops once any
+        // helpline row exists. Numbers are unverified placeholders.
+        $this->call(HelplineResourceSeeder::class);
     }
 }

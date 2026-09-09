@@ -18,6 +18,7 @@ Flutter obtains the base URL from `frontend/lib/core/config/api_config.dart`.
 - `GET /api/v1/questionnaires/active` — active dynamic student questionnaire.
 - `GET /api/v1/interventions` — active intervention listing.
 - `GET /api/v1/wellbeing-activities` — active student wellbeing activity listing (support content and video activities).
+- `GET /api/v1/helplines` — active helpline resources for the student Resource tab, in the admin's display order.
 - `GET /api/v1/positive-engagement/quizzes` — active quiz listing. Games and quizzes sit under Positive Engagement.
 - `GET /api/v1/positive-engagement/quizzes/{quiz}` — a single quiz with its questions.
 - `POST /api/v1/positive-engagement/quizzes/{quiz}/complete` — record a quiz attempt (authenticated).

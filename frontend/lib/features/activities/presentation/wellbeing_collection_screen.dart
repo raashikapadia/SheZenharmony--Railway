@@ -22,6 +22,7 @@ class WellbeingCollectionScreen extends StatefulWidget {
     this.unitLabel = 'activity',
     this.showThumbnails = false,
     this.embedded = false,
+    this.header,
   });
 
   final String title;
@@ -41,6 +42,11 @@ class WellbeingCollectionScreen extends StatefulWidget {
   /// True when shown inside the bottom-navigation shell, which supplies its
   /// own app bar. Pushed routes keep their own.
   final bool embedded;
+
+  /// Optional block shown above the first result, scrolling away with the
+  /// list. The Resource tab uses it to lead with the helpline directory while
+  /// keeping this screen's search and tiles for the content underneath.
+  final Widget? header;
 
   @override
   State<WellbeingCollectionScreen> createState() =>
@@ -113,6 +119,61 @@ class _WellbeingCollectionScreenState extends State<WellbeingCollectionScreen> {
     });
   }
 
+  /// 1 when a header is supplied, so list indices can shift past it.
+  int get _headerOffset => widget.header == null ? 0 : 1;
+
+  /// Shown when nothing matches. With a header supplied the message scrolls
+  /// beneath it, so the Resource tab keeps its helplines on screen even when a
+  /// search clears the list below.
+  Widget _emptyResults() {
+    final message = _isFiltering
+        ? 'Try a different word, or clear the filters to see everything again.'
+        : 'New content will appear here once the SheZen team publishes it.';
+
+    if (widget.header == null) {
+      return AppStateView(
+        icon: Icons.search_off_rounded,
+        title: 'Nothing matches that',
+        message: message,
+        actionLabel: _isFiltering ? 'Clear search' : null,
+        onAction: _isFiltering ? _clearFilters : null,
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.page,
+        0,
+        AppSpacing.page,
+        AppSpacing.xxxl,
+      ),
+      children: [
+        widget.header!,
+        const SizedBox(height: AppSpacing.xl),
+        Column(
+          children: [
+            Icon(Icons.search_off_rounded, color: AppColors.muted),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.muted),
+            ),
+            if (_isFiltering) ...[
+              const SizedBox(height: AppSpacing.sm),
+              TextButton(
+                onPressed: _clearFilters,
+                child: const Text('Clear search'),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final visible = _visible;
@@ -174,15 +235,7 @@ class _WellbeingCollectionScreenState extends State<WellbeingCollectionScreen> {
             const SizedBox(height: AppSpacing.md),
             Expanded(
               child: visible.isEmpty
-                  ? AppStateView(
-                      icon: Icons.search_off_rounded,
-                      title: 'Nothing matches that',
-                      message: _isFiltering
-                          ? 'Try a different word, or clear the filters to see everything again.'
-                          : 'New content will appear here once the SheZen team publishes it.',
-                      actionLabel: _isFiltering ? 'Clear search' : null,
-                      onAction: _isFiltering ? _clearFilters : null,
-                    )
+                  ? _emptyResults()
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(
                         AppSpacing.page,
@@ -190,13 +243,17 @@ class _WellbeingCollectionScreenState extends State<WellbeingCollectionScreen> {
                         AppSpacing.page,
                         AppSpacing.xxxl,
                       ),
-                      itemCount: visible.length,
+                      // The header, when there is one, is the first row so it
+                      // scrolls away with the results instead of pinning.
+                      itemCount: visible.length + _headerOffset,
                       separatorBuilder: (_, _) =>
                           const SizedBox(height: AppSpacing.md),
-                      itemBuilder: (context, index) => _ActivityTile(
-                        activity: visible[index],
-                        showThumbnail: widget.showThumbnails,
-                      ),
+                      itemBuilder: (context, index) => index < _headerOffset
+                          ? widget.header!
+                          : _ActivityTile(
+                              activity: visible[index - _headerOffset],
+                              showThumbnail: widget.showThumbnails,
+                            ),
                     ),
             ),
           ],

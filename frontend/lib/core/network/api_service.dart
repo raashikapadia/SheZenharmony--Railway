@@ -357,6 +357,17 @@ class ApiService {
     return [...guidedActivities, ...videoActivities];
   }
 
+  /// The admin-published helplines shown in the Resource tab.
+  Future<List<HelplineResource>> helplines() async {
+    final body = await _getPublicJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/helplines'),
+    );
+    return (body['data'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(HelplineResource.fromJson)
+        .toList();
+  }
+
   Future<List<PositiveContent>> positiveEngagement() async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/v1/interventions').replace(
       queryParameters: {'content_type': 'quiz,motivation,positive_engagement'},

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\ScoreBandController as AdminScoreBandControll
 use App\Http\Controllers\Api\AssessmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\HelplineResourceController;
 use App\Http\Controllers\Api\InterventionController;
 use App\Http\Controllers\Api\PersonalGuidanceController;
 use App\Http\Controllers\Api\ProfileController;
@@ -26,6 +27,8 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/questionnaires/active', [QuestionnaireController::class, 'active']);
     Route::get('/interventions', [InterventionController::class, 'index']);
     Route::get('/wellbeing-activities', [WellbeingActivityController::class, 'index']);
+    // Admin-published helplines for the student Resource tab.
+    Route::get('/helplines', [HelplineResourceController::class, 'index']);
     // Games and quizzes are part of Positive Engagement.
     Route::get('/positive-engagement/quizzes', [QuizController::class, 'index']);
     Route::get('/positive-engagement/quizzes/{quiz}', [QuizController::class, 'show']);

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\AdminAuthController;
 use App\Http\Controllers\Web\AdminChatBuddyController;
 use App\Http\Controllers\Web\AdminDashboardController;
+use App\Http\Controllers\Web\AdminHelplineResourceController;
 use App\Http\Controllers\Web\AdminInterventionController;
 use App\Http\Controllers\Web\AdminPersonalGuidanceController;
 use App\Http\Controllers\Web\AdminPositiveEngagementController;
@@ -64,6 +65,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('interventions', AdminInterventionController::class)->except(['show']);
     Route::resource('wellbeing_activities', AdminWellbeingActivityController::class)->except(['show']);
     Route::resource('personal-guidance', AdminPersonalGuidanceController::class)->except(['show'])->parameters(['personal-guidance' => 'personalGuidance']);
+    // Helpline resources shown in the student Resource tab.
+    Route::resource('resources', AdminHelplineResourceController::class)->except(['show']);
     // Games and quizzes live under Positive Engagement. Declared before the
     // positive-engagement resource so the literal segment is not swallowed by
     // the resource's {intervention} parameter.

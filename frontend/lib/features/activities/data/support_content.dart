@@ -117,3 +117,68 @@ class PositiveContent {
         externalUrl: json['external_url'] as String? ?? '',
       );
 }
+
+/// A support contact published through the Web Admin's Resource section — a
+/// helpline, counselling service, or campus contact the student can call.
+class HelplineResource {
+  const HelplineResource({
+    required this.id,
+    required this.name,
+    required this.organisation,
+    required this.description,
+    required this.phone,
+    required this.alternatePhone,
+    required this.email,
+    required this.websiteUrl,
+    required this.availability,
+    required this.category,
+    required this.isEmergency,
+  });
+
+  final int id;
+  final String name;
+  final String organisation;
+  final String description;
+  final String phone;
+  final String alternatePhone;
+  final String email;
+  final String websiteUrl;
+  final String availability;
+  final String category;
+  final bool isEmergency;
+
+  factory HelplineResource.fromJson(Map<String, dynamic> json) =>
+      HelplineResource(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        name: json['name'] as String? ?? 'Support contact',
+        organisation: json['organisation'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+        phone: json['phone'] as String? ?? '',
+        alternatePhone: json['alternate_phone'] as String? ?? '',
+        email: json['email'] as String? ?? '',
+        websiteUrl: json['website_url'] as String? ?? '',
+        availability: json['availability'] as String? ?? '',
+        category: json['category'] as String? ?? '',
+        isEmergency: json['is_emergency'] as bool? ?? false,
+      );
+
+  bool get hasPhone => phone.trim().isNotEmpty;
+
+  /// The alternate number, stripped the same way as [dialableNumber].
+  String get dialableAlternateNumber =>
+      alternatePhone.replaceAll(RegExp(r'[^0-9+*#]'), '');
+
+  /// The number stripped to what a dialler accepts. Admins enter numbers for
+  /// people to read ("+679 999 1234"), so the spacing has to come out before
+  /// it becomes a `tel:` URI.
+  String get dialableNumber => phone.replaceAll(RegExp(r'[^0-9+*#]'), '');
+
+  /// Admins often paste links without a scheme, which parse as relative URIs
+  /// that no external app can open.
+  String get normalisedWebsiteUrl {
+    final url = websiteUrl.trim();
+    if (url.isEmpty) return url;
+    if (url.startsWith(RegExp(r'[a-zA-Z][a-zA-Z0-9+.-]*:'))) return url;
+    return 'https://$url';
+  }
+}
