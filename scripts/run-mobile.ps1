@@ -2,7 +2,10 @@
 param(
     [string]$AvdName = "Pixel_8",
     [ValidateRange(30, 900)]
-    [int]$BootTimeoutSeconds = 180
+    [int]$BootTimeoutSeconds = 180,
+    # Boot (or reuse) the emulator and exit without running Flutter. Used as the
+    # VS Code preLaunchTask so debugging always targets the emulator.
+    [switch]$BootOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -60,6 +63,10 @@ function Resolve-AndroidTools {
 function Get-RunningEmulatorIds {
     param([string]$AdbPath)
 
+    # adb writes transient stderr noise during boot; under ErrorActionPreference
+    # "Stop" Windows PowerShell would turn that into a terminating error.
+    $ErrorActionPreference = "Continue"
+
     $ids = @()
     $deviceLines = & $AdbPath devices 2>$null
     foreach ($line in $deviceLines) {
@@ -73,6 +80,10 @@ function Get-RunningEmulatorIds {
 function Test-AndroidBooted {
     param([string]$AdbPath, [string]$DeviceId)
 
+    # adb prints "error: closed" until the device finishes booting. That is an
+    # expected polling state, not a script failure.
+    $ErrorActionPreference = "Continue"
+
     $bootCompleted = (& $AdbPath -s $DeviceId shell getprop sys.boot_completed 2>$null | Out-String).Trim()
     $bootAnimation = (& $AdbPath -s $DeviceId shell getprop init.svc.bootanim 2>$null | Out-String).Trim()
     return ($bootCompleted -eq "1" -and $bootAnimation -eq "stopped")
@@ -80,6 +91,8 @@ function Test-AndroidBooted {
 
 function Test-FlutterDetectsAndroid {
     param([string]$DeviceId)
+
+    $ErrorActionPreference = "Continue"
 
     try {
         $json = (& flutter devices --machine 2>$null | Out-String)
@@ -165,6 +178,11 @@ if ($ready.Status -ne "Ready") {
 
 $deviceId = $ready.DeviceId
 Write-Host "Android emulator ready: $deviceId" -ForegroundColor Green
+
+if ($BootOnly) {
+    exit 0
+}
+
 Write-Host "Make sure Laravel is running in another terminal:" -ForegroundColor Yellow
 Write-Host "  cd backend"
 Write-Host "  php artisan serve"

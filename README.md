@@ -164,6 +164,13 @@ Terminal 2 - Mobile app (from the repository root):
 .\scripts\run-mobile.ps1
 ```
 
+If PowerShell reports "running scripts is disabled on this system", enable
+local scripts once for your user account:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
 The launcher reuses a running Android emulator or starts `Pixel_8`, waits up to
 three minutes for both Android and Flutter to report it ready, and then supplies
 the emulator API address automatically. It never wipes or recreates an AVD.
@@ -172,6 +179,21 @@ Flutter shortcuts:
 - `r` = hot reload
 - `R` = hot restart
 - `q` = quit
+
+### Running from VS Code
+
+The Android emulator is the only configured run target. Press `F5` (or pick
+**SheZen Harmony (Android emulator)** in the Run and Debug panel) and VS Code
+will boot/reuse `Pixel_8` first, then attach the Flutter debugger with the
+emulator API address already set. No device picker, no Chrome or Windows
+desktop target.
+
+To keep `flutter run` on the command line from ever offering Chrome or Windows
+desktop either, disable those targets once on your machine:
+
+```powershell
+flutter config --no-enable-web --no-enable-windows-desktop
+```
 
 ## Project Structure
 
