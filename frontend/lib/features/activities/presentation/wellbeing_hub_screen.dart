@@ -741,7 +741,7 @@ class _CategoryTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: AppColors.primary.withValues(alpha: 0.75),
+                      color: AppColors.muted,
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
                     ),
@@ -765,7 +765,7 @@ class _CountPill extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
     decoration: BoxDecoration(
-      color: AppColors.surface.withValues(alpha: 0.8),
+      color: AppColors.surface,
       borderRadius: BorderRadius.circular(AppRadii.pill),
     ),
     child: Text(
@@ -788,7 +788,7 @@ class _Chevron extends StatelessWidget {
     width: 32,
     height: 32,
     decoration: BoxDecoration(
-      color: AppColors.surface.withValues(alpha: 0.8),
+      color: AppColors.surface,
       shape: BoxShape.circle,
     ),
     child: const Icon(

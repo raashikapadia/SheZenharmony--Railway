@@ -21,6 +21,7 @@ class WellbeingCollectionScreen extends StatefulWidget {
     this.searchHint = 'Search by name or feeling',
     this.unitLabel = 'activity',
     this.showThumbnails = false,
+    this.embedded = false,
   });
 
   final String title;
@@ -36,6 +37,10 @@ class WellbeingCollectionScreen extends StatefulWidget {
   /// Video collections lead with artwork; guided practices lead with their
   /// category icon.
   final bool showThumbnails;
+
+  /// True when shown inside the bottom-navigation shell, which supplies its
+  /// own app bar. Pushed routes keep their own.
+  final bool embedded;
 
   @override
   State<WellbeingCollectionScreen> createState() =>
@@ -113,7 +118,7 @@ class _WellbeingCollectionScreenState extends State<WellbeingCollectionScreen> {
     final visible = _visible;
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: widget.embedded ? null : AppBar(title: Text(widget.title)),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

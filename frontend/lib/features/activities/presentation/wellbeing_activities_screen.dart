@@ -865,7 +865,7 @@ class _CategoryChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.fromLTRB(11, 6, 14, 6),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.75),
+      color: Colors.white.withValues(alpha: 0.95),
       borderRadius: BorderRadius.circular(AppRadii.pill),
       border: Border.all(color: _HeaderPalette.accent.withValues(alpha: 0.18)),
     ),
@@ -902,7 +902,7 @@ class _GlassBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: Colors.white.withValues(alpha: 0.7),
+    color: Colors.white.withValues(alpha: 0.93),
     shape: const CircleBorder(),
     clipBehavior: Clip.antiAlias,
     child: InkWell(

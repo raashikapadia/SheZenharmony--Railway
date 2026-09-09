@@ -149,7 +149,7 @@ abstract final class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         height: 70,
         elevation: 0,
-        backgroundColor: AppColors.surface.withValues(alpha: 0.96),
+        backgroundColor: AppColors.surface,
         indicatorColor: AppColors.softLavender,
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => TextStyle(

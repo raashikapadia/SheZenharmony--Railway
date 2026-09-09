@@ -5,6 +5,7 @@ import '../../../core/network/api_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_ui.dart';
 import '../../activities/presentation/positive_engagement_screen.dart';
+import '../../activities/presentation/resource_screen.dart';
 import '../../activities/presentation/wellbeing_hub_screen.dart';
 import '../../assessment/data/assessment_result.dart';
 import '../../assessment/presentation/assessment_detail_screen.dart';
@@ -13,6 +14,7 @@ import '../../auth/application/auth_provider.dart';
 import '../../guidance/presentation/personal_guidance_card.dart';
 import '../../guidance/presentation/personal_guidance_screen.dart';
 import '../../profile/presentation/profile_view_screen.dart';
+import '../../shezen/presentation/shezen_chat_button.dart';
 import '../../shezen/presentation/shezen_feature_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,25 +31,21 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final pages = [
       _DashboardPage(onNavigate: _selectTab),
-      const PersonalGuidanceScreen(),
-      const WellbeingHubScreen(embedded: true),
-      const PositiveEngagementScreen(embedded: true),
+      const _StressPage(),
+      const ResourceScreen(embedded: true),
       const _ProfilePage(),
     ];
 
-    const titles = [
-      'Home',
-      'Personal guidance',
-      'Wellbeing activities',
-      'Positive engagement',
-      'Profile',
-    ];
+    const titles = ['Home', 'Stress level', 'Resource', 'Profile'];
 
     return Scaffold(
       appBar: AppBar(title: Text(titles[_selectedIndex])),
       body: SafeArea(
         child: IndexedStack(index: _selectedIndex, children: pages),
       ),
+      // Shezen is a floating companion rather than a primary destination, so
+      // it rides above the bar next to Profile instead of taking a fifth tab.
+      floatingActionButton: const ShezenChatButton(),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _selectTab,
@@ -58,19 +56,14 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.favorite_outline_rounded),
-            selectedIcon: Icon(Icons.favorite_rounded),
-            label: 'Guidance',
+            icon: Icon(Icons.monitor_heart_outlined),
+            selectedIcon: Icon(Icons.monitor_heart_rounded),
+            label: 'Stress level',
           ),
           NavigationDestination(
-            icon: Icon(Icons.spa_outlined),
-            selectedIcon: Icon(Icons.spa_rounded),
-            label: 'Activities',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.auto_awesome_outlined),
-            selectedIcon: Icon(Icons.auto_awesome_rounded),
-            label: 'Positive',
+            icon: Icon(Icons.support_agent_outlined),
+            selectedIcon: Icon(Icons.support_agent_rounded),
+            label: 'Resource',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),
@@ -135,12 +128,10 @@ class _DashboardPage extends StatelessWidget {
 
         const SizedBox(height: AppSpacing.sm),
 
-        // Stress history lives here now that the bottom bar carries the three
-        // wellbeing sections.
+        // The Stress level tab owns the history list, so this is a shortcut to
+        // it rather than a second copy of the same screen.
         TextButton.icon(
-          onPressed: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const StressHistoryScreen())),
+          onPressed: () => onNavigate(1),
           icon: const Icon(Icons.history_rounded),
           label: const Text('See your past check-ins'),
         ),
@@ -154,51 +145,45 @@ class _DashboardPage extends StatelessWidget {
 
         const SizedBox(height: AppSpacing.md),
 
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 350;
-
-            final width = isNarrow
-                ? constraints.maxWidth
-                : (constraints.maxWidth - AppSpacing.md) / 2;
-
-            return Wrap(
-              spacing: AppSpacing.md,
-              runSpacing: AppSpacing.md,
-              children: [
-                SizedBox(
-                  width: width,
-                  child: AppFeatureCard(
-                    icon: Icons.spa_outlined,
-                    title: 'Wellbeing activities',
-                    description: 'Breathing, grounding, and mindful breaks.',
-                    tint: AppColors.softSage,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const WellbeingHubScreen(),
-                      ),
-                    ),
-                  ),
+        // The three primary content areas, as three equal choices. Personal
+        // guidance leads the row so it reads as first-class rather than as a
+        // sub-item of the other two.
+        _PathwayRow(
+          cards: [
+            AppPathwayCard(
+              icon: Icons.eco_outlined,
+              title: 'Personal guidance',
+              description: 'Tips, advice and daily affirmations.',
+              tint: AppColors.softBlush,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const PersonalGuidanceScreen(),
                 ),
+              ),
+            ),
 
-                SizedBox(
-                  width: width,
-                  child: AppFeatureCard(
-                    icon: Icons.auto_awesome_outlined,
-                    title: 'Positive engagement',
-                    description:
-                        'Games, quizzes, motivational prompts, and light activities.',
-                    tint: AppColors.softLavender,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const PositiveEngagementScreen(),
-                      ),
-                    ),
-                  ),
+            AppPathwayCard(
+              icon: Icons.spa_outlined,
+              title: 'Wellbeing activities',
+              description: 'Videos, journaling, and browsing by how you feel.',
+              tint: AppColors.softSage,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const WellbeingHubScreen()),
+              ),
+            ),
+
+            AppPathwayCard(
+              icon: Icons.auto_awesome_outlined,
+              title: 'Positive engagement',
+              description: 'Games, quizzes, and motivational prompts.',
+              tint: AppColors.softLavender,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const PositiveEngagementScreen(),
                 ),
-              ],
-            );
-          },
+              ),
+            ),
+          ],
         ),
 
         const SizedBox(height: AppSpacing.xxl),
@@ -208,14 +193,62 @@ class _DashboardPage extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
 
         TextButton.icon(
-          // Profile is the last tab (index 4) since Guidance joined the bar.
-          onPressed: () => onNavigate(4),
+          // Profile is the last tab (index 3) in the four-destination bar.
+          onPressed: () => onNavigate(3),
           icon: const Icon(Icons.manage_accounts_outlined),
           label: const Text('Manage profile and account'),
         ),
       ],
     );
   }
+}
+
+// ============================================================
+// PATHWAY ROW
+// ============================================================
+
+/// The three content-area cards: side by side where there is room for them,
+/// stacked full width on a phone.
+///
+/// Three across only earns its place on a wide window — at phone width the
+/// columns would be too narrow for the titles to survive, so the same cards
+/// run down the page instead. [IntrinsicHeight] keeps them a matched set in
+/// the row, since one description wraps to more lines than the others.
+class _PathwayRow extends StatelessWidget {
+  const _PathwayRow({required this.cards});
+
+  final List<Widget> cards;
+
+  /// Below this, three columns leave too little room per card.
+  static const _threeAcrossFrom = 720.0;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      if (constraints.maxWidth < _threeAcrossFrom) {
+        return Column(
+          children: [
+            for (final (index, card) in cards.indexed) ...[
+              if (index > 0) const SizedBox(height: AppSpacing.md),
+              card,
+            ],
+          ],
+        );
+      }
+
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (index, card) in cards.indexed) ...[
+              if (index > 0) const SizedBox(width: AppSpacing.lg),
+              Expanded(child: card),
+            ],
+          ],
+        ),
+      );
+    },
+  );
 }
 
 // ============================================================
@@ -251,7 +284,7 @@ class _StressHero extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .16),
+            color: Colors.white.withValues(alpha: .24),
             borderRadius: BorderRadius.circular(AppRadii.pill),
           ),
           child: const Text(
@@ -603,9 +636,10 @@ class _ProfilePage extends StatelessWidget {
 // STRESS HISTORY
 // ============================================================
 
-/// The student's past check-ins. This is the screen that used to be the
-/// "Stress" tab — the list itself is unchanged, it is now reached from the
-/// Home dashboard so the bottom bar can carry the three wellbeing sections.
+/// The student's past check-ins as a standalone pushed route.
+///
+/// The same list is the "Stress level" tab; this wrapper stays so anything
+/// that wants to open the history over the top of another screen still can.
 class StressHistoryScreen extends StatelessWidget {
   const StressHistoryScreen({super.key});
 

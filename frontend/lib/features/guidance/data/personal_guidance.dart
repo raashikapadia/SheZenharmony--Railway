@@ -138,9 +138,15 @@ class GuidanceToolkit {
   List<PersonalGuidance> get strategies =>
       items.where((item) => item.isStrategy).toList();
 
-  /// Shorter items, shown as quick tips.
-  List<PersonalGuidance> get quickTips =>
-      items.where((item) => !item.isStrategy).toList();
+  /// Shorter items, shown as quick tips. Affirmations are excluded: they get
+  /// their own section rather than being mixed into tips and advice.
+  List<PersonalGuidance> get quickTips => items
+      .where((item) => !item.isStrategy && item.type != GuidanceType.affirmation)
+      .toList();
+
+  /// Affirmations to read back, shown as "Daily affirmations".
+  List<PersonalGuidance> get affirmations =>
+      items.where((item) => item.type == GuidanceType.affirmation).toList();
 
   factory GuidanceToolkit.fromJson(Map<String, dynamic> json) => GuidanceToolkit(
     hasCheckIn: json['has_check_in'] as bool? ?? false,

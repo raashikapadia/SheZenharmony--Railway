@@ -28,6 +28,9 @@ class _PersonalGuidanceScreenState extends State<PersonalGuidanceScreen> {
   /// without reloading the whole toolkit.
   int _tipIndex = 0;
 
+  /// Same idea for the affirmation on show.
+  int _affirmationIndex = 0;
+
   @override
   void initState() {
     super.initState();
@@ -88,6 +91,7 @@ class _PersonalGuidanceScreenState extends State<PersonalGuidanceScreen> {
   Widget _buildToolkit(BuildContext context, GuidanceToolkit toolkit) {
     final tips = toolkit.quickTips;
     final strategies = toolkit.strategies;
+    final affirmations = toolkit.affirmations;
 
     return RefreshIndicator(
       onRefresh: () async => setState(_load),
@@ -103,7 +107,7 @@ class _PersonalGuidanceScreenState extends State<PersonalGuidanceScreen> {
           if (tips.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xxl),
             const AppSectionHeader(
-              title: 'A quick thought',
+              title: 'Tips & advice',
               subtitle: 'Nothing to do here — just something to read.',
             ),
             const SizedBox(height: AppSpacing.md),
@@ -117,7 +121,7 @@ class _PersonalGuidanceScreenState extends State<PersonalGuidanceScreen> {
           if (strategies.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xxl),
             const AppSectionHeader(
-              title: 'Things you can try',
+              title: 'Coping strategies',
               subtitle:
                   'Short, practical steps. Pick one if it suits you — there is no order to follow.',
             ),
@@ -129,6 +133,22 @@ class _PersonalGuidanceScreenState extends State<PersonalGuidanceScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
             ],
+          ],
+
+          if (affirmations.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xxl),
+            const AppSectionHeader(
+              title: 'Daily affirmations',
+              subtitle: 'Words to keep with you today.',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _AffirmationCard(
+              affirmation:
+                  affirmations[_affirmationIndex % affirmations.length],
+              canShuffle: affirmations.length > 1,
+              onAnother: () =>
+                  setState(() => _affirmationIndex = _affirmationIndex + 1),
+            ),
           ],
         ],
       ),
@@ -194,6 +214,59 @@ class _ForYouHeader extends StatelessWidget {
           'Everything here is optional. Read what helps, skip what does not.',
           style: TextStyle(color: AppColors.muted, fontSize: 13),
         ),
+      ],
+    ),
+  );
+}
+
+/// A single affirmation, given its own warm panel so it reads as something to
+/// hold onto rather than another instruction to follow.
+class _AffirmationCard extends StatelessWidget {
+  const _AffirmationCard({
+    required this.affirmation,
+    required this.canShuffle,
+    required this.onAnother,
+  });
+
+  final PersonalGuidance affirmation;
+  final bool canShuffle;
+  final VoidCallback onAnother;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppSpacing.xl),
+    decoration: BoxDecoration(
+      color: AppColors.softBlush,
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      border: Border.all(color: AppColors.outline),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(
+          Icons.format_quote_rounded,
+          color: AppColors.primary,
+          size: 26,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          affirmation.lead,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(height: 1.45),
+        ),
+        if (canShuffle) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: onAnother,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Show me another'),
+            ),
+          ),
+        ],
       ],
     ),
   );

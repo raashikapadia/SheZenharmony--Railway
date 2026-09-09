@@ -36,13 +36,18 @@ class ShezenFeatureCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  // Wraps rather than a Row: the title and badge together are
+                  // wider than a narrow phone once the avatar and chevron take
+                  // their share, and a Row overflows instead of reflowing.
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.xs,
                     children: [
                       Text(
                         'Meet Shezen',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      const SizedBox(width: AppSpacing.sm),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,

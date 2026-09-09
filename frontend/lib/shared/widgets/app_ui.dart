@@ -131,6 +131,103 @@ class AppFeatureCard extends StatelessWidget {
   );
 }
 
+/// A primary way into one of the three Home content areas: tinted icon tile,
+/// then the name over a short description, then a chevron.
+///
+/// Laid out along the row rather than down the card so the three read as one
+/// set of equal choices, and so the icon does not push the words down the way
+/// the stacked [AppFeatureCard] does.
+class AppPathwayCard extends StatelessWidget {
+  const AppPathwayCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.onTap,
+    this.tint = AppColors.softTeal,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final VoidCallback onTap;
+  final Color tint;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: AppColors.surface,
+    clipBehavior: Clip.antiAlias,
+    shape: RoundedRectangleBorder(
+      side: const BorderSide(color: AppColors.outline),
+      borderRadius: BorderRadius.circular(AppRadii.card),
+    ),
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        // Top-aligned so the three titles share a line when the cards sit side
+        // by side and one description wraps further than the others.
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: tint,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, color: AppColors.primary, size: 26),
+            ),
+
+            const SizedBox(width: AppSpacing.lg),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+
+                  const SizedBox(height: AppSpacing.xs),
+
+                  // Wraps rather than truncating: these descriptions are the
+                  // only place the sub-sections are named.
+                  Text(
+                    description,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.muted,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: AppSpacing.sm),
+
+            // Centred against the icon tile rather than the whole card, so it
+            // stays level with the title however far the description wraps.
+            const SizedBox(
+              height: 52,
+              child: Center(
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.muted,
+                  size: 26,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class AppStateView extends StatelessWidget {
   const AppStateView({
     super.key,
