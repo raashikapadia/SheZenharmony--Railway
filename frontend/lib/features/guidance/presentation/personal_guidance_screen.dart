@@ -51,6 +51,9 @@ class _PersonalGuidanceScreenState extends State<PersonalGuidanceScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    // Carries its own bar, and so its own back arrow: this is reached by being
+    // pushed from Home, not by a tab that would supply one.
+    appBar: AppBar(title: const Text('Personal guidance')),
     body: SafeArea(
       child: FutureBuilder<GuidanceToolkit>(
         future: _toolkit,
