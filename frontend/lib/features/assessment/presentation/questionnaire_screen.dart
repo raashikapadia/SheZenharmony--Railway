@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/network/api_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../auth/application/auth_provider.dart';
 import '../application/assessment_provider.dart';
 import 'assessment_result_screen.dart';
@@ -144,11 +145,11 @@ class _AssessmentIntro extends StatelessWidget {
                 const Align(
                   child: CircleAvatar(
                     radius: 38,
-                    backgroundColor: Color(0xFFF1EAF4),
+                    backgroundColor: AppColors.softLavender,
                     child: Icon(
                       Icons.monitor_heart_outlined,
                       size: 36,
-                      color: Color(0xFF76517B),
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -202,7 +203,7 @@ class _AssessmentIntro extends StatelessWidget {
                   const Text(
                     'This initial check is required before entering the rest of SheZen.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Color(0xFF716775)),
+                    style: TextStyle(color: AppColors.muted),
                   ),
                 ],
                 const SizedBox(height: 28),

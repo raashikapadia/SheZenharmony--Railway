@@ -435,7 +435,7 @@ class _VideoHeroCard extends StatelessWidget {
             end: Alignment.bottomRight,
             // Enough saturation to read as plum and rose rather than as two
             // shades of off-white.
-            colors: [Color(0xFFE4D3EC), Color(0xFFF7DCE4), Color(0xFFFDEFDD)],
+            colors: [Color(0xFFD9BFE9), Color(0xFFF6C9D8), Color(0xFFFFE3B8)],
             stops: [0, 0.6, 1],
           ),
           border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),

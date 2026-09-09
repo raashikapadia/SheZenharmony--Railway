@@ -5,17 +5,17 @@ import 'package:flutter/material.dart';
 String toMathBold(String text) => text;
 
 abstract final class AppColors {
-  static const primary = Color(0xFF76517B);
-  static const secondary = Color(0xFFB56F7C);
+  static const primary = Color(0xFF5F2F6E);
+  static const secondary = Color(0xFFA03D57);
   static const background = Color(0xFFFBF8FC);
   static const surface = Color(0xFFFFFCFF);
-  static const ink = Color(0xFF2E2731);
-  static const muted = Color(0xFF716775);
-  static const outline = Color(0xFFE5DDE7);
-  static const softLavender = Color(0xFFF1EAF4);
-  static const softBlush = Color(0xFFF9EDEF);
-  static const softSage = Color(0xFFE9F2ED);
-  static const softGold = Color(0xFFFFF4DE);
+  static const ink = Color(0xFF241E28);
+  static const muted = Color(0xFF5E4F66);
+  static const outline = Color(0xFFDCC9E4);
+  static const softLavender = Color(0xFFE7D7F0);
+  static const softBlush = Color(0xFFFBD8E1);
+  static const softSage = Color(0xFFD5EADF);
+  static const softGold = Color(0xFFFFE8BA);
   static const softTeal = softSage;
   static const softPlum = softLavender;
 }
@@ -48,7 +48,7 @@ abstract final class AppTheme {
       onSecondary: Colors.white,
       secondaryContainer: AppColors.softBlush,
       onSecondaryContainer: AppColors.ink,
-      tertiary: Color(0xFF4D7563),
+      tertiary: Color(0xFF2F5C48),
       tertiaryContainer: AppColors.softSage,
       surface: AppColors.surface,
       onSurface: AppColors.ink,

@@ -267,7 +267,7 @@ class _StressHero extends StatelessWidget {
       gradient: const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [AppColors.primary, Color(0xFF9A718F)],
+        colors: [AppColors.primary, Color(0xFF8A3A6B)],
       ),
       borderRadius: BorderRadius.circular(28),
       boxShadow: const [
