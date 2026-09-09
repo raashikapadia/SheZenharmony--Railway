@@ -2,7 +2,7 @@
 @section('title', ($intervention->exists ? 'Edit ' : 'Add ').strtolower($configuration['singular']))
 @section('body')
 <main class="content">
-    <a href="{{ route($configuration['route'].'.index') }}">← {{ $configuration['title'] }}</a>
+    <a class="backlink" href="{{ route($configuration['route'].'.index') }}">← {{ $configuration['title'] }}</a>
     <h1>{{ $intervention->exists ? 'Edit '.$configuration['singular'] : 'Add '.strtolower($configuration['singular']) }}</h1>
     <p class="muted">{{ $configuration['description'] }}</p>
     @if($errors->any())<div class="alert error"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif

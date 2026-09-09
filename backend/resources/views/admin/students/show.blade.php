@@ -2,7 +2,7 @@
 @section('title', 'Student Profile')
 @section('body')
 <main class="content">
-    <a href="{{ route('admin.students.index') }}">← Registered Students</a>
+    <a class="backlink" href="{{ route('admin.students.index') }}">← Registered Students</a>
     @if(session('status'))<div class="status">{{ session('status') }}</div>@endif
     <section class="panel" style="margin-top:16px">
         <div class="page-intro">

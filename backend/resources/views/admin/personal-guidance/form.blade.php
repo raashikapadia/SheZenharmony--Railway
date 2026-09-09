@@ -7,7 +7,7 @@
     $toLocal = fn ($value) => $value ? \Illuminate\Support\Carbon::parse($value)->format('Y-m-d\TH:i') : '';
 @endphp
 <main class="content">
-    <a href="{{ route('admin.personal-guidance.index') }}">← Personal Guidance</a>
+    <a class="backlink" href="{{ route('admin.personal-guidance.index') }}">← Personal Guidance</a>
     <h1>{{ $guidance->exists ? 'Edit guidance' : 'Add guidance' }}</h1>
     <p class="muted">This appears on the student Home Page as a small moment of encouragement. It is not a wellbeing activity or a stress intervention.</p>
     @if($errors->any())<ul class="errors">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>@endif

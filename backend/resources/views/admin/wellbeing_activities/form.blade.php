@@ -2,7 +2,7 @@
 @section('title', $activity->exists ? 'Edit video activity' : 'Add video activity')
 @section('body')
 <main class="content">
-    <a href="{{ route('admin.wellbeing_activities.index') }}">← Video Activities</a>
+    <a class="backlink" href="{{ route('admin.wellbeing_activities.index') }}">← Video Activities</a>
     <h1>{{ $activity->exists ? 'Edit video activity' : 'Add video activity' }}</h1>
     <p class="muted">Video activities appear in the student Wellbeing Activities library.</p>
     @if($errors->any())<ul class="errors">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>@endif

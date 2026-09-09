@@ -2,7 +2,7 @@
 @section('title', $questionnaire->exists ? 'Edit questionnaire' : 'New questionnaire')
 @section('body')
 <main class="content">
-    <a href="{{ route('admin.questionnaires.index') }}">← Questionnaires</a>
+    <a class="backlink" href="{{ route('admin.questionnaires.index') }}">← Questionnaires</a>
     <h1>{{ $questionnaire->exists ? 'Edit questionnaire' : 'New questionnaire' }}</h1>
     @if($errors->any())<ul class="errors">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>@endif
 

@@ -2,7 +2,7 @@
 @section('title', 'Question Builder')
 @section('body')
 <main class="content">
-    <a href="{{ route('admin.questionnaires.index') }}">← Questionnaires</a>
+    <a class="backlink" href="{{ route('admin.questionnaires.index') }}">← Questionnaires</a>
     @if(session('status'))<div class="status">{{ session('status') }}</div>@endif
     <section class="panel" style="margin-top:16px">
         <div class="page-intro"><div><h2>Questions</h2><p class="muted">The reusable question bank. Add, edit, activate, or retire questions, then attach them to a questionnaire and its sections.</p></div><a class="button" href="{{ route('admin.questions.create') }}"><span>＋</span>Add question</a></div>
