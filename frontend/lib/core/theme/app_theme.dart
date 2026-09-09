@@ -5,19 +5,29 @@ import 'package:flutter/material.dart';
 String toMathBold(String text) => text;
 
 abstract final class AppColors {
-  static const primary = Color(0xFF5F2F6E);
-  static const secondary = Color(0xFFA03D57);
+  static const primary = Color(0xFF7B5A93);
+  static const secondary = Color(0xFF9E5C72);
   static const background = Color(0xFFFBF8FC);
   static const surface = Color(0xFFFFFCFF);
-  static const ink = Color(0xFF241E28);
-  static const muted = Color(0xFF5E4F66);
-  static const outline = Color(0xFFDCC9E4);
-  static const softLavender = Color(0xFFE7D7F0);
-  static const softBlush = Color(0xFFFBD8E1);
-  static const softSage = Color(0xFFD5EADF);
-  static const softGold = Color(0xFFFFE8BA);
+  static const ink = Color(0xFF3B3340);
+  static const muted = Color(0xFF6A5F73);
+  static const outline = Color(0xFFE6DAEE);
+  static const softLavender = Color(0xFFF0E8F7);
+  static const softBlush = Color(0xFFFBE4EA);
+  static const softSage = Color(0xFFDFEFE7);
+  static const softGold = Color(0xFFFFF0CF);
   static const softTeal = softSage;
   static const softPlum = softLavender;
+
+  /// Far end of the stress hero's wash, which runs from [primary].
+  ///
+  /// Kept deep enough to carry white body text: this is the only filled
+  /// surface in the app that light type sits on, so it cannot be softened as
+  /// far as the rest of the palette without the copy on it going unreadable.
+  static const heroWashEnd = Color(0xFF8A5C84);
+
+  /// The hero's body copy — white warmed towards the wash beneath it.
+  static const onHeroMuted = Color(0xFFF9EEF8);
 }
 
 abstract final class AppSpacing {
@@ -48,7 +58,7 @@ abstract final class AppTheme {
       onSecondary: Colors.white,
       secondaryContainer: AppColors.softBlush,
       onSecondaryContainer: AppColors.ink,
-      tertiary: Color(0xFF2F5C48),
+      tertiary: Color(0xFF46705C),
       tertiaryContainer: AppColors.softSage,
       surface: AppColors.surface,
       onSurface: AppColors.ink,

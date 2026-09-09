@@ -267,7 +267,7 @@ class _StressHero extends StatelessWidget {
       gradient: const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [AppColors.primary, Color(0xFF8A3A6B)],
+        colors: [AppColors.primary, AppColors.heroWashEnd],
       ),
       borderRadius: BorderRadius.circular(28),
       boxShadow: const [
@@ -311,7 +311,7 @@ class _StressHero extends StatelessWidget {
 
         const Text(
           'Take a short check-in and receive a supportive, non-diagnostic result.',
-          style: TextStyle(color: Color(0xFFF9EEF8), height: 1.45),
+          style: TextStyle(color: AppColors.onHeroMuted, height: 1.45),
         ),
 
         const SizedBox(height: AppSpacing.xl),

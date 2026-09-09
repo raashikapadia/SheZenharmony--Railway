@@ -60,6 +60,20 @@ void main() {
     expectReadable(Colors.white, AppColors.secondary, 'white on secondary');
   });
 
+  test('the stress hero holds its white text at both ends of its wash', () {
+    // The hero is the one place light type sits on a filled gradient, so both
+    // ends have to carry it — softening only the far end is the easy mistake,
+    // and it puts the body copy below the floor while the heading still looks
+    // fine.
+    for (final (stop, name) in const [
+      (AppColors.primary, 'hero start'),
+      (AppColors.heroWashEnd, 'hero end'),
+    ]) {
+      expectReadable(Colors.white, stop, 'white on $name');
+      expectReadable(AppColors.onHeroMuted, stop, 'hero body text on $name');
+    }
+  });
+
   test('the theme keeps its scheme in step with the palette', () {
     final scheme = AppTheme.light.colorScheme;
 
