@@ -64,8 +64,9 @@ class PersonalGuidance {
 
   /// The line to lead with: the admin's short summary when there is one,
   /// otherwise the full content.
-  String get lead =>
-      (summary != null && summary!.trim().isNotEmpty) ? summary!.trim() : content;
+  String get lead => (summary != null && summary!.trim().isNotEmpty)
+      ? summary!.trim()
+      : content;
 
   factory PersonalGuidance.fromJson(Map<String, dynamic> json) {
     final rawAuthor = (json['author'] as String?)?.trim();
@@ -141,21 +142,24 @@ class GuidanceToolkit {
   /// Shorter items, shown as quick tips. Affirmations are excluded: they get
   /// their own section rather than being mixed into tips and advice.
   List<PersonalGuidance> get quickTips => items
-      .where((item) => !item.isStrategy && item.type != GuidanceType.affirmation)
+      .where(
+        (item) => !item.isStrategy && item.type != GuidanceType.affirmation,
+      )
       .toList();
 
   /// Affirmations to read back, shown as "Daily affirmations".
   List<PersonalGuidance> get affirmations =>
       items.where((item) => item.type == GuidanceType.affirmation).toList();
 
-  factory GuidanceToolkit.fromJson(Map<String, dynamic> json) => GuidanceToolkit(
-    hasCheckIn: json['has_check_in'] as bool? ?? false,
-    headline: (json['headline'] as String? ?? 'A place to start').trim(),
-    subline: (json['subline'] as String? ?? '').trim(),
-    bandMessage: (json['band_message'] as String?)?.trim(),
-    items: (json['data'] as List<dynamic>? ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(PersonalGuidance.fromJson)
-        .toList(),
-  );
+  factory GuidanceToolkit.fromJson(Map<String, dynamic> json) =>
+      GuidanceToolkit(
+        hasCheckIn: json['has_check_in'] as bool? ?? false,
+        headline: (json['headline'] as String? ?? 'A place to start').trim(),
+        subline: (json['subline'] as String? ?? '').trim(),
+        bandMessage: (json['band_message'] as String?)?.trim(),
+        items: (json['data'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(PersonalGuidance.fromJson)
+            .toList(),
+      );
 }

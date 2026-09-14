@@ -71,7 +71,7 @@ class _PositiveEngagementScreenState extends State<PositiveEngagementScreen> {
                   icon: Icons.videogame_asset_outlined,
                   title: 'Games',
                   description: 'Breathing, gratitude, and mindful play.',
-                  tint: AppColors.softBlush,
+                  tint: AppColors.softSage,
                   onTap: () => _openGamesQuizzes(GamesQuizzesSection.games),
                 ),
               ),
@@ -81,7 +81,7 @@ class _PositiveEngagementScreenState extends State<PositiveEngagementScreen> {
                   icon: Icons.quiz_outlined,
                   title: 'Quizzes',
                   description: 'Quick wellbeing check-ins.',
-                  tint: AppColors.softLavender,
+                  tint: AppColors.softPeach,
                   onTap: () => _openGamesQuizzes(GamesQuizzesSection.quizzes),
                 ),
               ),
@@ -100,69 +100,70 @@ class _PositiveEngagementScreenState extends State<PositiveEngagementScreen> {
     context,
   ).push(MaterialPageRoute(builder: (_) => GamesQuizzesScreen(focus: section)));
 
-  Widget _buildContent(BuildContext context) =>
-      FutureBuilder<List<PositiveContent>>(
-        future: _content,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl),
-              child: Center(child: CircularProgressIndicator()),
-            );
-          }
-          if (snapshot.hasError) {
-            return _InlineNotice(
-              icon: Icons.cloud_off_outlined,
-              message: 'Couldn\'t load messages just now.',
-              actionLabel: 'Try again',
-              onAction: () => setState(_load),
-            );
-          }
+  Widget _buildContent(
+    BuildContext context,
+  ) => FutureBuilder<List<PositiveContent>>(
+    future: _content,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+          child: Center(child: CircularProgressIndicator()),
+        );
+      }
+      if (snapshot.hasError) {
+        return _InlineNotice(
+          icon: Icons.cloud_off_outlined,
+          message: 'Couldn\'t load messages just now.',
+          actionLabel: 'Try again',
+          onAction: () => setState(_load),
+        );
+      }
 
-          final all = snapshot.data ?? const <PositiveContent>[];
-          final messages = all.where(_isShortMessage).toList();
-          final activities = all.where((i) => !_isShortMessage(i)).toList();
+      final all = snapshot.data ?? const <PositiveContent>[];
+      final messages = all.where(_isShortMessage).toList();
+      final activities = all.where((i) => !_isShortMessage(i)).toList();
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const AppSectionHeader(
-                title: 'A lift for your day',
-                subtitle: 'One short message at a time.',
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppSectionHeader(
+            title: 'A lift for your day',
+            subtitle: 'One short message at a time — see what today brings.',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (messages.isEmpty)
+            const _InlineNotice(
+              icon: Icons.wb_sunny_outlined,
+              message: 'Messages will appear here soon.',
+            )
+          else
+            _MessageOfTheMoment(
+              message: messages[_messageIndex % messages.length].title,
+              canShuffle: messages.length > 1,
+              onAnother: () =>
+                  setState(() => _messageIndex = _messageIndex + 1),
+            ),
+          if (activities.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xxl),
+            const AppSectionHeader(
+              title: 'More to explore',
+              subtitle: 'Little things to play with when you have a minute.',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            for (final item in activities) ...[
+              _ActivityCard(
+                item: item,
+                label: _label(item.contentType),
+                onTap: () => _showContent(context, item),
               ),
               const SizedBox(height: AppSpacing.md),
-              if (messages.isEmpty)
-                const _InlineNotice(
-                  icon: Icons.wb_sunny_outlined,
-                  message: 'Messages will appear here soon.',
-                )
-              else
-                _MessageOfTheMoment(
-                  message: messages[_messageIndex % messages.length].title,
-                  canShuffle: messages.length > 1,
-                  onAnother: () =>
-                      setState(() => _messageIndex = _messageIndex + 1),
-                ),
-              if (activities.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.xxl),
-                const AppSectionHeader(
-                  title: 'More to explore',
-                  subtitle: 'Small prompts and light activities.',
-                ),
-                const SizedBox(height: AppSpacing.md),
-                for (final item in activities) ...[
-                  _ActivityCard(
-                    item: item,
-                    label: _label(item.contentType),
-                    onTap: () => _showContent(context, item),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                ],
-              ],
             ],
-          );
-        },
+          ],
+        ],
       );
+    },
+  );
 
   /// Whether opening [item] would reveal anything beyond its title.
   static bool _hasMoreToShow(PositiveContent item) =>
@@ -281,9 +282,7 @@ class _MessageOfTheMoment extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         Text(
           message,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(height: 1.35),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(height: 1.35),
         ),
         if (canShuffle) ...[
           const SizedBox(height: AppSpacing.md),

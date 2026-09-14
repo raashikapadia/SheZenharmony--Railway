@@ -791,10 +791,7 @@ class _Chevron extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     width: 32,
     height: 32,
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      shape: BoxShape.circle,
-    ),
+    decoration: BoxDecoration(color: AppColors.surface, shape: BoxShape.circle),
     child: const Icon(
       Icons.arrow_forward_ios_rounded,
       size: 14,

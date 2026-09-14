@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_ui.dart';
 import '../application/auth_provider.dart';
 import 'register_screen.dart';
 import 'otp_verification_screen.dart';
@@ -108,24 +109,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Align(
-                      child: Container(
-                        width: 58,
-                        height: 58,
-                        decoration: const BoxDecoration(
-                          color: _teal,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.self_improvement_rounded,
-                          size: 31,
-                          color: Colors.white,
-                        ),
+                    // Sign-in is the one screen with room for the full lockup,
+                    // and the first thing a student sees, so it carries the
+                    // brand rather than a generic wellbeing glyph.
+                    const Align(
+                      child: SheZenLogo(
+                        height: 132,
+                        variant: SheZenLogoVariant.full,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
                     Text(
-                      'Welcome to SheZen\nHarmony',
+                      'Welcome',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(

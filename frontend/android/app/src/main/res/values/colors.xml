@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The cream ground of the official logo artwork. The launcher icon and
+         the launch splash both sit on it so the opaque mark blends in. -->
+    <color name="ic_launcher_background">#FCF2F5</color>
+    <color name="launch_background">#FCF2F5</color>
+</resources>

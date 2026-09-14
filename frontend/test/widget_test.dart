@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 
 import 'package:shezen_harmony/features/auth/application/auth_provider.dart';
 import 'package:shezen_harmony/features/auth/presentation/login_screen.dart';
+import 'package:shezen_harmony/shared/widgets/app_ui.dart';
 import 'package:shezen_harmony/main.dart';
 
 void main() {
@@ -40,7 +41,10 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Welcome to SheZen\nHarmony'), findsOneWidget);
+    // The logo carries the brand name now, so the heading no longer repeats
+    // it. Both still have to be on screen.
+    expect(find.byType(SheZenLogo), findsOneWidget);
+    expect(find.text('Welcome'), findsOneWidget);
     expect(find.text('Sign in'), findsOneWidget);
     expect(find.text('Create Account'), findsOneWidget);
   });

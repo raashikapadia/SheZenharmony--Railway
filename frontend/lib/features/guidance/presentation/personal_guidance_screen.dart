@@ -59,7 +59,9 @@ class _PersonalGuidanceScreenState extends State<PersonalGuidanceScreen> {
         future: _toolkit,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const AppLoadingView(message: 'Putting your toolkit together…');
+            return const AppLoadingView(
+              message: 'Putting your toolkit together…',
+            );
           }
 
           if (snapshot.hasError) {
@@ -207,10 +209,7 @@ class _ForYouHeader extends StatelessWidget {
         Text(subline, style: const TextStyle(color: AppColors.muted)),
         if (bandMessage != null && bandMessage!.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
-          Text(
-            bandMessage!,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          Text(bandMessage!, style: Theme.of(context).textTheme.bodyMedium),
         ],
         const SizedBox(height: AppSpacing.md),
         const Text(

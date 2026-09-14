@@ -199,9 +199,9 @@ class _Label extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     text,
-    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-      color: AppColors.primary,
-    ),
+    style: Theme.of(
+      context,
+    ).textTheme.titleSmall?.copyWith(color: AppColors.primary),
   );
 }
 
@@ -235,10 +235,7 @@ class _NextStep extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    label,
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
+                  Text(label, style: Theme.of(context).textTheme.titleSmall),
                   Text(
                     description,
                     style: const TextStyle(

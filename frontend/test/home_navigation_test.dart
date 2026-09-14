@@ -7,6 +7,7 @@ import 'package:shezen_harmony/features/auth/application/auth_provider.dart';
 import 'package:shezen_harmony/features/auth/data/auth_challenge.dart';
 import 'package:shezen_harmony/features/auth/data/auth_session.dart';
 import 'package:shezen_harmony/features/home/presentation/home_screen.dart';
+import 'package:shezen_harmony/shared/widgets/app_ui.dart';
 
 /// Guards the agreed information architecture: four primary destinations, the
 /// three content areas reachable from Home, and ChatBuddy floating rather than
@@ -36,9 +37,9 @@ void main() {
 
     final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
     expect(
-      bar.destinations
-          .cast<NavigationDestination>()
-          .map((destination) => destination.label),
+      bar.destinations.cast<NavigationDestination>().map(
+        (destination) => destination.label,
+      ),
       isNot(contains('ChatBuddy')),
     );
   });
@@ -83,6 +84,35 @@ void main() {
     expect(wellbeing.left, lessThan(positive.left));
     expect(tester.takeException(), isNull);
   });
+
+  // The redesigned Home carries a branded header, a serif hero and a floating
+  // nav pill, all of which are new chances to overflow. A RenderFlex overflow
+  // throws during layout, so takeException is the assertion here.
+  for (final (label, size) in const [
+    ('a small phone', Size(320, 900)),
+    ('a phone', Size(430, 950)),
+    ('a tablet', Size(768, 1024)),
+    ('a desktop window', Size(1440, 1000)),
+  ]) {
+    testWidgets('Home lays out on $label without overflowing', (tester) async {
+      await _pumpHome(tester, size: size);
+
+      // The greeting and the brand are the two things that must survive every
+      // width — everything else may reflow around them.
+      expect(find.byType(SheZenLogo), findsOneWidget);
+      expect(find.textContaining('Welcome to your'), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.scrollUntilVisible(
+        find.text('Positive engagement'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('the pathway cards stack on a narrow phone', (tester) async {
     await _pumpHome(tester, size: const Size(320, 900));

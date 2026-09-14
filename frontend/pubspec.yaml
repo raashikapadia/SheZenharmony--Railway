@@ -50,6 +50,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -63,7 +64,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/shezen_background.png
+    - assets/images/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -95,3 +96,20 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Launcher icons are generated from the roundel of the official logo:
+#   dart run flutter_launcher_icons
+# Sources live in branding/, produced from the original artwork by
+# branding/make_logo_assets.ps1. The cream matches the logo's own ground.
+flutter_launcher_icons:
+  image_path: branding/icon.png
+  android: true
+  adaptive_icon_background: "#FCF2F5"
+  adaptive_icon_foreground: branding/icon_foreground.png
+  ios: true
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: branding/icon.png
+    background_color: "#FCF2F5"
+    theme_color: "#76517B"

@@ -3,7 +3,7 @@
     "short_name": "SheZen",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#FBF8FC",
+    "background_color": "#FCF2F5",
     "theme_color": "#76517B",
     "description": "A quiet place to check in, reset, and support your wellbeing.",
     "orientation": "portrait-primary",

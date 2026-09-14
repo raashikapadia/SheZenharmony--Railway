@@ -69,7 +69,7 @@ void main() {
     await pump(tester, _Stub(current: affirmation));
     await tester.pumpAndSettle();
 
-    expect(find.text('💗  A LITTLE REMINDER'), findsOneWidget);
+    expect(find.text('A LITTLE REMINDER'), findsOneWidget);
     expect(
       find.text('“I am capable of handling whatever today brings.”'),
       findsOneWidget,
@@ -81,7 +81,7 @@ void main() {
     await pump(tester, _Stub(current: quote));
     await tester.pumpAndSettle();
 
-    expect(find.text('✨  TODAY\'S INSPIRATION'), findsOneWidget);
+    expect(find.text('TODAY\'S INSPIRATION'), findsOneWidget);
     expect(
       find.text('“It always seems impossible until it is done.”'),
       findsOneWidget,

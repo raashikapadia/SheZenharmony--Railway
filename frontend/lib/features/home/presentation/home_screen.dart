@@ -38,38 +38,23 @@ class _HomeScreenState extends State<HomeScreen> {
     const titles = ['Home', 'Stress level', 'Resource', 'Profile'];
 
     return Scaffold(
-      appBar: AppBar(title: Text(titles[_selectedIndex])),
+      // Home draws its own branded header, so the bar would only repeat it.
+      // The other tabs keep theirs — they are destinations and need naming.
+      appBar: _selectedIndex == 0
+          ? null
+          : AppBar(title: Text(titles[_selectedIndex])),
+      // The bar floats clear of the bottom, so content scrolls beneath it.
+      extendBody: true,
       body: SafeArea(
+        bottom: false,
         child: IndexedStack(index: _selectedIndex, children: pages),
       ),
       // Shezen is a floating companion rather than a primary destination, so
       // it rides above the bar next to Profile instead of taking a fifth tab.
       floatingActionButton: const ShezenChatButton(),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: _FloatingNavBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: _selectTab,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.monitor_heart_outlined),
-            selectedIcon: Icon(Icons.monitor_heart_rounded),
-            label: 'Stress level',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.support_agent_outlined),
-            selectedIcon: Icon(Icons.support_agent_rounded),
-            label: 'Resource',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
-            label: 'Profile',
-          ),
-        ],
+        onSelect: _selectTab,
       ),
     );
   }
@@ -77,6 +62,78 @@ class _HomeScreenState extends State<HomeScreen> {
   void _selectTab(int index) {
     setState(() => _selectedIndex = index);
   }
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+
+/// The four destinations as a floating pill rather than a bar welded to the
+/// bottom edge.
+///
+/// It keeps Material's [NavigationBar] underneath — the destinations, the
+/// selected-state semantics and the 48px touch targets are all still its work,
+/// which is what keeps this readable to a screen reader and comfortable to
+/// tap. The pill is only the surface it sits on.
+class _FloatingNavBar extends StatelessWidget {
+  const _FloatingNavBar({required this.selectedIndex, required this.onSelect});
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    top: false,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        0,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          boxShadow: AppShadows.lifted,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          child: ColoredBox(
+            // Opaque, not frosted: the destinations have to stay legible over
+            // whatever has scrolled underneath them.
+            color: AppColors.surface,
+            child: NavigationBar(
+              selectedIndex: selectedIndex,
+              onDestinationSelected: onSelect,
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home_rounded),
+                  label: 'Home',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.monitor_heart_outlined),
+                  selectedIcon: Icon(Icons.monitor_heart_rounded),
+                  label: 'Stress level',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.menu_book_outlined),
+                  selectedIcon: Icon(Icons.menu_book_rounded),
+                  label: 'Resource',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.person_outline_rounded),
+                  selectedIcon: Icon(Icons.person_rounded),
+                  label: 'Profile',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 // ============================================================
@@ -93,19 +150,14 @@ class _DashboardPage extends StatelessWidget {
     final shezenId = context.watch<AuthProvider>().session?.shezenId ?? '';
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      // Deep bottom inset: the nav pill floats over the content now.
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 132),
       children: [
-        Text(
-          'Welcome to your space',
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
+        _HomeHeader(onOpenProfile: () => onNavigate(3)),
 
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.xl),
 
-        const Text(
-          'A quiet place to check in, reset, and support your wellbeing.',
-          style: TextStyle(color: AppColors.muted),
-        ),
+        const _WelcomeHero(),
 
         const SizedBox(height: AppSpacing.xxl),
 
@@ -135,7 +187,7 @@ class _DashboardPage extends StatelessWidget {
 
         const AppSectionHeader(
           title: 'What would help right now?',
-          subtitle: 'Choose one simple next step.',
+          subtitle: 'One small step is enough — pick whatever sounds kind.',
         ),
 
         const SizedBox(height: AppSpacing.md),
@@ -143,13 +195,17 @@ class _DashboardPage extends StatelessWidget {
         // The three primary content areas, as three equal choices. Personal
         // guidance leads the row so it reads as first-class rather than as a
         // sub-item of the other two.
+        // Each area keeps its own tint so the three read as a set of distinct
+        // places rather than three copies of one card: blush for guidance,
+        // lilac for activities, sage for engagement.
         _PathwayRow(
           cards: [
             AppPathwayCard(
               icon: Icons.eco_outlined,
               title: 'Personal guidance',
-              description: 'Tips, advice and daily affirmations.',
-              tint: AppColors.softBlush,
+              description:
+                  'Practical tips and guidance for everyday wellbeing.',
+              mood: AppMoods.guidance,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => const PersonalGuidanceScreen(),
@@ -158,20 +214,22 @@ class _DashboardPage extends StatelessWidget {
             ),
 
             AppPathwayCard(
-              icon: Icons.spa_outlined,
+              icon: Icons.self_improvement_outlined,
               title: 'Wellbeing activities',
-              description: 'Videos, journaling, and browsing by how you feel.',
-              tint: AppColors.softSage,
+              description:
+                  'Supportive activities and resources to help you feel better.',
+              mood: AppMoods.activities,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const WellbeingHubScreen()),
               ),
             ),
 
             AppPathwayCard(
-              icon: Icons.auto_awesome_outlined,
+              icon: Icons.videogame_asset_outlined,
               title: 'Positive engagement',
-              description: 'Games, quizzes, and motivational prompts.',
-              tint: AppColors.softLavender,
+              description:
+                  'Games and quizzes to lift your mood and keep you engaged.',
+              mood: AppMoods.engagement,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => const PositiveEngagementScreen(),
@@ -194,6 +252,213 @@ class _DashboardPage extends StatelessWidget {
           label: const Text('Manage profile and account'),
         ),
       ],
+    );
+  }
+}
+
+// ============================================================
+// HOME HEADER AND HERO
+// ============================================================
+
+/// A soft radial glow used inside coloured cards, where the page background's
+/// blooms cannot reach.
+class _HeroGlow extends StatelessWidget {
+  const _HeroGlow({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(colors: [color, color.withAlpha(0)]),
+      ),
+    ),
+  );
+}
+
+/// Logo on the left, a single quiet action on the right, and the brand line
+/// between them where there is room for it.
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({required this.onOpenProfile});
+
+  final VoidCallback onOpenProfile;
+
+  /// Below this the logo and the action fill the row on their own.
+  static const _taglineFrom = 420.0;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    // The row's own width, not the window's: this header also renders inside
+    // a narrow column on a wide screen, where the window size would lie.
+    builder: (context, constraints) => Row(
+      children: [
+        // Flexible, because the fallback lockup draws real text and a long
+        // logo must shrink rather than push the action off the edge.
+        const Flexible(child: SheZenLogo(height: 46)),
+
+        const Spacer(),
+
+        // The tagline is the first thing to go when the row gets tight: it is
+        // atmosphere, and the logo and the action are not.
+        if (constraints.maxWidth >= _taglineFrom)
+          const Flexible(
+            child: Padding(
+              padding: EdgeInsets.only(right: AppSpacing.md),
+              child: AppScriptAccent(
+                'A kinder you, everyday',
+                fontSize: 13.5,
+                textAlign: TextAlign.right,
+              ),
+            ),
+          ),
+
+        Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            shape: BoxShape.circle,
+            boxShadow: AppShadows.soft,
+          ),
+          child: IconButton(
+            onPressed: onOpenProfile,
+            tooltip: 'Your profile',
+            icon: const Icon(Icons.person_outline_rounded),
+            color: AppColors.primary,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// The greeting block: eyebrow, the serif welcome, and one line of support,
+/// with a sprig of line art holding the right-hand space.
+class _WelcomeHero extends StatelessWidget {
+  const _WelcomeHero();
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AppEyebrow('GOOD TO SEE YOU', icon: Icons.auto_awesome),
+
+        const SizedBox(height: AppSpacing.md),
+
+        // Two tones on one line: the plain half in ink for legibility, the
+        // emotional half in mauve italic so it carries the feeling.
+        Text.rich(
+          TextSpan(
+            children: [
+              const TextSpan(text: 'Welcome to your\n'),
+              TextSpan(
+                text: 'safe space',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              TextSpan(
+                text: '  ♡',
+                style: TextStyle(color: AppColors.blush, fontSize: 20),
+              ),
+            ],
+          ),
+          style: Theme.of(context).textTheme.displaySmall,
+        ),
+
+        const SizedBox(height: AppSpacing.md),
+
+        const Text(
+          'A quiet place to check in, reset, and support your wellbeing.',
+          style: TextStyle(color: AppColors.muted, height: 1.5),
+        ),
+      ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Below this the sprig would squeeze the heading into hard wraps, and
+        // the words matter more than the decoration.
+        if (constraints.maxWidth < 400) return text;
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: text),
+            const SizedBox(width: AppSpacing.lg),
+            // A small posy rather than a single sprig: two blossoms in
+            // different hues, the leaf line art behind them, and a sparkle.
+            SizedBox(
+              width: 116,
+              height: 138,
+              child: Stack(
+                children: [
+                  const Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: BotanicalSprigPainter(
+                          color: AppColors.sage,
+                          opacity: 0.75,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Positioned(
+                    left: 4,
+                    top: 18,
+                    width: 52,
+                    height: 52,
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: BlossomPainter(color: AppColors.blushPink),
+                      ),
+                    ),
+                  ),
+                  const Positioned(
+                    right: 2,
+                    top: 62,
+                    width: 38,
+                    height: 38,
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: BlossomPainter(
+                          color: AppColors.peach,
+                          rotation: 0.6,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Positioned(
+                    left: 40,
+                    top: 74,
+                    width: 26,
+                    height: 26,
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: BlossomPainter(
+                          color: AppColors.orchid,
+                          opacity: 0.85,
+                          rotation: 1.1,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Positioned(
+                    right: 6,
+                    top: 0,
+                    child: AppSparkleBurst(color: AppColors.peach, size: 52),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -256,71 +521,190 @@ class _StressHero extends StatelessWidget {
   final VoidCallback onStart;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(AppSpacing.xl),
+  Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [AppColors.primary, AppColors.heroWashEnd],
-      ),
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(AppRadii.hero),
       boxShadow: const [
         BoxShadow(
-          color: Color(0x2876517B),
-          blurRadius: 24,
-          offset: Offset(0, 12),
+          color: Color(0x3A5F4363),
+          blurRadius: 30,
+          offset: Offset(0, 14),
+          spreadRadius: -8,
         ),
       ],
     ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .24),
-            borderRadius: BorderRadius.circular(AppRadii.pill),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.hero),
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppColors.primary, AppColors.heroWashEnd],
           ),
-          child: const Text(
-            'STRESS CHECK',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1,
+        ),
+        child: Stack(
+          children: [
+            // A night sky rather than a dark one. Everything here is
+            // decoration behind the copy and is clipped by the card; none of
+            // it passes 34%, so white body text keeps its full contrast
+            // wherever the shapes happen to fall.
+
+            // Moonlight, warm rather than cold, glowing from the top corner.
+            const Positioned(
+              top: -70,
+              right: -50,
+              child: _HeroGlow(size: 210, color: Color(0x4DF6C58B)),
             ),
-          ),
+            const Positioned(
+              bottom: -80,
+              left: -40,
+              child: _HeroGlow(size: 190, color: Color(0x3DE8A1B5)),
+            ),
+
+            Positioned(
+              right: -18,
+              top: -10,
+              bottom: -10,
+              width: 168,
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: BotanicalSprigPainter(
+                    color: Colors.white,
+                    opacity: 0.2,
+                  ),
+                ),
+              ),
+            ),
+
+            // Blossoms in the mood's lilac, so the card has flowers in it and
+            // not just a moon.
+            const Positioned(
+              right: 96,
+              bottom: 18,
+              width: 46,
+              height: 46,
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: BlossomPainter(
+                    color: AppColors.lilac,
+                    opacity: 0.34,
+                  ),
+                ),
+              ),
+            ),
+            const Positioned(
+              right: 22,
+              bottom: 54,
+              width: 28,
+              height: 28,
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: BlossomPainter(
+                    color: AppColors.blushPink,
+                    opacity: 0.3,
+                    rotation: 0.7,
+                  ),
+                ),
+              ),
+            ),
+
+            const Positioned(
+              right: 104,
+              top: 22,
+              child: Icon(
+                Icons.nightlight_round,
+                size: 19,
+                color: Color(0x59FFF2D8),
+              ),
+            ),
+            const Positioned(
+              right: 56,
+              top: 30,
+              child: AppSparkleBurst(color: Color(0xFFFFF0D6), size: 62),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.xxl),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: .22),
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                    ),
+                    child: const Text(
+                      'STRESS CHECK',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Constrained so the heading wraps before it reaches the
+                  // line art rather than running across it.
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 320),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'How are you feeling today?',
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(color: Colors.white),
+                        ),
+
+                        const SizedBox(height: AppSpacing.sm),
+
+                        const Text(
+                          'Take a short check-in and receive a supportive, '
+                          'non-diagnostic result.',
+                          style: TextStyle(
+                            color: AppColors.onHeroMuted,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSpacing.xl),
+
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppColors.primary,
+                    ),
+                    onPressed: onStart,
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    label: const Text('Start stress check'),
+                  ),
+
+                  const SizedBox(height: AppSpacing.md),
+
+                  // Says what the check-in is for, in the card's own voice:
+                  // an invitation to notice how you are, not a warning.
+                  const AppScriptAccent(
+                    "Let's check in with yourself  ♡",
+                    color: Color(0xE6FFF2E4),
+                    fontSize: 13.5,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-
-        const SizedBox(height: AppSpacing.lg),
-
-        Text(
-          'How are you feeling today?',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineSmall?.copyWith(color: Colors.white),
-        ),
-
-        const SizedBox(height: AppSpacing.sm),
-
-        const Text(
-          'Take a short check-in and receive a supportive, non-diagnostic result.',
-          style: TextStyle(color: AppColors.onHeroMuted, height: 1.45),
-        ),
-
-        const SizedBox(height: AppSpacing.xl),
-
-        FilledButton.icon(
-          style: FilledButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: AppColors.primary,
-          ),
-          onPressed: onStart,
-          icon: const Icon(Icons.arrow_forward_rounded),
-          label: const Text('Start stress check'),
-        ),
-      ],
+      ),
     ),
   );
 }

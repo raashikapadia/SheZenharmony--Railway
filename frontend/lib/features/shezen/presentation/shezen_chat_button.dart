@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_ui.dart';
 import 'shezen_intro_screen.dart';
 
 /// Shezen as a floating companion above the bottom bar, next to Profile.
@@ -17,7 +18,7 @@ class ShezenChatButton extends StatelessWidget {
     button: true,
     label: 'Open ChatBuddy, your Shezen chat companion',
     child: Material(
-      color: AppColors.surface,
+      color: Colors.transparent,
       elevation: 3,
       shadowColor: const Color(0x3376517B),
       borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -26,22 +27,42 @@ class ShezenChatButton extends StatelessWidget {
         onTap: () => Navigator.of(
           context,
         ).push(MaterialPageRoute(builder: (_) => const ShezenIntroScreen())),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(6, 6, 14, 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              ShezenAvatar(size: 36),
-              SizedBox(width: AppSpacing.sm),
-              Text(
-                'ChatBuddy',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.softBlush, Color(0xFFFBE3EE)],
+            ),
+            border: Border.all(color: AppColors.blushPink, width: 1.4),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(7, 7, 16, 7),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const ShezenAvatar(size: 34),
+                const SizedBox(width: AppSpacing.md),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'ChatBuddy',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
+                        height: 1.15,
+                      ),
+                    ),
+                    // The one place a companion is allowed to sound like one.
+                    AppScriptAccent("I'm here for you  ♡", fontSize: 11.5),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

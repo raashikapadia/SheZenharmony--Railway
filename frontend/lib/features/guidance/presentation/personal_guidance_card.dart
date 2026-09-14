@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/network/api_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_ui.dart';
 import '../../auth/application/auth_provider.dart';
 import '../data/personal_guidance.dart';
 import 'saved_guidance_screen.dart';
@@ -121,11 +122,8 @@ class _PersonalGuidanceCardState extends State<PersonalGuidanceCard> {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppColors.softLavender,
-            AppColors.softBlush,
-            AppColors.softGold,
-          ],
+          colors: [AppColors.softBlush, Color(0xFFFDF6F3), AppColors.softGold],
+          stops: [0, 0.55, 1],
         ),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
@@ -141,20 +139,34 @@ class _PersonalGuidanceCardState extends State<PersonalGuidanceCard> {
         borderRadius: BorderRadius.circular(28),
         child: Stack(
           children: [
+            // Line art instead of emoji: it takes the palette, scales
+            // cleanly and stays faint enough to read the quote over.
             const Positioned(
-              top: -6,
-              right: 10,
-              child: Opacity(
-                opacity: 0.16,
-                child: Text('🌷', style: TextStyle(fontSize: 72)),
+              top: -14,
+              right: -10,
+              width: 132,
+              height: 132,
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: BotanicalSprigPainter(
+                    color: AppColors.brand,
+                    opacity: 0.26,
+                  ),
+                ),
               ),
             ),
             const Positioned(
-              bottom: -10,
-              left: -6,
-              child: Opacity(
-                opacity: 0.12,
-                child: Text('✨', style: TextStyle(fontSize: 64)),
+              bottom: -26,
+              left: -22,
+              width: 116,
+              height: 116,
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: BotanicalSprigPainter(
+                    color: AppColors.blush,
+                    opacity: 0.3,
+                  ),
+                ),
               ),
             ),
             Padding(
@@ -216,12 +228,12 @@ class _PersonalGuidanceCardState extends State<PersonalGuidanceCard> {
 
   String get _headerLabel {
     if (_loading || _error != null || _guidance == null) {
-      return '🌷  PERSONAL GUIDANCE';
+      return 'PERSONAL GUIDANCE';
     }
     return switch (_guidance!.type) {
-      GuidanceType.quote => '✨  TODAY\'S INSPIRATION',
-      GuidanceType.affirmation => '💗  A LITTLE REMINDER',
-      GuidanceType.guidance => '🌷  PERSONAL GUIDANCE',
+      GuidanceType.quote => 'TODAY\'S INSPIRATION',
+      GuidanceType.affirmation => 'A LITTLE REMINDER',
+      GuidanceType.guidance => 'PERSONAL GUIDANCE',
     };
   }
 
@@ -327,12 +339,14 @@ class _GuidanceBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // The focal point of the whole Home screen: serif, generous, and the
+        // largest type on the page.
         Text(
           wrapped,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             height: 1.4,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w500,
             fontStyle: isQuote ? FontStyle.italic : FontStyle.normal,
             color: AppColors.ink,
           ),
@@ -345,14 +359,15 @@ class _GuidanceBody extends StatelessWidget {
             style: const TextStyle(
               color: AppColors.primary,
               fontWeight: FontWeight.w700,
+              fontSize: 13.5,
             ),
           ),
         ],
         const SizedBox(height: AppSpacing.md),
-        const Text(
-          '✨   ♡   ✨',
+        const AppScriptAccent(
+          'You are enough  ♡',
           textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.secondary, letterSpacing: 2),
+          fontSize: 14,
         ),
       ],
     );

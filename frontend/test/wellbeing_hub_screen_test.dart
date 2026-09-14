@@ -41,7 +41,8 @@ void main() {
       }),
       WellbeingActivity.fromInterventionJson({
         'title': 'Talk to someone',
-        'description': 'Confidential support from the university counselling service.',
+        'description':
+            'Confidential support from the university counselling service.',
         'content_type': 'resource',
       }),
     ]);
