@@ -41,6 +41,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Welcome to SheZen\nHarmony'), findsOneWidget);
+    expect(find.byKey(const Key('shezen-logo')), findsOneWidget);
     expect(find.text('Sign in'), findsOneWidget);
     expect(find.text('Create Account'), findsOneWidget);
   });

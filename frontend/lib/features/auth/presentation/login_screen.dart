@@ -109,17 +109,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Align(
-                      child: Container(
-                        width: 58,
-                        height: 58,
-                        decoration: const BoxDecoration(
-                          color: _teal,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.self_improvement_rounded,
-                          size: 31,
-                          color: Colors.white,
+                      child: Semantics(
+                        label: 'SheZen Harmony logo',
+                        image: true,
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/branding/shezen_app_icon.png',
+                            key: const Key('shezen-logo'),
+                            width: 76,
+                            height: 76,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                     ),
