@@ -39,6 +39,11 @@ void main() {
         'description': 'Withheld from the student lists.',
         'content_type': 'breathing',
       }),
+      WellbeingActivity.fromInterventionJson({
+        'title': 'Talk to someone',
+        'description': 'Confidential support from the university counselling service.',
+        'content_type': 'resource',
+      }),
     ]);
     addTearDown(api.close);
 
@@ -164,6 +169,19 @@ void main() {
 
     expect(find.text('Ocean breathing'), findsOneWidget);
     expect(find.text('Morning meditation'), findsNothing);
+  });
+
+  testWidgets('resource content is not a feeling tile', (tester) async {
+    await pumpHub(tester);
+
+    // Resource has its own bottom-nav tab, which leads with the
+    // admin-published helplines, so the hub must not offer a second door.
+    expect(find.text('Resource'), findsNothing);
+    expect(find.text('Talk to someone'), findsNothing);
+
+    // The other feelings still tile as before.
+    expect(find.text('Breathing'), findsOneWidget);
+    expect(find.text('Mindfulness'), findsOneWidget);
   });
 
   testWidgets('the journaling tile opens the private diary', (tester) async {

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/data/reference_data.dart';
+import '../../../shared/widgets/app_ui.dart';
 import '../../../shared/widgets/form_fields.dart';
 import '../application/auth_provider.dart';
 import 'otp_verification_screen.dart';
@@ -150,7 +151,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           style: const TextStyle(
             color: _registrationInk,
             fontWeight: FontWeight.w700,
-            fontSize: 19,
+            fontSize: 18,
           ),
         ),
       ),
@@ -278,7 +279,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               style: TextStyle(
                                 color: _registrationInk,
                                 fontWeight: FontWeight.w700,
-                                fontSize: 17,
+                                fontSize: 16,
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -634,7 +635,7 @@ class _RegistrationCompleteScreen extends StatelessWidget {
                       color: _registrationInk,
                       fontFamily: 'serif',
                       fontWeight: FontWeight.w700,
-                      fontSize: 23,
+                      fontSize: 20,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -644,13 +645,13 @@ class _RegistrationCompleteScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   SelectableText(
-                    shezenId,
+                    shortShezenId(shezenId),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: _registrationTeal,
                       fontFamily: 'serif',
                       fontWeight: FontWeight.w700,
-                      fontSize: 22,
+                      fontSize: 15,
                     ),
                   ),
                   const SizedBox(height: 18),

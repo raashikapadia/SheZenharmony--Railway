@@ -1,5 +1,8 @@
 /// Titles withheld from the student-facing activity lists.
-const hiddenWellbeingActivityTitles = <String>{'box breathing'};
+const hiddenWellbeingActivityTitles = <String>{
+  'box breathing',
+  'talk to someone',
+};
 
 class WellbeingActivity {
   const WellbeingActivity({

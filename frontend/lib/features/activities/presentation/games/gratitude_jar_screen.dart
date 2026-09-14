@@ -392,7 +392,7 @@ class _GratitudeJarScreenState extends State<GratitudeJarScreen>
                         'Your moments',
                         style: TextStyle(
                           color: AppColors.primary,
-                          fontSize: 18,
+                          fontSize: 17,
                           fontWeight: FontWeight.w800,
                         ),
                       ),

@@ -158,7 +158,7 @@ class _MindfulMemoryScreenState extends State<MindfulMemoryScreen> {
               const Text(
                 'Find the matching pairs',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 8),

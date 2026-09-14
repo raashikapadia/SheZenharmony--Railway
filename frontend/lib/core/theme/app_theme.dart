@@ -79,20 +79,26 @@ abstract final class AppTheme {
       scaffoldBackgroundColor: Colors.transparent,
       textTheme: base.copyWith(
         headlineMedium: base.headlineMedium?.copyWith(
+          fontSize: 24,
           fontWeight: FontWeight.w800,
           letterSpacing: -0.7,
           height: 1.15,
         ),
         headlineSmall: base.headlineSmall?.copyWith(
+          fontSize: 20,
           fontWeight: FontWeight.w800,
           letterSpacing: -0.4,
           height: 1.2,
         ),
         titleLarge: base.titleLarge?.copyWith(
+          fontSize: 19,
           fontWeight: FontWeight.w800,
           letterSpacing: -0.2,
         ),
-        titleMedium: base.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        titleMedium: base.titleMedium?.copyWith(
+          fontSize: 15.5,
+          fontWeight: FontWeight.w700,
+        ),
         bodyLarge: base.bodyLarge?.copyWith(height: 1.5),
         bodyMedium: base.bodyMedium?.copyWith(height: 1.45),
       ),
@@ -104,7 +110,7 @@ abstract final class AppTheme {
         centerTitle: false,
         titleTextStyle: TextStyle(
           color: AppColors.ink,
-          fontSize: 20,
+          fontSize: 18,
           fontWeight: FontWeight.w800,
           letterSpacing: -0.2,
         ),

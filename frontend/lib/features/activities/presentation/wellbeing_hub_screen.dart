@@ -173,13 +173,17 @@ class _HubBody extends StatelessWidget {
     // own private diary, so admin-published journaling content (the seeded
     // "Gratitude reflection", for one) is not surfaced here at all. It stays
     // reachable through the flat list the assessment result screen opens.
+    //
+    // Resource is excluded for the same reason: it has its own bottom-nav
+    // Resource tab, which leads with the admin-published helplines, so a
+    // feeling tile here would be a second door to the same records.
     final byCategory = <String, List<WellbeingActivity>>{};
     final labels = <String, String>{};
     for (final activity in activities) {
       final label = activity.category.trim();
       if (label.isEmpty) continue;
       final key = label.toLowerCase();
-      if (key == 'journaling') continue;
+      if (key == 'journaling' || key == 'resource') continue;
       labels.putIfAbsent(key, () => label);
       byCategory.putIfAbsent(key, () => []).add(activity);
     }
@@ -611,7 +615,7 @@ class _OptionCard extends StatelessWidget {
                         title,
                         style: const TextStyle(
                           color: AppColors.primary,
-                          fontSize: 16.5,
+                          fontSize: 15.5,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.2,
                         ),
@@ -730,7 +734,7 @@ class _CategoryTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AppColors.ink,
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.2,
                     ),

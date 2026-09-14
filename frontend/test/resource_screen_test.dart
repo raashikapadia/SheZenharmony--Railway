@@ -82,6 +82,23 @@ void main() {
     expect(find.text('Box breathing'), findsNothing);
   });
 
+  testWidgets('the talk to someone card is withheld everywhere', (
+    tester,
+  ) async {
+    await pumpResources(tester, [
+      WellbeingActivity.fromInterventionJson({
+        'title': 'Talk to someone',
+        'description':
+            'Confidential support from the university counselling service.',
+        'content_type': 'resource',
+      }),
+    ]);
+
+    // Withdrawn from the student app, so the Resource tab is the helplines
+    // the admin publishes and nothing else.
+    expect(find.text('Talk to someone'), findsNothing);
+  });
+
   testWidgets('says resources are coming rather than showing an empty list', (
     tester,
   ) async {

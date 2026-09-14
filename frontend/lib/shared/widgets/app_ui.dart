@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/theme/app_theme.dart';
 
@@ -228,10 +229,7 @@ class AppPathwayCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  Text(title, style: Theme.of(context).textTheme.titleMedium),
 
                   const SizedBox(height: AppSpacing.xs),
 
@@ -350,6 +348,27 @@ class AppLoadingView extends StatelessWidget {
   );
 }
 
+/// The SheZen ID as it is drawn on screen.
+///
+/// The identifier is `SZ-` followed by 32 hex characters — 35 monospace
+/// characters, wider than a phone can show at a readable size. The ends are
+/// the part a student recognises, so the middle is elided.
+///
+/// Presentation only: the stored and transmitted identifier is unchanged, and
+/// the copy action on [AppIdentityCard] still yields the whole thing.
+String shortShezenId(String id) {
+  const prefix = 'SZ-';
+  final trimmed = id.trim();
+  final body = trimmed.startsWith(prefix)
+      ? trimmed.substring(prefix.length)
+      : trimmed;
+
+  // Short enough to read whole, so eliding would only lose information.
+  if (body.length <= 12) return trimmed;
+
+  return '$prefix${body.substring(0, 4)}…${body.substring(body.length - 4)}';
+}
+
 class AppIdentityCard extends StatelessWidget {
   const AppIdentityCard({super.key, required this.shezenId});
 
@@ -380,12 +399,24 @@ class AppIdentityCard extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: AppSpacing.xs),
-              SelectableText(
-                shezenId,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppColors.primary,
-                  fontFamily: 'monospace',
-                ),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      shortShezenId(shezenId),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.primary,
+                        fontFamily: 'monospace',
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ),
+                  // The shortened form is for reading; this is how the whole
+                  // identifier still leaves the screen.
+                  _CopyShezenIdButton(shezenId: shezenId),
+                ],
               ),
               const SizedBox(height: AppSpacing.sm),
               const Text(
@@ -397,5 +428,32 @@ class AppIdentityCard extends StatelessWidget {
         ),
       ],
     ),
+  );
+}
+
+/// Puts the whole SheZen ID on the clipboard, since the card only draws a
+/// shortened form of it.
+class _CopyShezenIdButton extends StatelessWidget {
+  const _CopyShezenIdButton({required this.shezenId});
+
+  final String shezenId;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    icon: const Icon(Icons.copy_rounded, size: 18),
+    color: AppColors.primary,
+    visualDensity: VisualDensity.compact,
+    padding: EdgeInsets.zero,
+    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+    tooltip: 'Copy your full SheZen ID',
+    onPressed: shezenId.trim().isEmpty
+        ? null
+        : () async {
+            final messenger = ScaffoldMessenger.of(context);
+            await Clipboard.setData(ClipboardData(text: shezenId.trim()));
+            messenger.showSnackBar(
+              const SnackBar(content: Text('SheZen ID copied')),
+            );
+          },
   );
 }

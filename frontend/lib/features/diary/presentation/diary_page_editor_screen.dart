@@ -201,7 +201,7 @@ class _DiaryPageEditorScreenState extends State<DiaryPageEditorScreen> {
                 hintText: 'Title (optional)',
                 hintStyle: TextStyle(
                   color: AppColors.outline,
-                  fontSize: 24,
+                  fontSize: 20,
                   fontWeight: FontWeight.w800,
                 ),
               ),

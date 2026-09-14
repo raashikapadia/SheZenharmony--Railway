@@ -15,7 +15,6 @@ import '../../guidance/presentation/personal_guidance_card.dart';
 import '../../guidance/presentation/personal_guidance_screen.dart';
 import '../../profile/presentation/profile_view_screen.dart';
 import '../../shezen/presentation/shezen_chat_button.dart';
-import '../../shezen/presentation/shezen_feature_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -111,10 +110,6 @@ class _DashboardPage extends StatelessWidget {
         const SizedBox(height: AppSpacing.xxl),
 
         const PersonalGuidanceCard(),
-
-        const SizedBox(height: AppSpacing.xxl),
-
-        const ShezenFeatureCard(),
 
         const SizedBox(height: AppSpacing.xxl),
 

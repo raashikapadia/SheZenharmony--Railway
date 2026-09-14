@@ -306,7 +306,7 @@ class _GameCard extends StatelessWidget {
                       title,
                       style: const TextStyle(
                         color: AppColors.primary,
-                        fontSize: 17,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -743,7 +743,7 @@ class _WellbeingQuizScreenState extends State<WellbeingQuizScreen> {
                   question.question,
                   style: const TextStyle(
                     color: AppColors.primary,
-                    fontSize: 19,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     height: 1.4,
                   ),
@@ -990,7 +990,7 @@ class _MindfulnessQuizScreenState extends State<MindfulnessQuizScreen> {
                   question.question,
                   style: const TextStyle(
                     color: AppColors.primary,
-                    fontSize: 19,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     height: 1.4,
                   ),

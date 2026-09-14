@@ -823,7 +823,7 @@ class _ActivityHeader extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.ink,
-                        fontSize: 25,
+                        fontSize: 21,
                         height: 1.2,
                         letterSpacing: -0.5,
                         fontWeight: FontWeight.w800,
