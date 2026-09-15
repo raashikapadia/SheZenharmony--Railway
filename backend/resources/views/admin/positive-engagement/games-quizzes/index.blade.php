@@ -4,7 +4,7 @@
 <main class="content">
     @if(session('status'))<div class="status">{{ session('status') }}</div>@endif
     <div class="page-intro">
-        <div><h1>Games &amp; Quizzes</h1><p class="lede">Manage quizzes independently from the existing student games.</p></div>
+        <div><h1>Games & Quizzes</h1><p class="lede">Manage quizzes independently from the existing student games.</p></div>
         <a class="button" href="{{ route('admin.positive-engagement.games-quizzes.create') }}">+ Add quiz</a>
     </div>
     <div class="cards" style="margin-bottom:20px">
