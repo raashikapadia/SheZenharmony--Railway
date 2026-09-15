@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../auth/application/auth_provider.dart';
+import '../../data/managed_quiz.dart';
 import 'gratitude_jar_screen.dart';
 import 'mindful_spark_screen.dart';
 import 'mindful_memory_screen.dart';
@@ -20,10 +24,16 @@ class GamesQuizzesScreen extends StatefulWidget {
 
 class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
   final GlobalKey _quizzesKey = GlobalKey();
+  late final ApiService _api;
+  late Future<List<ManagedQuiz>> _quizzes;
 
   @override
   void initState() {
     super.initState();
+    _api = ApiService();
+    _quizzes = widget.focus == GamesQuizzesSection.quizzes
+        ? _api.managedQuizzes()
+        : Future.value(const <ManagedQuiz>[]);
     if (widget.focus != GamesQuizzesSection.quizzes) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final context = _quizzesKey.currentContext;
@@ -35,6 +45,12 @@ class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
         alignment: 0.05,
       );
     });
+  }
+
+  @override
+  void dispose() {
+    _api.close();
+    super.dispose();
   }
 
   @override
@@ -99,140 +115,153 @@ class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
 
               const SizedBox(height: 28),
 
-              // ============================================================
-              // GAMES
-              // ============================================================
-              Text(
-                'GAMES',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primary,
-                  letterSpacing: 1.2,
+              if (widget.focus == GamesQuizzesSection.games) ...[
+                // ============================================================
+                // GAMES
+                // ============================================================
+                Text(
+                  'GAMES',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                    letterSpacing: 1.2,
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 14),
+                const SizedBox(height: 14),
 
-              // Breathing Challenge
-              _GameCard(
-                icon: Icons.air_rounded,
-                title: 'Breathing Challenge',
-                description:
-                    'Follow a simple breathing rhythm and take a calm moment.',
-                color: AppColors.softSage,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const BreathingGameScreen(),
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 20),
-
-              // Gratitude Jar
-              _GameCard(
-                icon: Icons.favorite_rounded,
-                title: 'Gratitude Jar',
-                description:
-                    'Write down something positive and add it to your gratitude jar.',
-                color: AppColors.softBlush,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const GratitudeJarScreen(),
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 20),
-
-              // Mindful Spark
-              _GameCard(
-                icon: Icons.auto_awesome_rounded,
-                title: 'Mindful Spark',
-                description:
-                    'Gently tap the sparks as they appear and practise noticing the moment.',
-                color: AppColors.softLavender,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const MindfulSparkScreen(),
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 20),
-
-              // Mindful Memory
-              _GameCard(
-                icon: Icons.psychology_outlined,
-                title: 'Mindful Memory',
-                description:
-                    'Match peaceful symbols and practise your memory mindfully.',
-                color: AppColors.softSage,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const MindfulMemoryScreen(),
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 32),
-
-              // ============================================================
-              // QUIZZES
-              // ============================================================
-              Text(
-                key: _quizzesKey,
-                'QUIZZES',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primary,
-                  letterSpacing: 1.2,
+                // Breathing Challenge
+                _GameCard(
+                  icon: Icons.air_rounded,
+                  title: 'Breathing Challenge',
+                  description:
+                      'Follow a simple breathing rhythm and take a calm moment.',
+                  color: AppColors.softSage,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const BreathingGameScreen(),
+                      ),
+                    );
+                  },
                 ),
-              ),
 
-              const SizedBox(height: 14),
+                const SizedBox(height: 20),
 
-              // Wellbeing Quiz
-              _GameCard(
-                icon: Icons.spa_rounded,
-                title: 'Wellbeing Quiz',
-                description:
-                    'Answer simple questions about healthy wellbeing habits and self-care.',
-                color: AppColors.softBlush,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const WellbeingQuizScreen(),
-                    ),
-                  );
-                },
-              ),
+                // Gratitude Jar
+                _GameCard(
+                  icon: Icons.favorite_rounded,
+                  title: 'Gratitude Jar',
+                  description:
+                      'Write down something positive and add it to your gratitude jar.',
+                  color: AppColors.softBlush,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const GratitudeJarScreen(),
+                      ),
+                    );
+                  },
+                ),
 
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-              // Mindfulness Quiz
-              _GameCard(
-                icon: Icons.self_improvement_rounded,
-                title: 'Mindfulness Quiz',
-                description:
-                    'Test your knowledge of mindfulness and mindful habits.',
-                color: AppColors.softLavender,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const MindfulnessQuizScreen(),
-                    ),
-                  );
-                },
-              ),
+                // Mindful Spark
+                _GameCard(
+                  icon: Icons.auto_awesome_rounded,
+                  title: 'Mindful Spark',
+                  description:
+                      'Gently tap the sparks as they appear and practise noticing the moment.',
+                  color: AppColors.softLavender,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const MindfulSparkScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 20),
+
+                // Mindful Memory
+                _GameCard(
+                  icon: Icons.psychology_outlined,
+                  title: 'Mindful Memory',
+                  description:
+                      'Match peaceful symbols and practise your memory mindfully.',
+                  color: AppColors.softSage,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const MindfulMemoryScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 32),
+              ],
+
+              if (widget.focus == GamesQuizzesSection.quizzes) ...[
+                // ============================================================
+                // QUIZZES
+                // ============================================================
+                Text(
+                  key: _quizzesKey,
+                  'QUIZZES',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                FutureBuilder<List<ManagedQuiz>>(
+                  future: _quizzes,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return _QuizNotice(
+                        message: 'Quizzes could not be loaded right now.',
+                        onRetry: () => setState(() {
+                          _quizzes = _api.managedQuizzes();
+                        }),
+                      );
+                    }
+                    final quizzes = snapshot.data ?? const <ManagedQuiz>[];
+                    if (quizzes.isEmpty) {
+                      return const _QuizNotice(
+                        message: 'No quizzes are available right now.',
+                      );
+                    }
+                    return Column(
+                      children: [
+                        for (final quiz in quizzes) ...[
+                          _GameCard(
+                            icon: Icons.quiz_outlined,
+                            title: quiz.name,
+                            description: quiz.description.isEmpty
+                                ? quiz.category
+                                : quiz.description,
+                            color: AppColors.softBlush,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ManagedQuizScreen(quiz: quiz),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      ],
+                    );
+                  },
+                ),
+              ],
             ],
           ),
         ),
@@ -364,9 +393,11 @@ class _BreathingGameScreenState extends State<BreathingGameScreen>
   late AnimationController _controller;
 
   bool _started = false;
-  int _round = 0;
+  int _round = 1;
 
   final int _totalRounds = 3;
+  static const _phaseDuration = 4;
+  static const _phaseCount = 4;
 
   @override
   void initState() {
@@ -374,8 +405,8 @@ class _BreathingGameScreenState extends State<BreathingGameScreen>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 4),
-    );
+      duration: Duration(seconds: _totalRounds * _phaseCount * _phaseDuration),
+    )..addListener(_syncBreathingState);
   }
 
   @override
@@ -384,45 +415,50 @@ class _BreathingGameScreenState extends State<BreathingGameScreen>
     super.dispose();
   }
 
-  void _startBreathing() {
-    setState(() {
-      _started = true;
-      _round = 0;
-    });
-
-    _runRound();
+  void _syncBreathingState() {
+    if (!mounted) return;
+    final elapsedPhases = _controller.value * _totalRounds * _phaseCount;
+    final nextRound = (elapsedPhases ~/ _phaseCount) + 1;
+    if (_round != nextRound && nextRound <= _totalRounds) {
+      setState(() => _round = nextRound);
+    } else {
+      setState(() {});
+    }
   }
 
-  Future<void> _runRound() async {
-    for (int i = 0; i < _totalRounds; i++) {
-      if (!mounted) return;
-
-      setState(() {
-        _round = i + 1;
-      });
-
-      await _controller.forward(from: 0);
-
-      if (!mounted) return;
-
-      await Future.delayed(const Duration(seconds: 2));
-
-      if (!mounted) return;
-
-      await _controller.reverse();
-
-      if (!mounted) return;
-
-      await Future.delayed(const Duration(seconds: 2));
-    }
-
-    if (!mounted) return;
-
+  Future<void> _startBreathing() async {
+    _controller.stop();
     setState(() {
-      _started = false;
+      _started = true;
+      _round = 1;
     });
 
-    _showCompleteDialog();
+    try {
+      await _controller.forward(from: 0);
+      if (!mounted) return;
+      setState(() => _started = false);
+      _showCompleteDialog();
+    } on TickerCanceled {
+      // The controller is canceled when the screen is disposed.
+    }
+  }
+
+  String get _phaseLabel {
+    if (!_started) return _controller.value == 1 ? 'Complete' : 'Ready';
+    final phase =
+        ((_controller.value * _totalRounds * _phaseCount).floor()) %
+        _phaseCount;
+    return const ['Inhale', 'Hold', 'Exhale', 'Hold'][phase];
+  }
+
+  double get _phaseProgress {
+    final progress = _controller.value * _totalRounds * _phaseCount;
+    return progress - progress.floor();
+  }
+
+  int get _secondsRemaining {
+    if (!_started) return 0;
+    return (_phaseDuration * (1 - _phaseProgress)).ceil().clamp(1, 4);
   }
 
   void _showCompleteDialog() {
@@ -481,14 +517,61 @@ class _BreathingGameScreenState extends State<BreathingGameScreen>
                 style: TextStyle(color: AppColors.muted, height: 1.4),
               ),
 
-              const SizedBox(height: 50),
+              const SizedBox(height: 28),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.10),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      _phaseLabel,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _started
+                          ? '$_secondsRemaining seconds'
+                          : 'Four calm phases',
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
+                    const SizedBox(height: 12),
+                    LinearProgressIndicator(
+                      value: _started ? _phaseProgress : 0,
+                      minHeight: 7,
+                      borderRadius: BorderRadius.circular(20),
+                      backgroundColor: AppColors.softLavender,
+                      color: AppColors.primary,
+                    ),
+                  ],
+                ),
+              ),
 
               Expanded(
                 child: Center(
                   child: AnimatedBuilder(
                     animation: _controller,
                     builder: (context, child) {
-                      final double scale = 0.72 + (_controller.value * 0.28);
+                      final phase =
+                          ((_controller.value * _totalRounds * _phaseCount)
+                              .floor()) %
+                          _phaseCount;
+                      final phaseProgress = _phaseProgress;
+                      final expanding = phase == 0 || phase == 1;
+                      final breathingProgress = expanding
+                          ? phaseProgress
+                          : 1 - phaseProgress;
+                      final scale = 0.74 + (breathingProgress * 0.26);
 
                       return Transform.scale(
                         scale: scale,
@@ -505,11 +588,7 @@ class _BreathingGameScreenState extends State<BreathingGameScreen>
                           ),
                           child: Center(
                             child: Text(
-                              !_started
-                                  ? 'Ready'
-                                  : _controller.value < 0.5
-                                  ? 'Breathe in'
-                                  : 'Breathe out',
+                              _phaseLabel,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 color: AppColors.primary,
@@ -554,8 +633,175 @@ class _BreathingGameScreenState extends State<BreathingGameScreen>
   }
 }
 
+class _QuizNotice extends StatelessWidget {
+  const _QuizNotice({required this.message, this.onRetry});
+
+  final String message;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.softSage,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [
+          Text(message, textAlign: TextAlign.center),
+          if (onRetry != null) ...[
+            const SizedBox(height: 10),
+            TextButton(onPressed: onRetry, child: const Text('Try again')),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class ManagedQuizScreen extends StatefulWidget {
+  const ManagedQuizScreen({super.key, required this.quiz});
+
+  final ManagedQuiz quiz;
+
+  @override
+  State<ManagedQuizScreen> createState() => _ManagedQuizScreenState();
+}
+
+class _ManagedQuizScreenState extends State<ManagedQuizScreen> {
+  final Map<int, String> _answers = {};
+  late final ApiService _api = ApiService();
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _api.close();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_answers.length != widget.quiz.questions.length || _submitting) {
+      return;
+    }
+    final token = context.read<AuthProvider>().session?.token;
+    if (token == null) return;
+
+    setState(() => _submitting = true);
+    try {
+      final result = await _api.completeManagedQuiz(
+        token,
+        widget.quiz.id,
+        _answers,
+      );
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Quiz complete'),
+          content: Text(
+            'You scored ${result['score']} out of ${result['total_questions']}.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Done'),
+            ),
+          ],
+        ),
+      );
+      if (mounted) Navigator.pop(context);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.quiz.name)),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            if (widget.quiz.description.isNotEmpty)
+              Text(
+                widget.quiz.description,
+                style: const TextStyle(color: AppColors.muted, height: 1.4),
+              ),
+            const SizedBox(height: 18),
+            for (final question in widget.quiz.questions) ...[
+              Text(
+                question.questionText,
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 10),
+              for (final option in question.options.entries)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: InkWell(
+                    onTap: _submitting
+                        ? null
+                        : () => setState(() {
+                            _answers[question.id] = option.key;
+                          }),
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: _answers[question.id] == option.key
+                            ? AppColors.softLavender
+                            : AppColors.surface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _answers[question.id] == option.key
+                              ? AppColors.primary
+                              : AppColors.primary.withValues(alpha: 0.10),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _answers[question.id] == option.key
+                                ? Icons.radio_button_checked
+                                : Icons.radio_button_unchecked,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text(option.value)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 18),
+            ],
+            FilledButton(
+              onPressed: _answers.length == widget.quiz.questions.length
+                  ? _submit
+                  : null,
+              child: Text(_submitting ? 'Submitting...' : 'Submit quiz'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ============================================================
-// WELLBEING QUIZ
+// LEGACY QUIZ SCREENS
 // ============================================================
 
 class WellbeingQuizScreen extends StatefulWidget {

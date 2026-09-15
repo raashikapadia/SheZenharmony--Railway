@@ -76,4 +76,9 @@ class StudentIdentity extends Model
     {
         return $this->hasMany(ChatSession::class);
     }
+
+    public function gratitudeEntries(): HasMany
+    {
+        return $this->hasMany(GratitudeEntry::class);
+    }
 }

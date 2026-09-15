@@ -8,6 +8,8 @@ import '../../features/assessment/data/assessment_detail.dart';
 import '../../features/assessment/data/assessment_questionnaire.dart';
 import '../../features/assessment/data/assessment_result.dart';
 import '../../features/guidance/data/personal_guidance.dart';
+import '../../features/activities/data/managed_quiz.dart';
+import '../../features/activities/data/gratitude_entry.dart';
 import '../../features/auth/data/auth_session.dart';
 import '../../features/auth/data/auth_challenge.dart';
 import '../config/api_config.dart';
@@ -374,6 +376,66 @@ class ApiService {
         .whereType<Map<String, dynamic>>()
         .map(PositiveContent.fromJson)
         .toList();
+  }
+
+  Future<List<ManagedQuiz>> managedQuizzes() async {
+    final body = await _getPublicJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/positive-engagement/quizzes'),
+    );
+    return (body['data'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(ManagedQuiz.fromJson)
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> completeManagedQuiz(
+    String token,
+    int quizId,
+    Map<int, String> answers,
+  ) async {
+    final body = await _sendJson(
+      'POST',
+      Uri.parse(
+        '${ApiConfig.baseUrl}/v1/positive-engagement/quizzes/$quizId/complete',
+      ),
+      token,
+      {'answers': answers.map((key, value) => MapEntry(key.toString(), value))},
+    );
+    return body['data'] as Map<String, dynamic>? ?? const {};
+  }
+
+  Future<List<GratitudeEntry>> gratitudeEntries(String token) async {
+    final body = await _getJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/positive-engagement/gratitude'),
+      token,
+    );
+    return (body['data'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(GratitudeEntry.fromJson)
+        .toList();
+  }
+
+  Future<GratitudeEntry> addGratitudeEntry(
+    String token, {
+    required String text,
+    required String symbol,
+  }) async {
+    final body = await _sendJson(
+      'POST',
+      Uri.parse('${ApiConfig.baseUrl}/v1/positive-engagement/gratitude'),
+      token,
+      {'text': text, 'symbol': symbol},
+    );
+    return GratitudeEntry.fromJson(body['data'] as Map<String, dynamic>);
+  }
+
+  Future<void> deleteGratitudeEntry(String token, int id) async {
+    await _sendJson(
+      'DELETE',
+      Uri.parse('${ApiConfig.baseUrl}/v1/positive-engagement/gratitude/$id'),
+      token,
+      null,
+    );
   }
 
   // ---------------------------------------------------------------------

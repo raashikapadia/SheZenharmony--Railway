@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../auth/application/auth_provider.dart';
+import '../../data/gratitude_entry.dart';
 
 class GratitudeJarScreen extends StatefulWidget {
   const GratitudeJarScreen({super.key});
@@ -14,16 +18,22 @@ class _GratitudeJarScreenState extends State<GratitudeJarScreen>
   final TextEditingController _controller = TextEditingController();
 
   final List<_GratitudeItem> _entries = [];
+  late final ApiService _api;
 
   late AnimationController _jarAnimationController;
 
   bool _showInput = false;
+  bool _loading = true;
+  bool _saving = false;
+  String? _loadError;
   bool _animateNewStone = false;
   String? _newStoneId;
+  String? _loadedToken;
 
   @override
   void initState() {
     super.initState();
+    _api = ApiService();
 
     _jarAnimationController = AnimationController(
       vsync: this,
@@ -32,50 +42,116 @@ class _GratitudeJarScreenState extends State<GratitudeJarScreen>
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    _jarAnimationController.dispose();
-    super.dispose();
-  }
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final token = context.watch<AuthProvider>().session?.token;
+    if (token == _loadedToken) return;
 
-  void _addEntry() {
-    final text = _controller.text.trim();
-
-    if (text.isEmpty) {
+    _loadedToken = token;
+    if (token == null) {
+      setState(() {
+        _entries.clear();
+        _loading = false;
+        _loadError = null;
+      });
       return;
     }
 
-    final newEntry = _GratitudeItem(
-      text: text,
-      symbol: _getSymbol(_entries.length),
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-    );
-
     setState(() {
-      _entries.insert(0, newEntry);
-      _newStoneId = newEntry.id;
-      _animateNewStone = true;
-
-      _controller.clear();
-      _showInput = false;
+      _loading = true;
+      _loadError = null;
     });
+    _loadEntries(token);
+  }
 
-    _jarAnimationController.forward(from: 0);
+  @override
+  void dispose() {
+    _controller.dispose();
+    _jarAnimationController.dispose();
+    _api.close();
+    super.dispose();
+  }
 
-    Future.delayed(const Duration(milliseconds: 1100), () {
+  Future<void> _loadEntries(String? token) async {
+    if (token == null) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    try {
+      final entries = await _api.gratitudeEntries(token);
       if (!mounted) return;
-
       setState(() {
-        _animateNewStone = false;
+        _entries
+          ..clear()
+          ..addAll(entries.map(_fromApiEntry));
+        _loading = false;
       });
-    });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError = error.message;
+      });
+    }
+  }
 
-    if (_containsEmotionalWords(text)) {
-      Future.delayed(const Duration(milliseconds: 1200), () {
-        if (mounted) {
-          _showSupportPrompt();
-        }
+  _GratitudeItem _fromApiEntry(GratitudeEntry entry) => _GratitudeItem(
+    text: entry.text,
+    symbol: entry.symbol,
+    id: entry.id.toString(),
+    serverId: entry.id,
+  );
+
+  Future<void> _addEntry() async {
+    final text = _controller.text.trim();
+
+    final token = context.read<AuthProvider>().session?.token;
+    if (text.isEmpty || token == null || _saving) {
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      final entry = await _api.addGratitudeEntry(
+        token,
+        text: text,
+        symbol: _getSymbol(_entries.length),
+      );
+      final newEntry = _fromApiEntry(entry);
+
+      if (!mounted) return;
+      setState(() {
+        _entries.insert(0, newEntry);
+        _newStoneId = newEntry.id;
+        _animateNewStone = true;
+
+        _controller.clear();
+        _showInput = false;
       });
+
+      _jarAnimationController.forward(from: 0);
+
+      Future.delayed(const Duration(milliseconds: 1100), () {
+        if (!mounted) return;
+
+        setState(() {
+          _animateNewStone = false;
+        });
+      });
+
+      if (_containsEmotionalWords(text)) {
+        Future.delayed(const Duration(milliseconds: 1200), () {
+          if (mounted) _showSupportPrompt();
+        });
+      }
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -270,14 +346,34 @@ class _GratitudeJarScreenState extends State<GratitudeJarScreen>
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () {
-                setState(() {
-                  _entries.clear();
-                  _newStoneId = null;
-                  _animateNewStone = false;
-                });
+              onPressed: () async {
+                final token = context.read<AuthProvider>().session?.token;
+                if (token == null) return;
+                final entries = List<_GratitudeItem>.from(_entries);
+                try {
+                  await Future.wait(
+                    entries
+                        .where((entry) => entry.serverId != null)
+                        .map(
+                          (entry) =>
+                              _api.deleteGratitudeEntry(token, entry.serverId!),
+                        ),
+                  );
+                  if (!mounted) return;
+                  setState(() {
+                    _entries.clear();
+                    _newStoneId = null;
+                    _animateNewStone = false;
+                  });
+                } on ApiException catch (error) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(error.message)));
+                  }
+                }
 
-                Navigator.pop(context);
+                if (context.mounted) Navigator.pop(context);
               },
               child: const Text('Clear'),
             ),
@@ -292,129 +388,161 @@ class _GratitudeJarScreenState extends State<GratitudeJarScreen>
     return Scaffold(
       appBar: AppBar(title: const Text('Gratitude Jar'), centerTitle: true),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-          child: Column(
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  color: AppColors.softLavender,
-                  borderRadius: BorderRadius.circular(26),
-                  border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.08),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _loadError != null
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_loadError!, textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      FilledButton(
+                        onPressed: () {
+                          setState(() {
+                            _loading = true;
+                            _loadError = null;
+                          });
+                          _loadEntries(
+                            context.read<AuthProvider>().session?.token,
+                          );
+                        },
+                        child: const Text('Try again'),
+                      ),
+                    ],
                   ),
                 ),
+              )
+            : SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
                 child: Column(
                   children: [
-                    const Text('🌷', style: TextStyle(fontSize: 42)),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Your little jar of good moments',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w800,
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(22),
+                      decoration: BoxDecoration(
+                        color: AppColors.softLavender,
+                        borderRadius: BorderRadius.circular(26),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text('🌷', style: TextStyle(fontSize: 42)),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Your little jar of good moments',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Add something that made your day a little brighter. '
+                            'It can be something big, small, or simply something '
+                            'you would like to remember.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.muted,
+                              height: 1.45,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Add something that made your day a little brighter. '
-                      'It can be something big, small, or simply something '
-                      'you would like to remember.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.muted, height: 1.45),
+
+                    const SizedBox(height: 24),
+
+                    AnimatedBuilder(
+                      animation: _jarAnimationController,
+                      builder: (context, child) {
+                        final scale =
+                            1.0 + (_jarAnimationController.value * 0.035);
+
+                        return Transform.scale(scale: scale, child: child);
+                      },
+                      child: _buildJar(),
                     ),
-                  ],
-                ),
-              ),
 
-              const SizedBox(height: 24),
+                    const SizedBox(height: 18),
 
-              AnimatedBuilder(
-                animation: _jarAnimationController,
-                builder: (context, child) {
-                  final scale = 1.0 + (_jarAnimationController.value * 0.035);
-
-                  return Transform.scale(scale: scale, child: child);
-                },
-                child: _buildJar(),
-              ),
-
-              const SizedBox(height: 18),
-
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.softSage,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Text(
-                  _entries.isEmpty
-                      ? 'Your jar is waiting for its first moment'
-                      : '${_entries.length} moment${_entries.length == 1 ? '' : 's'} in your jar',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 22),
-
-              if (_showInput)
-                _buildInputBox()
-              else
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: _openInput,
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 5),
-                      child: Text('Add a moment'),
-                    ),
-                  ),
-                ),
-
-              const SizedBox(height: 24),
-
-              if (_entries.isNotEmpty) ...[
-                Row(
-                  children: [
-                    const Expanded(
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.softSage,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                       child: Text(
-                        'Your moments',
-                        style: TextStyle(
+                        _entries.isEmpty
+                            ? 'Your jar is waiting for its first moment'
+                            : '${_entries.length} moment${_entries.length == 1 ? '' : 's'} in your jar',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
                           color: AppColors.primary,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                    TextButton(
-                      onPressed: _clearEntries,
-                      child: const Text('Clear'),
-                    ),
+
+                    const SizedBox(height: 22),
+
+                    if (_showInput)
+                      _buildInputBox()
+                    else
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _openInput,
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 5),
+                            child: Text('Add a moment'),
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 24),
+
+                    if (_entries.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Your moments',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _clearEntries,
+                            child: const Text('Clear'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ..._entries.map(
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _buildEntryCard(entry),
+                        ),
+                      ),
+                    ] else
+                      _buildEmptyState(),
                   ],
                 ),
-                const SizedBox(height: 8),
-                ..._entries.map(
-                  (entry) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _buildEntryCard(entry),
-                  ),
-                ),
-              ] else
-                _buildEmptyState(),
-            ],
-          ),
-        ),
+              ),
       ),
     );
   }
@@ -721,8 +849,8 @@ class _GratitudeJarScreenState extends State<GratitudeJarScreen>
               const SizedBox(width: 10),
               Expanded(
                 child: FilledButton(
-                  onPressed: _addEntry,
-                  child: const Text('Add to jar'),
+                  onPressed: _saving ? null : _addEntry,
+                  child: Text(_saving ? 'Saving...' : 'Add to jar'),
                 ),
               ),
             ],
@@ -843,9 +971,11 @@ class _GratitudeItem {
     required this.text,
     required this.symbol,
     required this.id,
+    this.serverId,
   });
 
   final String text;
   final String symbol;
   final String id;
+  final int? serverId;
 }

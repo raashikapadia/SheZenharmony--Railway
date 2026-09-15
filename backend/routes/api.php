@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\HelplineResourceController;
 use App\Http\Controllers\Api\InterventionController;
+use App\Http\Controllers\Api\GratitudeEntryController;
 use App\Http\Controllers\Api\PersonalGuidanceController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\QuestionController;
@@ -46,6 +47,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/profile', [ProfileController::class, 'show']);
         Route::put('/profile', [ProfileController::class, 'update']);
         Route::post('/positive-engagement/quizzes/{quiz}/complete', [QuizController::class, 'complete']);
+        Route::get('/positive-engagement/gratitude', [GratitudeEntryController::class, 'index']);
+        Route::post('/positive-engagement/gratitude', [GratitudeEntryController::class, 'store']);
+        Route::delete('/positive-engagement/gratitude/{gratitudeEntry}', [GratitudeEntryController::class, 'destroy']);
 
         Route::get('/personal-guidance/for-you', [PersonalGuidanceController::class, 'forYou']);
         Route::get('/personal-guidance/current', [PersonalGuidanceController::class, 'current']);
