@@ -51,15 +51,17 @@ class WellbeingScoringTest extends TestCase
             $answers[$q->id] = $q->options->firstWhere('score', 1)->id;
         }
 
-        $questionnaire->scoreBands()->create(['code' => 'low', 'label' => 'Low', 'min_score' => 0, 'max_score' => 5, 'scope' => 'overall', 'is_active' => true]);
-        $questionnaire->scoreBands()->create(['code' => 'high', 'label' => 'High', 'min_score' => 6, 'max_score' => 10, 'scope' => 'overall', 'is_active' => true]);
+        $questionnaire->scoreBands()->create(['code' => 'low', 'label' => 'Low', 'min_score' => 4, 'max_score' => 11, 'scope' => 'overall', 'is_active' => true]);
+        $questionnaire->scoreBands()->create(['code' => 'high', 'label' => 'High', 'min_score' => 12, 'max_score' => 20, 'scope' => 'overall', 'is_active' => true]);
 
         $scored = app(AssessmentScoringService::class)->score($questionnaire, $answers);
 
         $this->assertEqualsWithDelta(6.8, $scored['breakdown']['overall']['weighted_score'], 0.001);
         $this->assertEqualsWithDelta(10.0, $scored['breakdown']['overall']['max_weighted_score'], 0.001);
         $this->assertEqualsWithDelta(68.0, $scored['breakdown']['overall']['percentage'], 0.001);
-        $this->assertSame('High', $scored['score_band']->label);          // round(6.8) = 7
+        // The result itself is the points total: 5 + 5 + 1 + 1 = 12.
+        $this->assertSame(12, $scored['total_score']);
+        $this->assertSame('High', $scored['score_band']->label);
         $this->assertSame(100.0, (float) $scored['breakdown']['categories'][0]['percentage']);
         $this->assertSame(20.0, (float) $scored['breakdown']['categories'][1]['percentage']);
     }
@@ -74,12 +76,14 @@ class WellbeingScoringTest extends TestCase
         foreach ($sections[0]->questions as $q) {
             $answers[$q->id] = $q->options->firstWhere('score', 3)->id;
         }
-        $questionnaire->scoreBands()->create(['code' => 'low', 'label' => 'Low', 'min_score' => 0, 'max_score' => 2, 'scope' => 'overall', 'is_active' => true]);
-        $questionnaire->scoreBands()->create(['code' => 'mod', 'label' => 'Moderate', 'min_score' => 3, 'max_score' => 5, 'scope' => 'overall', 'is_active' => true]);
+        $questionnaire->scoreBands()->create(['code' => 'low', 'label' => 'Low', 'min_score' => 4, 'max_score' => 9, 'scope' => 'overall', 'is_active' => true]);
+        $questionnaire->scoreBands()->create(['code' => 'mod', 'label' => 'Moderate', 'min_score' => 10, 'max_score' => 15, 'scope' => 'overall', 'is_active' => true]);
+        $questionnaire->scoreBands()->create(['code' => 'high', 'label' => 'High', 'min_score' => 16, 'max_score' => 20, 'scope' => 'overall', 'is_active' => true]);
 
         $scored = app(AssessmentScoringService::class)->score($questionnaire, $answers);
 
         $this->assertEqualsWithDelta(3.0, $scored['breakdown']['overall']['weighted_score'], 0.001);
+        $this->assertSame(12, $scored['total_score']);
         $this->assertSame('Moderate', $scored['score_band']->label);
     }
 
@@ -133,7 +137,7 @@ class WellbeingScoringTest extends TestCase
             $questions[1]->id => $questions[1]->options->firstWhere('score', 5)->id,
         ];
 
-        $questionnaire->scoreBands()->create(['code' => 'ow', 'label' => 'OK', 'min_score' => 0, 'max_score' => 5, 'scope' => 'overall', 'is_active' => true]);
+        $questionnaire->scoreBands()->create(['code' => 'ow', 'label' => 'OK', 'min_score' => 2, 'max_score' => 10, 'scope' => 'overall', 'is_active' => true]);
         $questionnaire->scoreBands()->create(['code' => 's-lo', 'label' => 'Low stress', 'min_score' => 0, 'max_score' => 49, 'scope' => 'stress', 'is_active' => true]);
         $questionnaire->scoreBands()->create(['code' => 's-mid', 'label' => 'Some stress', 'min_score' => 50, 'max_score' => 100, 'scope' => 'stress', 'is_active' => true]);
 
@@ -143,14 +147,14 @@ class WellbeingScoringTest extends TestCase
         $this->assertSame('Some stress', $scored['breakdown']['stress']['band']['label']);
     }
 
-    public function test_missing_wellbeing_band_for_the_weighted_score_fails_safely(): void
+    public function test_missing_wellbeing_band_for_the_points_total_fails_safely(): void
     {
         [$questionnaire, $sections] = $this->sectionedQuestionnaire([
             ['weight' => 5, 'questions' => 1],
         ]);
         $question = $sections[0]->questions->first();
         $answers = [$question->id => $question->options->firstWhere('score', 5)->id];
-        // Band only covers 0..1, weighted score will be 5.
+        // Band only covers 0..1; the points total will be 5.
         $questionnaire->scoreBands()->create(['code' => 'x', 'label' => 'X', 'min_score' => 0, 'max_score' => 1, 'scope' => 'overall', 'is_active' => true]);
 
         $this->expectException(ValidationException::class);

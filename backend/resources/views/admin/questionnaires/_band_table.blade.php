@@ -15,8 +15,9 @@
         </tbody>
     </table></div>
     @php($active = $bands->where('is_active', true)->sortBy('min_score')->values())
-    @php($covered = $active->isNotEmpty() && $active->first()->min_score <= 0 && $active->last()->max_score >= $ceiling)
+    @php($floor = $floor ?? 0)
+    @php($covered = $active->isNotEmpty() && $active->first()->min_score <= $floor && $active->last()->max_score >= $ceiling)
     <p class="muted" style="margin-top:.5rem">
-        @if($covered)Covers 0–{{ $ceiling }}.@else <span class="error">Does not fully cover 0–{{ $ceiling }}.</span>@endif
+        @if($covered)Covers {{ $floor }}–{{ $ceiling }}.@else <span class="error">Does not fully cover {{ $floor }}–{{ $ceiling }}.</span>@endif
     </p>
 @endif

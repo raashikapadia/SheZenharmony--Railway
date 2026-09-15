@@ -23,6 +23,7 @@ class QuestionnaireWorkspaceTest extends TestCase
             'type' => 'stress', 'version' => $version,
             'status' => $status, 'is_active' => $status === 'published',
             'published_at' => $status === 'published' ? now() : null,
+            'result_scale_min' => 0, 'result_scale_max' => 5,
         ]);
         $section = QuestionnaireSection::query()->create([
             'questionnaire_id' => $questionnaire->id, 'title' => 'Emotional', 'position' => 1, 'category_weight' => 5, 'is_active' => true,
@@ -81,8 +82,8 @@ class QuestionnaireWorkspaceTest extends TestCase
 
         $this->actingAs($admin)->get(route('admin.questionnaires.sections.index', $questionnaire))
             ->assertOk()
-            ->assertSee('Not ready to publish yet')
-            ->assertDontSee('Publish now');
+            ->assertSee('1 to fix')
+            ->assertDontSee('Everything looks good');
     }
 
     public function test_create_draft_forks_a_new_version_and_leaves_the_live_one_untouched(): void
@@ -162,13 +163,13 @@ class QuestionnaireWorkspaceTest extends TestCase
 
         $this->actingAs($admin)->get(route('admin.questionnaires.index'))
             ->assertOk()
-            ->assertSee(route('admin.questionnaires.publish', $q), false)
-            ->assertSee('Publish now');
+            ->assertSee(route('admin.questionnaires.review', $q), false)
+            ->assertSee('Review &amp; publish', false);
 
         $q->update(['status' => 'published', 'is_active' => true]);
         $this->actingAs($admin)->get(route('admin.questionnaires.index'))
             ->assertOk()
-            ->assertDontSee('Publish now');
+            ->assertDontSee('Review &amp; publish', false);
     }
 
     public function test_publish_of_an_incomplete_questionnaire_reports_the_blocker_instead_of_erroring(): void
@@ -207,8 +208,7 @@ class QuestionnaireWorkspaceTest extends TestCase
         $this->actingAs($admin)->get(route('admin.questionnaires.sections.index', $draft))
             ->assertOk()
             ->assertSee('Questionnaire setup progress', false)
-            ->assertSee('Publish now')
-            ->assertSee('Keep as draft');
+            ->assertSee('Review &amp; publish', false);
     }
 
     public function test_editor_drops_the_wizard_once_the_questionnaire_is_live(): void
@@ -218,8 +218,10 @@ class QuestionnaireWorkspaceTest extends TestCase
 
         $this->actingAs($admin)->get(route('admin.questionnaires.sections.index', $live))
             ->assertOk()
-            ->assertDontSee('Questionnaire setup progress', false)
-            ->assertSee('live for students');
+            // The step strip is the navigation between the three screens, so it
+            // stays once the questionnaire is live; the badge says it is.
+            ->assertSee('Questionnaire setup progress', false)
+            ->assertSee('>Live<', false);
     }
 
     public function test_preview_looks_like_the_shezen_app_and_pages_through_questions(): void

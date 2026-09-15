@@ -234,6 +234,11 @@ class CountryField extends StatelessWidget {
             initialSelection: controller.text.isEmpty ? null : controller.text,
             hintText: 'Select country',
             width: double.infinity,
+            // Keep the list compact and scrollable instead of letting ~250
+            // entries expand to cover the whole screen; typing filters it.
+            menuHeight: 280,
+            enableFilter: true,
+            requestFocusOnTap: true,
             errorText: errorText ?? state.errorText,
             dropdownMenuEntries: [
               for (final country in ReferenceData.countries)

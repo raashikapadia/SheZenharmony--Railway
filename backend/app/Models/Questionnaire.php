@@ -14,14 +14,47 @@ class Questionnaire extends Model
     public const TRASH_RETENTION_DAYS = 7;
 
     protected $fillable = [
-        'title', 'description', 'period', 'type', 'version', 'status', 'is_active',
+        'title', 'description', 'period', 'result_scale_min', 'result_scale_max', 'type', 'version', 'status', 'is_active',
         'created_by_user_id', 'published_at', 'trashed_at', 'purge_after',
     ];
+
+    /**
+     * The client's fixed result scale as [min, max], or null when results
+     * are reported as raw points totals.
+     *
+     * @return array{0: int, 1: int}|null
+     */
+    public function resultScale(): ?array
+    {
+        if ($this->result_scale_min === null || $this->result_scale_max === null) {
+            return null;
+        }
+
+        return [(int) $this->result_scale_min, (int) $this->result_scale_max];
+    }
+
+    /** Published, but not open to students until its go-live time. */
+    public function isScheduled(): bool
+    {
+        return $this->is_active && $this->published_at !== null && $this->published_at->isFuture();
+    }
+
+    /** The one-word state an admin sees: Live, Scheduled, Draft or Archived. */
+    public function publishState(): string
+    {
+        if ($this->is_active) {
+            return $this->isScheduled() ? 'Scheduled' : 'Live';
+        }
+
+        return ucfirst((string) $this->status);
+    }
 
     protected function casts(): array
     {
         return [
             'version' => 'integer',
+            'result_scale_min' => 'integer',
+            'result_scale_max' => 'integer',
             'is_active' => 'boolean',
             'published_at' => 'datetime',
             'trashed_at' => 'datetime',

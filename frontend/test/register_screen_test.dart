@@ -212,7 +212,13 @@ Future<void> _completeDemographics(WidgetTester tester) async {
   await tester.ensureVisible(countryField);
   await tester.tap(countryField);
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Fiji').last);
+  // The menu is compact and scrollable, so filter it down before selecting.
+  await tester.enterText(
+    find.descendant(of: countryField, matching: find.byType(TextField)),
+    'Fiji',
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.widgetWithText(MenuItemButton, 'Fiji').last);
   await tester.pumpAndSettle();
 
   for (final option in const [

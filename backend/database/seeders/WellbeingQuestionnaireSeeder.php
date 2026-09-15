@@ -156,7 +156,10 @@ class WellbeingQuestionnaireSeeder extends Seeder
         ['label' => 'Strongly agree', 'value' => 'strongly_agree', 'score' => 5],
     ];
 
-    /** Spec section 15 — configurable afterwards via the admin panel. */
+    /** The client's fixed result scale; every raw total is converted onto it. */
+    private const RESULT_SCALE = ['min' => 0, 'max' => 40];
+
+    /** Spec section 15 — written on the result scale, configurable afterwards via the admin panel. */
     private const OVERALL_BANDS = [
         ['code' => 'low-1', 'label' => 'Low mental well-being', 'min_score' => 0, 'max_score' => 10, 'position' => 1],
         ['code' => 'low-2', 'label' => 'Low mental well-being', 'min_score' => 11, 'max_score' => 20, 'position' => 2],
@@ -178,6 +181,8 @@ class WellbeingQuestionnaireSeeder extends Seeder
                 'description' => 'A dynamic wellbeing check-in across eight life areas. Demographic details are '
                     .'collected during registration and are not repeated here.',
                 'period' => 'Wellbeing',
+                'result_scale_min' => self::RESULT_SCALE['min'],
+                'result_scale_max' => self::RESULT_SCALE['max'],
                 'type' => 'stress',
                 'version' => (int) Questionnaire::query()->where('type', 'stress')->max('version') + 1,
                 'status' => 'draft',

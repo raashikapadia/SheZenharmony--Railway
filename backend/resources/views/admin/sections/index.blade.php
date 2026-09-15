@@ -1,227 +1,176 @@
 @extends('layouts.admin')
 @section('title', 'Edit · '.$questionnaire->title)
 @section('body')
-@php($bands = old('bands', $questionnaire->scoreBands->count()
-        ? $questionnaire->scoreBands->map(fn ($b) => $b->only(['id','scope','code','label','min_score','max_score','position','is_active']))->all()
-        : [
-            ['scope'=>'overall','code'=>'low','label'=>'Low mental well-being','min_score'=>0,'max_score'=>20,'position'=>1,'is_active'=>true],
-            ['scope'=>'overall','code'=>'moderate','label'=>'Moderate mental well-being','min_score'=>21,'max_score'=>30,'position'=>2,'is_active'=>true],
-            ['scope'=>'overall','code'=>'high','label'=>'High mental well-being','min_score'=>31,'max_score'=>40,'position'=>3,'is_active'=>true],
-        ]))
+@php($presets = \App\Support\AnswerScalePresets::all())
+@php($typeLabels = collect(\App\Enums\QuestionType::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()]))
+@php($orderedSections = $questionnaire->sections->sortBy([['position', 'asc'], ['id', 'asc']])->values())
+@php($unsectioned = ($questionsBySection[null] ?? ($questionsBySection[''] ?? collect())))
 <main class="content stack">
     <a class="backlink" href="{{ route('admin.questionnaires.index') }}">← Questionnaire Management</a>
 
     @if(session('status'))<div class="status">{{ session('status') }}</div>@endif
     @if($errors->any())<ul class="errors">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>@endif
 
-    <div>
-        <h1 style="margin:0 0 4px">{{ $questionnaire->title }} <span class="muted" style="font-size:1rem;font-family:inherit">v{{ $questionnaire->version }} · {{ ucfirst($questionnaire->status) }}{{ $questionnaire->is_active ? ' · live' : '' }}</span></h1>
-        <p class="lede">Everything about this questionnaire is edited here — details, sections, questions and result ranges. Submissions are scored automatically.</p>
-    </div>
-
-    @if($showWizard)
-        @include('admin.questionnaires._wizard', [
-            'step' => (! $publishError && $sectionCount) ? 3 : 2,
-            'sectionsHint' => $sectionCount
-                ? $sectionCount.' section'.($sectionCount === 1 ? '' : 's').' · '.$questionCount.' question'.($questionCount === 1 ? '' : 's')
-                : 'none yet',
-        ])
-    @endif
-
-    {{-- Publish decision: live, blocked, or ready --}}
-    @if($questionnaire->is_active)
-        <div class="status">✓ This version is <strong>live for students</strong>. Changes here don't affect them until you publish again.</div>
-    @elseif($publishError)
-        <div class="errors">
-            <strong>Not ready to publish yet:</strong> {{ $publishError }}<br>
-            <span class="muted">Fix this below. Your work is safe as a draft — nothing is shown to students.</span>
-        </div>
-    @else
-        <section class="panel publish-panel">
-            <div class="split" style="align-items:flex-start">
-                <div>
-                    <h2 style="margin:0 0 2px">Ready when you are</h2>
-                    <p class="lede">Everything checks out. Publish now to make this the live questionnaire for students — every other version becomes a draft. Or keep working; it stays a private draft until you publish.</p>
-                </div>
-                <div class="actions">
-                    <form method="POST" action="{{ route('admin.questionnaires.publish', $questionnaire) }}">@csrf @method('PATCH')<button class="button" type="submit">Publish now</button></form>
-                    <a class="button button-secondary" href="{{ route('admin.questionnaires.index') }}">Keep as draft</a>
-                </div>
+    {{-- ============ QUESTIONNAIRE ============ --}}
+    <section class="panel">
+        <div class="split" style="align-items:flex-start">
+            <div style="min-width:0">
+                <div class="eyebrow">Step 2 of 3 · Sections &amp; questions</div>
+                <h1 style="margin:2px 0 4px;overflow-wrap:anywhere">{{ $questionnaire->title }}
+                    <span class="badge {{ $questionnaire->is_active && ! $questionnaire->isScheduled() ? 'active' : '' }}" style="vertical-align:middle;font-family:system-ui,sans-serif">{{ $questionnaire->publishState() }}</span>
+                </h1>
+                @if($questionnaire->description)
+                    <p class="lede" style="max-width:70ch">{{ $questionnaire->description }}</p>
+                @else
+                    <p class="lede muted">No description yet — students see it on the intro screen.</p>
+                @endif
+                <p class="muted" style="margin:8px 0 0;font-size:.88rem">{{ $sectionCount }} {{ \Illuminate\Support\Str::plural('section', $sectionCount) }} · {{ $questionCount }} {{ \Illuminate\Support\Str::plural('question', $questionCount) }}</p>
             </div>
-            @if($questionnaire->published_at)
-                <p class="muted" style="margin:12px 0 0;font-size:.85rem">Planned go-live: {{ $questionnaire->published_at->format('D j M Y, H:i') }} (set in Details below).</p>
-            @endif
+            <div class="actions">
+                <a class="button button-secondary" href="{{ route('admin.questionnaires.details', $questionnaire) }}">Edit details</a>
+                <a class="button" href="{{ route('admin.questionnaires.sections.create', $questionnaire) }}"><span>＋</span>Add section</a>
+            </div>
+        </div>
+
+    </section>
+
+    @include('admin.questionnaires._wizard', ['questionnaire' => $questionnaire, 'review' => $review, 'step' => 2])
+
+    {{-- ============ SECTIONS ============ --}}
+    @if($orderedSections->isEmpty())
+        <section class="panel empty-state">
+            <h2 style="margin:0 0 6px">No sections yet</h2>
+            <p class="lede" style="margin:0 auto 18px">Create your first section to start building your questionnaire.</p>
+            <a class="button" href="{{ route('admin.questionnaires.sections.create', $questionnaire) }}"><span>＋</span>Add section</a>
         </section>
     @endif
 
-    {{-- 1. Details --}}
-    <section class="panel">
-        <div class="panel-head"><h2>1. Details</h2></div>
-        <form class="stack-sm" method="POST" action="{{ route('admin.questionnaires.details', $questionnaire) }}">@csrf @method('PATCH')
-            <div><label>Title</label><input name="title" value="{{ old('title', $questionnaire->title) }}" required></div>
-            <div><label>Description <span class="muted">(shown to students on the intro screen)</span></label><textarea name="description">{{ old('description', $questionnaire->description) }}</textarea></div>
-            <div class="field-row">
-                <div><label>Period / label</label><input name="period" value="{{ old('period', $questionnaire->period) }}" placeholder="e.g. Semester 1"></div>
-                <div><label>Version</label><input name="version" type="number" min="1" value="{{ old('version', $questionnaire->version) }}" required></div>
-                <div><label>Status</label><select name="status">
-                    @foreach(['draft'=>'Draft','published'=>'Published (live for students)','archived'=>'Archived'] as $val => $lbl)
-                        <option value="{{ $val }}" @selected(old('status', $questionnaire->status) === $val)>{{ $lbl }}</option>
-                    @endforeach
-                </select></div>
-            </div>
-            <label class="remember"><input name="is_active" type="checkbox" value="1" @checked(old('is_active', $questionnaire->is_active))> Active for students</label>
-            <div><label for="published_at">Go live at <span class="muted">(optional — leave blank to publish immediately)</span></label>
-            <input id="published_at" name="published_at" type="datetime-local" value="{{ old('published_at', optional($questionnaire->published_at)->format('Y-m-d\TH:i')) }}"></div>
-            <div class="actions">
-                <button class="button" type="submit">Save details</button>
-                <a class="button button-secondary" href="{{ route('admin.questionnaires.scoring', $questionnaire) }}">Scoring overview</a>
-                <a class="button button-link" href="{{ route('admin.questionnaires.edit', $questionnaire) }}">Advanced editor (reuse question bank)</a>
-            </div>
-        </form>
-    </section>
-
-    {{-- 2. Sections & questions --}}
-    <section class="panel">
-        <div class="split panel-head">
-            <div>
-                <h2>2. Sections &amp; questions</h2>
-                <p class="lede">Each section is a wellbeing category; its <strong>weight</strong> sets how much it counts toward the overall score. Total weight now: <strong>{{ rtrim(rtrim(number_format($sumWeights, 2), '0'), '.') }}</strong>.</p>
-            </div>
-            <a class="button" href="{{ route('admin.questionnaires.sections.create', $questionnaire) }}"><span>＋</span>Add section</a>
-        </div>
-    </section>
-
-    @forelse($questionnaire->sections->sortBy('position') as $section)
-        @php($questions = ($questionsBySection[$section->id] ?? collect()))
-        <section class="panel">
-            <div class="split panel-head">
-                <div>
-                    <h3>{{ $section->position }}. {{ $section->title }} @unless($section->is_active)<span class="badge">archived</span>@endunless</h3>
-                    <p class="lede">
-                        Weight {{ rtrim(rtrim(number_format($section->category_weight, 2), '0'), '.') }} · {{ $questions->count() }} question{{ $questions->count() === 1 ? '' : 's' }}
-                        @if($section->description) · {{ $section->description }} @endif
-                    </p>
+    @foreach($orderedSections as $sectionIndex => $section)
+        @php($questions = ($questionsBySection[$section->id] ?? collect())->values())
+        @php($count = $questions->count())
+        <section class="panel section-panel" id="section-{{ $section->id }}">
+            <div class="split" style="align-items:flex-start">
+                <div class="section-head">
+                    <div class="reorder">
+                        <form method="POST" action="{{ route('admin.questionnaires.sections.move', [$questionnaire, $section]) }}">@csrf @method('PATCH')<input type="hidden" name="direction" value="up"><button type="submit" class="arrow" title="Move section up" aria-label="Move section up" @disabled($sectionIndex === 0)>▲</button></form>
+                        <form method="POST" action="{{ route('admin.questionnaires.sections.move', [$questionnaire, $section]) }}">@csrf @method('PATCH')<input type="hidden" name="direction" value="down"><button type="submit" class="arrow" title="Move section down" aria-label="Move section down" @disabled($sectionIndex === $orderedSections->count() - 1)>▼</button></form>
+                    </div>
+                    <div style="min-width:0">
+                        <div class="eyebrow">Section {{ $sectionIndex + 1 }} @unless($section->is_active)<span class="badge" style="margin-left:6px">hidden from students</span>@endunless</div>
+                        <h2 style="margin:2px 0 0;overflow-wrap:anywhere">{{ $section->title }}</h2>
+                        @if($section->description)<p class="lede" style="margin-top:4px">{{ $section->description }}</p>@endif
+                    </div>
                 </div>
                 <div class="actions">
                     <a class="button button-secondary" href="{{ route('admin.questionnaires.sections.edit', [$questionnaire, $section]) }}">Edit section</a>
-                    <a class="button" href="{{ route('admin.questionnaires.sections.questions.create', [$questionnaire, $section]) }}"><span>＋</span>Add question</a>
-                    <details class="more">
-                        <summary class="button button-link">⋯</summary>
-                        <div class="more-menu">
-                            <form method="POST" action="{{ route('admin.questionnaires.sections.destroy', [$questionnaire, $section]) }}" onsubmit="return confirm('Delete or archive this section?')">@csrf @method('DELETE')<button type="submit" class="danger">Delete section…</button></form>
-                        </div>
-                    </details>
+                    <form method="POST" action="{{ route('admin.questionnaires.sections.destroy', [$questionnaire, $section]) }}" data-confirm="Delete this section?&#10;&#10;“{{ $section->title }}”{{ $count ? ' and the '.$count.' '.\Illuminate\Support\Str::plural('question', $count).' inside it' : '' }} will be removed from the questionnaire. This cannot be undone.">@csrf @method('DELETE')<button class="button button-danger" type="submit">Delete</button></form>
                 </div>
             </div>
 
-            @if($questions->isEmpty())
-                <p class="lede">No questions in this section yet.</p>
-            @else
-                <div class="table-wrap"><table>
-                    <thead><tr><th>#</th><th>Question</th><th>Options</th><th>Required</th><th>Status</th><th></th></tr></thead>
-                    <tbody>
-                    @foreach($questions as $i => $question)
-                        <tr>
-                            <td>{{ $i + 1 }}</td>
-                            <td>
-                                <div class="item-title">{{ $question->question_text }}</div>
-                                <span class="muted">{{ $question->options->where('is_active', true)->pluck('label')->join(' · ') }}</span>
-                            </td>
-                            <td>{{ $question->options->where('is_active', true)->count() }}</td>
-                            <td>{{ $question->pivot->is_required ? 'Yes' : 'No' }}</td>
-                            <td><span class="badge {{ $question->is_active ? 'active' : '' }}">{{ $question->is_active ? 'Active' : 'Inactive' }}</span></td>
-                            <td class="actions">
-                                <a class="button button-secondary" href="{{ route('admin.questionnaires.sections.questions.edit', [$questionnaire, $section, $question]) }}">Edit</a>
-                                <form method="POST" action="{{ route('admin.questionnaires.sections.questions.destroy', [$questionnaire, $section, $question]) }}" onsubmit="return confirm('Remove this question from the section?')">@csrf @method('DELETE')<button class="button button-danger" type="submit">Delete</button></form>
-                            </td>
-                        </tr>
-                    @endforeach
-                    </tbody>
-                </table></div>
-            @endif
-        </section>
-    @empty
-        <section class="panel" style="text-align:center;padding:40px 24px">
-            <h3 style="margin:0 0 6px">Add your first section</h3>
-            <p class="lede" style="margin:0 auto 16px">Sections are the wellbeing categories students are scored on (for example <em>Emotional</em>, <em>Academic</em>, <em>Social</em>). Add a section, then add its questions — each question can have any number of answer options with its own scores.</p>
-            <a class="button" href="{{ route('admin.questionnaires.sections.create', $questionnaire) }}"><span>＋</span>Add section</a>
-        </section>
-    @endforelse
+            <div class="questions-label">Questions <span class="muted">({{ $count }})</span></div>
 
-    @php($unsectioned = ($questionsBySection[null] ?? ($questionsBySection[''] ?? collect())))
+            @if($questions->isEmpty())
+                <div class="empty-state small">
+                    <p class="item-title" style="margin:0 0 2px">No questions in this section yet.</p>
+                    <p class="lede" style="margin:0 auto 14px">Add a question to get started.</p>
+                    <a class="button" href="{{ route('admin.questionnaires.sections.questions.create', [$questionnaire, $section]) }}"><span>＋</span>Add question</a>
+                </div>
+            @else
+                <div class="question-list">
+                @foreach($questions as $i => $question)
+                    @php($options = $question->options->where('is_active', true)->sortBy('position')->values())
+                    <article class="question-card">
+                        <div class="reorder">
+                            <form method="POST" action="{{ route('admin.questionnaires.sections.questions.move', [$questionnaire, $section, $question]) }}">@csrf @method('PATCH')<input type="hidden" name="direction" value="up"><button type="submit" class="arrow" title="Move up" aria-label="Move question up" @disabled($i === 0)>▲</button></form>
+                            <form method="POST" action="{{ route('admin.questionnaires.sections.questions.move', [$questionnaire, $section, $question]) }}">@csrf @method('PATCH')<input type="hidden" name="direction" value="down"><button type="submit" class="arrow" title="Move down" aria-label="Move question down" @disabled($i === $count - 1)>▼</button></form>
+                        </div>
+                        <div class="question-body">
+                            <div class="item-title question-text">{{ $i + 1 }}. {{ $question->question_text }}</div>
+                            <div class="question-meta">
+                                {{ $typeLabels[$question->question_type] ?? ucfirst($question->question_type) }}
+                                @unless($question->pivot->is_required) · optional @endunless
+                                @unless($question->is_active) · <span class="badge">inactive</span> @endunless
+                            </div>
+                            <ul class="answer-list" aria-label="Answer options">
+                                @foreach($options as $option)
+                                    <li><span class="answer-dot"></span>{{ $option->label }}@if($option->score !== null) <span class="muted">({{ $option->score }})</span>@endif</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                        <div class="question-actions">
+                            <a class="button button-secondary" href="{{ route('admin.questionnaires.sections.questions.edit', [$questionnaire, $section, $question]) }}">Edit</a>
+                            <form method="POST" action="{{ route('admin.questionnaires.sections.questions.destroy', [$questionnaire, $section, $question]) }}" data-confirm="Delete this question?&#10;&#10;Are you sure you want to delete this question? This action cannot be undone.">@csrf @method('DELETE')<button class="button button-danger" type="submit">Delete</button></form>
+                        </div>
+                    </article>
+                @endforeach
+                </div>
+
+                <div class="actions" style="margin-top:14px;align-items:center">
+                    <a class="button" href="{{ route('admin.questionnaires.sections.questions.create', [$questionnaire, $section]) }}"><span>＋</span>Add question</a>
+                    <button type="button" class="button button-link" data-toggle="bulk-{{ $section->id }}">or paste several at once</button>
+                </div>
+            @endif
+
+            {{-- Several questions in one go — the fast way to build a long
+                 section. Hidden behind a link so the page stays simple. --}}
+            <form id="bulk-{{ $section->id }}" class="stack-sm bulk-add" method="POST" action="{{ route('admin.questionnaires.sections.questions.bulk', [$questionnaire, $section]) }}" @unless(old('_section_id') == $section->id) hidden @endunless>@csrf
+                <input type="hidden" name="_section_id" value="{{ $section->id }}">
+                <div><label>Questions <span class="muted">— one per line</span></label>
+                <textarea name="questions_text" rows="4" placeholder="I often feel overwhelmed by my workload.&#10;I find it hard to relax in my free time.">{{ old('_section_id') == $section->id ? old('questions_text') : '' }}</textarea></div>
+                <div class="field-row" style="align-items:flex-end">
+                    <div><label>Answer options for all of them</label><select name="scale">
+                        @foreach($presets as $key => $preset)
+                            <option value="{{ $key }}" @selected((old('_section_id') == $section->id ? old('scale') : \App\Support\AnswerScalePresets::DEFAULT) === $key)>{{ $preset['label'] }}</option>
+                        @endforeach
+                    </select></div>
+                    <div class="actions">
+                        <button class="button" type="submit">Add questions</button>
+                        <button type="button" class="button button-secondary" data-toggle="bulk-{{ $section->id }}">Cancel</button>
+                    </div>
+                </div>
+            </form>
+        </section>
+    @endforeach
+
     @if($unsectioned->isNotEmpty())
         <section class="panel">
-            <div class="panel-head"><h3>Not in a section ({{ $unsectioned->count() }})</h3>
-            <p class="lede">Attached to the questionnaire but not in any section, so weighted scoring ignores them. Assign them in the Advanced editor.</p></div>
-            <div class="table-wrap"><table>
-                <thead><tr><th>Question</th><th>Status</th></tr></thead>
-                <tbody>
-                @foreach($unsectioned as $question)
-                    <tr><td>{{ $question->question_text }}</td><td><span class="badge {{ $question->is_active ? 'active' : '' }}">{{ $question->is_active ? 'Active' : 'Inactive' }}</span></td></tr>
-                @endforeach
-                </tbody>
-            </table></div>
+            <div class="eyebrow">Needs a section</div>
+            <h2 style="margin:2px 0 4px">{{ $unsectioned->count() }} {{ \Illuminate\Support\Str::plural('question', $unsectioned->count()) }} not in any section</h2>
+            <p class="lede">Students only see questions inside a section. Edit each one and it will join the section you save it from — or delete it.</p>
+            <ul class="answer-list" style="margin-top:10px">
+                @foreach($unsectioned as $question)<li><span class="answer-dot"></span>{{ $question->question_text }}</li>@endforeach
+            </ul>
         </section>
     @endif
 
-    {{-- 3. Result ranges --}}
-    <section class="panel">
-        <div class="panel-head">
-            <h2>3. Result ranges</h2>
-            <p class="lede"><strong>Overall</strong> ranges label the wellbeing score (0–{{ (int) ceil($sumWeights) }} for the current weights). <strong>Stress</strong> ranges (0–100) label the optional stress indicator. Ranges of the same type must not overlap and must leave no gap.</p>
-        </div>
-        <form method="POST" action="{{ route('admin.questionnaires.ranges', $questionnaire) }}">@csrf @method('PATCH')
-            <div id="band-rows">
-            @foreach($bands as $index => $band)
-                <div class="editor-row band-row">
-                    @if(isset($band['id']))<input type="hidden" name="bands[{{ $index }}][id]" value="{{ $band['id'] }}">@endif
-                    <div class="fld"><label>Type</label><select name="bands[{{ $index }}][scope]">
-                        <option value="overall" @selected(($band['scope'] ?? 'overall') === 'overall')>Overall wellbeing</option>
-                        <option value="stress" @selected(($band['scope'] ?? 'overall') === 'stress')>Stress</option>
-                    </select></div>
-                    <div class="fld"><label>Code</label><input name="bands[{{ $index }}][code]" value="{{ $band['code'] }}" required></div>
-                    <div class="fld grow"><label>Label</label><input name="bands[{{ $index }}][label]" value="{{ $band['label'] }}" required></div>
-                    <div class="fld narrow"><label>Min</label><input type="number" name="bands[{{ $index }}][min_score]" value="{{ $band['min_score'] }}" required></div>
-                    <div class="fld narrow"><label>Max</label><input type="number" name="bands[{{ $index }}][max_score]" value="{{ $band['max_score'] }}" required></div>
-                    <div class="fld narrow"><label>Order</label><input type="number" min="0" name="bands[{{ $index }}][position]" value="{{ $band['position'] }}" required></div>
-                    <label class="remember"><input type="checkbox" name="bands[{{ $index }}][is_active]" value="1" @checked($band['is_active'] ?? false)> Active</label>
-                    <button type="button" class="button button-secondary row-remove band-remove">Remove</button>
-                </div>
-            @endforeach
-            </div>
-            <button type="button" id="add-band" class="button button-secondary add-row">＋ Add result range</button>
-            <div class="actions" style="margin-top:16px"><button class="button" type="submit">Save result ranges</button></div>
-        </form>
-    </section>
+    <div class="split" style="align-items:center">
+        <a class="button button-secondary" href="{{ route('admin.questionnaires.details', $questionnaire) }}">← Details</a>
+        <a class="button" href="{{ route('admin.questionnaires.review', $questionnaire) }}">Review &amp; publish →</a>
+    </div>
 </main>
 
 <script>
 (function () {
-    var rows = document.getElementById('band-rows');
-    var addBtn = document.getElementById('add-band');
-    var nextIndex = {{ count($bands) }};
-    function wire(row) {
-        var r = row.querySelector('.band-remove');
-        if (r) r.addEventListener('click', function () { row.remove(); });
-    }
-    rows.querySelectorAll('.band-row').forEach(wire);
-    addBtn.addEventListener('click', function () {
-        var i = nextIndex++;
-        var pos = rows.querySelectorAll('.band-row').length + 1;
-        var div = document.createElement('div');
-        div.className = 'editor-row band-row';
-        div.innerHTML =
-            '<div class="fld"><label>Type</label><select name="bands[' + i + '][scope]"><option value="overall">Overall wellbeing</option><option value="stress">Stress</option></select></div>' +
-            '<div class="fld"><label>Code</label><input name="bands[' + i + '][code]" required></div>' +
-            '<div class="fld grow"><label>Label</label><input name="bands[' + i + '][label]" required></div>' +
-            '<div class="fld narrow"><label>Min</label><input type="number" name="bands[' + i + '][min_score]" required></div>' +
-            '<div class="fld narrow"><label>Max</label><input type="number" name="bands[' + i + '][max_score]" required></div>' +
-            '<div class="fld narrow"><label>Order</label><input type="number" min="0" name="bands[' + i + '][position]" value="' + pos + '" required></div>' +
-            '<label class="remember"><input type="checkbox" name="bands[' + i + '][is_active]" value="1" checked> Active</label>' +
-            '<button type="button" class="button button-secondary row-remove band-remove">Remove</button>';
-        rows.appendChild(div);
-        wire(div);
+    // Show / hide panels (details form, bulk add) without leaving the page.
+    document.querySelectorAll('[data-toggle]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var target = document.getElementById(button.getAttribute('data-toggle'));
+            if (!target) return;
+            target.hidden = !target.hidden;
+            if (!target.hidden) {
+                var first = target.querySelector('input:not([type=hidden]), textarea');
+                if (first) first.focus();
+            }
+        });
     });
+
+    // One clear confirmation for every delete.
+    document.querySelectorAll('form[data-confirm]').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!confirm(form.getAttribute('data-confirm'))) event.preventDefault();
+        });
+    });
+
 })();
 </script>
 @endsection

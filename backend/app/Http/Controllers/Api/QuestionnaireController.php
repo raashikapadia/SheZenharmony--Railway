@@ -10,8 +10,12 @@ class QuestionnaireController extends Controller
 {
     public function active(): JsonResponse
     {
+        // Same availability rule as submission: published, active, and past
+        // its go-live time — so the app never sees a questionnaire it cannot
+        // yet answer.
         $questionnaire = Questionnaire::query()
             ->where('status', 'published')->where('is_active', true)
+            ->where(fn ($query) => $query->whereNull('published_at')->orWhere('published_at', '<=', now()))
             ->with([
                 'sections' => fn ($query) => $query->where('is_active', true)->orderBy('position')->orderBy('id'),
                 'questions' => function ($query): void {
@@ -20,7 +24,21 @@ class QuestionnaireController extends Controller
                         ->with(['options' => fn ($options) => $options->where('is_active', true)->orderBy('position')]);
                 },
             ])
-            ->orderByDesc('published_at')->orderByDesc('version')->firstOrFail();
+            ->orderByDesc('published_at')->orderByDesc('version')->first();
+
+        if (! $questionnaire) {
+            $scheduled = Questionnaire::query()
+                ->where('status', 'published')->where('is_active', true)
+                ->where('published_at', '>', now())
+                ->orderBy('published_at')
+                ->first();
+
+            return response()->json([
+                'message' => $scheduled
+                    ? 'The next check-in opens on '.$scheduled->published_at->format('j F Y').' at '.$scheduled->published_at->format('g:ia').'. Please come back then.'
+                    : 'There is no check-in available right now. Please check back later.',
+            ], 404);
+        }
 
         return response()->json(['data' => [
             'id' => $questionnaire->id,
@@ -38,6 +56,7 @@ class QuestionnaireController extends Controller
                 'id' => $question->id,
                 'text' => $question->question_text,
                 'required' => (bool) $question->pivot->is_required,
+                'type' => $question->question_type,
                 'position' => $question->pivot->position,
                 'section_id' => $question->pivot->questionnaire_section_id,
                 'options' => $question->options->map(fn ($option) => [

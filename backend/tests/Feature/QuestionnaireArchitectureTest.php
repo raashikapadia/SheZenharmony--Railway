@@ -26,6 +26,8 @@ class QuestionnaireArchitectureTest extends TestCase
         $response = $this->actingAs($admin)->post('/admin/questionnaires', [
             'title' => 'Stress check',
             'description' => 'A quick wellbeing check-in.',
+            'result_scale_min' => 0,
+            'result_scale_max' => 40,
         ]);
 
         $questionnaire = Questionnaire::query()->firstOrFail();
@@ -37,11 +39,10 @@ class QuestionnaireArchitectureTest extends TestCase
         $this->assertSame('draft', $questionnaire->status);
         $this->assertFalse((bool) $questionnaire->is_active);
 
-        // Standard wellbeing result ranges are seeded so the publish step opens pre-filled.
-        $bands = $questionnaire->scoreBands()->where('scope', 'overall')->orderBy('min_score')->get();
-        $this->assertCount(3, $bands);
-        $this->assertSame(0, $bands->first()->min_score);
-        $this->assertSame(40, $bands->last()->max_score);
+        // The client's scale is taken as entered; the result ranges on it are
+        // the admin's to define in the editor, so none are invented.
+        $this->assertSame([0, 40], $questionnaire->resultScale());
+        $this->assertSame(0, $questionnaire->scoreBands()->count());
     }
 
     public function test_new_questionnaire_version_number_follows_the_highest_existing(): void
@@ -49,7 +50,7 @@ class QuestionnaireArchitectureTest extends TestCase
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         Questionnaire::query()->create(['title' => 'Existing', 'type' => 'stress', 'version' => 4]);
 
-        $this->actingAs($admin)->post('/admin/questionnaires', ['title' => 'Next one'])->assertRedirect();
+        $this->actingAs($admin)->post('/admin/questionnaires', ['title' => 'Next one', 'result_scale_min' => 0, 'result_scale_max' => 100])->assertRedirect();
 
         $this->assertSame(5, Questionnaire::query()->where('title', 'Next one')->value('version'));
     }
@@ -129,6 +130,7 @@ class QuestionnaireArchitectureTest extends TestCase
 
         $response = $this->getJson('/api/v1/questionnaires/active')->assertOk()
             ->assertJsonPath('data.id', $active->id)
+            ->assertJsonPath('data.questions.0.type', $question->question_type)
             ->assertJsonPath('data.questions.0.options.0.id', $activeOption->id)
             ->assertJsonCount(1, 'data.questions.0.options');
 

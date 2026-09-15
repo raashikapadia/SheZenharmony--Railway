@@ -18,13 +18,21 @@ void main() {
 
       expect(provider.state, AssessmentLoadState.loaded);
       expect(provider.questionCount, 2);
-      expect(provider.currentQuestion?.text, 'How do you feel?');
-      expect(provider.canGoNext, isFalse);
+      // Two short questions share one page; the pager decided that, not us.
+      expect(provider.pageCount, 1);
+      expect(
+        provider.currentPage?.questions.first.question.text,
+        'How do you feel?',
+      );
+      expect(provider.progress, 0);
+      expect(provider.unansweredOnCurrentPage, hasLength(2));
 
       provider.selectAnswer(11, 101);
-      expect(provider.canGoNext, isTrue);
-      provider.goNext();
+      expect(provider.answeredCount, 1);
+      expect(provider.progress, 0.5);
+      expect(provider.unansweredOnCurrentPage.single.question.id, 12);
       provider.selectAnswer(12, 202);
+      expect(provider.unansweredOnCurrentPage, isEmpty);
 
       expect(provider.allRequiredAnswered, isTrue);
       expect(await provider.submit(), isTrue);

@@ -25,12 +25,12 @@
                 <span class="state-line"><span class="status-dot {{ $idot }}"></span>v{{ $item->version }}</span>
                 <div class="grow">
                     <span class="item-title">{{ $item->title }}</span>
-                    <span class="badge {{ $item->is_active ? 'active' : '' }}" style="margin-left:8px">{{ $item->is_active ? 'Live' : ucfirst($item->status) }}</span>
+                    <span class="badge {{ $item->is_active && ! $item->isScheduled() ? 'active' : '' }}" style="margin-left:8px">{{ $item->publishState() }}</span>
                     <div class="meta">{{ $item->sections_count }} sections · {{ $item->questions_count }} questions · {{ $item->score_bands_count }} ranges · updated {{ $item->updated_at?->diffForHumans() }}</div>
                 </div>
                 <div class="actions">
                     @unless($item->is_active)
-                        <form method="POST" action="{{ route('admin.questionnaires.publish', $item) }}">@csrf @method('PATCH')<button class="button" type="submit">Publish now</button></form>
+                        <a class="button" href="{{ route('admin.questionnaires.review', $item) }}">Review &amp; publish</a>
                     @endunless
                     <a class="button button-secondary" href="{{ route('admin.questionnaires.sections.index', $item) }}">Edit</a>
                     <details class="more">

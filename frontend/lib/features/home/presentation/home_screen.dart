@@ -150,12 +150,13 @@ class _DashboardPage extends StatelessWidget {
     final shezenId = context.watch<AuthProvider>().session?.shezenId ?? '';
 
     return ListView(
-      // Deep bottom inset: the nav pill floats over the content now.
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 132),
+      // Deep bottom inset: the nav pill and the Shezen button both float over
+      // the content, so the last card needs room to scroll clear of them.
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 152),
       children: [
         _HomeHeader(onOpenProfile: () => onNavigate(3)),
 
-        const SizedBox(height: AppSpacing.xl),
+        const SizedBox(height: AppSpacing.lg),
 
         const _WelcomeHero(),
 
@@ -173,17 +174,31 @@ class _DashboardPage extends StatelessWidget {
           ),
         ),
 
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.md),
 
         // The Stress level tab owns the history list, so this is a shortcut to
-        // it rather than a second copy of the same screen.
-        TextButton.icon(
-          onPressed: () => onNavigate(1),
-          icon: const Icon(Icons.history_rounded),
-          label: const Text('See your past check-ins'),
+        // it rather than a second copy of the same screen. A quiet tonal pill:
+        // clearly tappable, but never louder than the CTA in the card above.
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => onNavigate(1),
+            style: TextButton.styleFrom(
+              backgroundColor: AppColors.softLavender,
+              shape: const StadiumBorder(
+                side: BorderSide(color: AppColors.outline),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.md,
+              ),
+            ),
+            icon: const Icon(Icons.history_rounded, size: 18),
+            label: const Text('See your past check-ins'),
+          ),
         ),
 
-        const SizedBox(height: AppSpacing.xxl),
+        const SizedBox(height: 32),
 
         const AppSectionHeader(
           title: 'What would help right now?',
@@ -371,7 +386,9 @@ class _WelcomeHero extends StatelessWidget {
           style: Theme.of(context).textTheme.displaySmall,
         ),
 
-        const SizedBox(height: AppSpacing.md),
+        // The display face already carries generous line height, so the
+        // supporting line sits closer than the token gap would put it.
+        const SizedBox(height: AppSpacing.sm),
 
         const Text(
           'A quiet place to check in, reset, and support your wellbeing.',
@@ -547,19 +564,20 @@ class _StressHero extends StatelessWidget {
           children: [
             // A night sky rather than a dark one. Everything here is
             // decoration behind the copy and is clipped by the card; none of
-            // it passes 34%, so white body text keeps its full contrast
-            // wherever the shapes happen to fall.
+            // it passes 24%, so white body text keeps its full contrast
+            // wherever the shapes happen to fall — and the heading, copy and
+            // button stay the loudest things in the card.
 
             // Moonlight, warm rather than cold, glowing from the top corner.
             const Positioned(
               top: -70,
               right: -50,
-              child: _HeroGlow(size: 210, color: Color(0x4DF6C58B)),
+              child: _HeroGlow(size: 210, color: Color(0x3DF6C58B)),
             ),
             const Positioned(
               bottom: -80,
               left: -40,
-              child: _HeroGlow(size: 190, color: Color(0x3DE8A1B5)),
+              child: _HeroGlow(size: 190, color: Color(0x2EE8A1B5)),
             ),
 
             Positioned(
@@ -571,7 +589,7 @@ class _StressHero extends StatelessWidget {
                 child: CustomPaint(
                   painter: BotanicalSprigPainter(
                     color: Colors.white,
-                    opacity: 0.2,
+                    opacity: 0.12,
                   ),
                 ),
               ),
@@ -588,7 +606,7 @@ class _StressHero extends StatelessWidget {
                 child: CustomPaint(
                   painter: BlossomPainter(
                     color: AppColors.lilac,
-                    opacity: 0.34,
+                    opacity: 0.22,
                   ),
                 ),
               ),
@@ -602,7 +620,7 @@ class _StressHero extends StatelessWidget {
                 child: CustomPaint(
                   painter: BlossomPainter(
                     color: AppColors.blushPink,
-                    opacity: 0.3,
+                    opacity: 0.2,
                     rotation: 0.7,
                   ),
                 ),
@@ -615,13 +633,17 @@ class _StressHero extends StatelessWidget {
               child: Icon(
                 Icons.nightlight_round,
                 size: 19,
-                color: Color(0x59FFF2D8),
+                color: Color(0x40FFF2D8),
               ),
             ),
             const Positioned(
               right: 56,
               top: 30,
-              child: AppSparkleBurst(color: Color(0xFFFFF0D6), size: 62),
+              // Still shimmers, just further back.
+              child: Opacity(
+                opacity: 0.6,
+                child: AppSparkleBurst(color: Color(0xFFFFF0D6), size: 62),
+              ),
             ),
 
             Padding(

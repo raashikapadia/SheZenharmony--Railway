@@ -99,7 +99,7 @@ void main() {
     expect(find.text('— SheZen'), findsOneWidget);
   });
 
-  testWidgets('"Another one" swaps in a new item', (tester) async {
+  testWidgets('"Show another" swaps in a new item', (tester) async {
     await pump(tester, _Stub(current: affirmation, another: quote));
     await tester.pumpAndSettle();
 
@@ -108,7 +108,7 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.text('Another one ✨'));
+    await tester.tap(find.text('Show another ✨'));
     await tester.pumpAndSettle();
 
     expect(

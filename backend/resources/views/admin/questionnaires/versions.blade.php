@@ -28,7 +28,7 @@
                 </div>
                 <div class="actions">
                     @unless($item->is_active)
-                        <form method="POST" action="{{ route('admin.questionnaires.publish', $item) }}">@csrf @method('PATCH')<button class="button" type="submit">Publish now</button></form>
+                        <a class="button" href="{{ route('admin.questionnaires.review', $item) }}">Review &amp; publish</a>
                     @endunless
                     <a class="button button-secondary" href="{{ route('admin.questionnaires.sections.index', $item) }}">{{ $item->status === 'archived' ? 'View' : 'Edit' }}</a>
                     <details class="more">

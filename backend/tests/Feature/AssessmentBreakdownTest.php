@@ -122,8 +122,8 @@ class AssessmentBreakdownTest extends TestCase
             $sections->push($section);
         }
 
-        $questionnaire->scoreBands()->create(['code' => 'low', 'label' => 'Low mental well-being', 'min_score' => 0, 'max_score' => 6, 'scope' => 'overall', 'is_active' => true]);
-        $questionnaire->scoreBands()->create(['code' => 'high', 'label' => 'High mental well-being', 'min_score' => 7, 'max_score' => 10, 'scope' => 'overall', 'is_active' => true]);
+        $questionnaire->scoreBands()->create(['code' => 'low', 'label' => 'Low mental well-being', 'min_score' => 4, 'max_score' => 12, 'scope' => 'overall', 'is_active' => true]);
+        $questionnaire->scoreBands()->create(['code' => 'high', 'label' => 'High mental well-being', 'min_score' => 13, 'max_score' => 20, 'scope' => 'overall', 'is_active' => true]);
 
         return $returnSections ? [$questionnaire, $answers, $sections] : [$questionnaire, $answers];
     }

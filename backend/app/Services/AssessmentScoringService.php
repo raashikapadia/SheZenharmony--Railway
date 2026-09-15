@@ -74,9 +74,14 @@ class AssessmentScoringService
         $activeSections = $questionnaire->sections;
 
         if ($activeSections->isEmpty()) {
+            // Same rule as the sectioned path: the raw total is normalised
+            // onto the client's scale when one is configured.
+            [$rawMin, $rawMax] = self::flatTotalRange($questionnaire->questions);
+            $result = self::normalise((float) $flatTotal, $rawMin, $rawMax, $questionnaire->resultScale());
+
             return [
-                'total_score' => $flatTotal,
-                'score_band' => $this->matchBand($questionnaire, StressScoreBand::SCOPE_OVERALL, $flatTotal),
+                'total_score' => $result,
+                'score_band' => $this->matchBand($questionnaire, StressScoreBand::SCOPE_OVERALL, $result),
                 'breakdown' => null,
                 'config_snapshot' => null,
                 'responses' => $this->flatResponses($resolved),
@@ -176,11 +181,15 @@ class AssessmentScoringService
             ? $this->clampPercent($overallWeighted / $overallMaxWeighted * 100)
             : 0.0;
 
-        // Result ranges are configured as whole "points" (0-10, 11-20, …), so
-        // the weighted score is rounded to a whole point before it is matched
-        // to a band — this also keeps a fractional score from ever falling
-        // into the 1-point gap between two adjacent ranges.
-        $wellbeingBand = $this->matchBand($questionnaire, StressScoreBand::SCOPE_OVERALL, (float) round($overallWeighted));
+        // The raw points total (reverse scoring and per-question weight
+        // applied) is normalised into the client's fixed result scale, so
+        // the scale and the ranges written on it hold still however many
+        // questions there are. Without a configured scale the raw total is
+        // the result. Rounded to a whole point before matching so a value
+        // can never land in the gap between two adjacent ranges.
+        [$rawMin, $rawMax] = self::possibleTotalRange($questionnaire->questions);
+        $overallTotal = self::normalise($overallRaw, $rawMin, $rawMax, $questionnaire->resultScale());
+        $wellbeingBand = $this->matchBand($questionnaire, StressScoreBand::SCOPE_OVERALL, (float) $overallTotal);
 
         $stress = $this->scoreStress($resolved);
         $stressBand = null;
@@ -189,12 +198,16 @@ class AssessmentScoringService
         }
 
         return [
-            'total_score' => (int) round($overallWeighted),
+            'total_score' => $overallTotal,
             'score_band' => $wellbeingBand,
             'breakdown' => [
                 'categories' => $categories,
                 'overall' => [
                     'raw_score' => round($overallRaw, 2),
+                    'raw_min' => $rawMin,
+                    'raw_max' => $rawMax,
+                    'result_score' => $overallTotal,
+                    'result_scale' => $questionnaire->resultScale(),
                     'weighted_score' => round($overallWeighted, 2),
                     'max_weighted_score' => round($overallMaxWeighted, 2),
                     'percentage' => round($overallPercentage, 2),
@@ -331,6 +344,93 @@ class AssessmentScoringService
         }
 
         return $out;
+    }
+
+    /**
+     * The lowest and highest overall total a sectioned questionnaire can
+     * produce, from its questions' answer points and weights — exactly the
+     * span the overall result ranges have to cover. Optional questions can
+     * be skipped, so they only widen the span, never narrow it.
+     *
+     * @param  Collection<int, StressQuestion>  $questions  with options loaded and the questionnaire pivot
+     * @return array{0: int, 1: int}
+     */
+    public static function possibleTotalRange(Collection $questions): array
+    {
+        $min = 0.0;
+        $max = 0.0;
+        foreach ($questions as $question) {
+            $qMin = $question->resolvedMinScore();
+            $qMax = $question->resolvedMaxScore();
+            if ($qMin === null || $qMax === null) {
+                continue;
+            }
+            $weight = (float) ($question->wellbeing_weight ?? 1);
+            $low = min($qMin, $qMax) * $weight;
+            $high = max($qMin, $qMax) * $weight;
+            $required = (bool) ($question->pivot->is_required ?? true);
+            $min += $required ? $low : min(0.0, $low);
+            $max += max(0.0, $high);
+        }
+
+        return [(int) round($min), (int) round($max)];
+    }
+
+    /**
+     * The raw span of a flat (section-less) questionnaire: plain option
+     * scores, no weights or reverse scoring — matching how it is totalled.
+     *
+     * @param  Collection<int, StressQuestion>  $questions  with options loaded and the questionnaire pivot
+     * @return array{0: int, 1: int}
+     */
+    public static function flatTotalRange(Collection $questions): array
+    {
+        $min = 0;
+        $max = 0;
+        foreach ($questions as $question) {
+            $scores = $question->options->where('is_active', true)->pluck('score')->filter(fn ($s) => $s !== null);
+            if ($scores->isEmpty()) {
+                continue;
+            }
+            $required = (bool) ($question->pivot->is_required ?? true);
+            $min += $required ? (int) $scores->min() : min(0, (int) $scores->min());
+            $max += max(0, (int) $scores->max());
+        }
+
+        return [$min, $max];
+    }
+
+    /**
+     * The span the overall result ranges must cover: the client's result
+     * scale when one is configured, otherwise the raw points span.
+     *
+     * @param  Collection<int, StressQuestion>  $questions  with options loaded and the questionnaire pivot
+     * @return array{0: int, 1: int}
+     */
+    public static function resultSpan(Questionnaire $questionnaire, Collection $questions): array
+    {
+        return $questionnaire->resultScale() ?? self::possibleTotalRange($questions);
+    }
+
+    /**
+     * Map a raw total onto the client's result scale, e.g. 111 of 0–148 on
+     * a 0–40 scale → 30. Returns the rounded raw total when there is no
+     * scale, and the scale's minimum when the raw span is empty.
+     *
+     * @param  array{0: int, 1: int}|null  $scale
+     */
+    public static function normalise(float $raw, int $rawMin, int $rawMax, ?array $scale): int
+    {
+        if ($scale === null) {
+            return (int) round($raw);
+        }
+        [$scaleMin, $scaleMax] = $scale;
+        if ($rawMax <= $rawMin) {
+            return $scaleMin;
+        }
+        $fraction = max(0.0, min(1.0, ($raw - $rawMin) / ($rawMax - $rawMin)));
+
+        return (int) round($fraction * ($scaleMax - $scaleMin) + $scaleMin);
     }
 
     private function clampPercent(float $value): float

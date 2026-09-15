@@ -2,7 +2,7 @@
 @section('title', 'Scoring · '.$questionnaire->title)
 @section('body')
 <main class="content stack">
-    <a class="backlink" href="{{ route('admin.questionnaires.sections.index', $questionnaire) }}">← Back to editor</a>
+    <a class="backlink" href="{{ route('admin.questionnaires.details', $questionnaire) }}">← Back to Details</a>
 
     <div>
         <h1 style="margin:0 0 4px">Scoring overview</h1>
@@ -33,13 +33,13 @@
                 @endforeach
                 </tbody>
             </table></div>
-            <p class="muted" style="margin:12px 0 0">Maximum overall weighted score: <strong>{{ rtrim(rtrim(number_format($sumWeights, 2), '0'), '.') }}</strong> (sum of active section weights).</p>
+            <p class="muted" style="margin:12px 0 0">Raw score with the current questions: <strong>{{ $rawSpan[0] }}–{{ $rawSpan[1] }}</strong>.@if($resultScale) Converted onto the client's result scale <strong>{{ $resultScale[0] }}–{{ $resultScale[1] }}</strong>, which the result ranges below are written on.@endif Section weights only shape the per-section breakdown.</p>
         @endif
     </section>
 
     <section class="panel">
         <div class="panel-head"><h3>Overall wellbeing result ranges</h3></div>
-        @include('admin.questionnaires._band_table', ['bands' => $overallBands, 'ceiling' => (int) ceil($sumWeights)])
+        @include('admin.questionnaires._band_table', ['bands' => $overallBands, 'floor' => $scoreSpan[0], 'ceiling' => $scoreSpan[1]])
     </section>
 
     <section class="panel">

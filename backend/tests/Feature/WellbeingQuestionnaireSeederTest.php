@@ -36,10 +36,12 @@ class WellbeingQuestionnaireSeederTest extends TestCase
         $this->assertSame(0, $questionnaire->questions()->wherePivotNull('questionnaire_section_id')->count());
         $this->assertSame(74, $questionnaire->questions()->wherePivot('is_required', true)->count());
 
-        // Overall bands cover 0..40 with no gap.
+        // The client scale is fixed at 0–40 whatever the question count; the
+        // four bands cover it end to end.
         $bands = $questionnaire->scoreBands()->where('scope', StressScoreBand::SCOPE_OVERALL)->orderBy('min_score')->get();
         $this->assertSame(0, $bands->first()->min_score);
         $this->assertSame(40, $bands->last()->max_score);
+        $this->assertSame([0, 40], $questionnaire->resultScale());
 
         // Publishing the wellbeing questionnaire returns the starter to draft.
         $starter = Questionnaire::query()->where('title', StressFrameworkSeeder::QUESTIONNAIRE_TITLE)->firstOrFail();
@@ -79,7 +81,14 @@ class WellbeingQuestionnaireSeederTest extends TestCase
             'answers' => $answers,
         ])->assertCreated()
             ->assertJsonCount(8, 'result.breakdown.categories')
-            ->assertJsonPath('result.breakdown.overall.max_weighted_score', 40);
+            ->assertJsonPath('result.breakdown.overall.max_weighted_score', 40)
+            // 74 answers of 3 points = raw 222 of 74–370, which is exactly half
+            // way: 20 on the 0–40 client scale.
+            ->assertJsonPath('result.breakdown.overall.raw_score', 222)
+            ->assertJsonPath('result.breakdown.overall.raw_min', 74)
+            ->assertJsonPath('result.breakdown.overall.raw_max', 370)
+            ->assertJsonPath('result.total_score', 20)
+            ->assertJsonPath('result.band.code', 'low-2');
 
         $assessment = $student->studentIdentity()->firstOrFail()->assessments()->firstOrFail();
         $this->assertSame(74, $assessment->responses()->count());

@@ -121,12 +121,18 @@ class QuestionnaireSectionTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.questionnaires.sections.index', $questionnaire))
             ->assertOk()
-            ->assertSee('1. Details')
-            ->assertSee('2. Sections &amp; questions', false)
-            ->assertSee('3. Result ranges')
+            ->assertSee('Add section')
+            ->assertSee('No questions in this section yet.')
             ->assertSee(route('admin.questionnaires.details', $questionnaire), false)
-            ->assertSee(route('admin.questionnaires.ranges', $questionnaire), false)
+            ->assertSee(route('admin.questionnaires.review', $questionnaire), false)
             ->assertSee('Emotional');
+
+        // Details and result ranges have their own screen.
+        $this->actingAs($admin)
+            ->get(route('admin.questionnaires.details', $questionnaire))
+            ->assertOk()
+            ->assertSee('Result scale, ranges')
+            ->assertSee(route('admin.questionnaires.ranges', $questionnaire), false);
     }
 
     public function test_details_form_updates_labelling_and_status_without_touching_questions_or_ranges(): void
@@ -144,7 +150,7 @@ class QuestionnaireSectionTest extends TestCase
             ->patch(route('admin.questionnaires.details', $questionnaire), [
                 'title' => 'New title', 'description' => 'desc', 'period' => 'S1', 'version' => 2, 'status' => 'draft',
             ])
-            ->assertRedirect(route('admin.questionnaires.sections.index', $questionnaire));
+            ->assertRedirect(route('admin.questionnaires.details', $questionnaire));
 
         $questionnaire->refresh();
         $this->assertSame('New title', $questionnaire->title);
@@ -171,7 +177,7 @@ class QuestionnaireSectionTest extends TestCase
                     ['scope' => 'overall', 'code' => 'hi', 'label' => 'High', 'min_score' => 3, 'max_score' => 5, 'position' => 2, 'is_active' => '1'],
                 ],
             ])
-            ->assertRedirect(route('admin.questionnaires.sections.index', $questionnaire));
+            ->assertRedirect(route('admin.questionnaires.details', $questionnaire));
 
         $this->assertSame(2, $questionnaire->scoreBands()->where('is_active', true)->count());
         $this->assertSame(1, $questionnaire->questions()->count());
@@ -339,12 +345,132 @@ class QuestionnaireSectionTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.questionnaires.sections.questions.create', [$questionnaire, $a]))
             ->assertOk()
-            ->assertSee('· A')
-            ->assertSee('Required in this questionnaire');
+            ->assertSee('Section · A')
+            ->assertSee('Students must answer this question');
 
         $this->actingAs($admin)
             ->get(route('admin.questionnaires.sections.questions.edit', [$questionnaire, $a, $question]))
             ->assertOk()
             ->assertSee('In A');
+    }
+
+    public function test_admin_can_add_many_questions_at_once_with_a_shared_scale(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $questionnaire = Questionnaire::query()->create(['title' => 'Wellbeing', 'type' => 'stress', 'version' => 1]);
+        $section = QuestionnaireSection::query()->create([
+            'questionnaire_id' => $questionnaire->id, 'title' => 'Emotional', 'position' => 1, 'category_weight' => 1, 'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.questionnaires.sections.questions.bulk', [$questionnaire, $section]), [
+                'questions_text' => "I feel calm most days.\n\n   \nI sleep well.\r\nI enjoy my studies.",
+                'scale' => 'frequency5',
+            ])
+            ->assertRedirect(route('admin.questionnaires.sections.index', $questionnaire))
+            ->assertSessionHas('status', '3 questions added to Emotional.');
+
+        $questions = $questionnaire->questions()->orderBy('questionnaire_questions.position')->get();
+        $this->assertSame(
+            ['I feel calm most days.', 'I sleep well.', 'I enjoy my studies.'],
+            $questions->pluck('question_text')->all(),
+        );
+        $this->assertSame([1, 2, 3], $questions->map(fn ($q) => (int) $q->pivot->position)->all());
+        foreach ($questions as $question) {
+            $this->assertSame((int) $section->id, (int) $question->pivot->questionnaire_section_id);
+            $this->assertTrue((bool) $question->pivot->is_required);
+            $this->assertTrue((bool) $question->is_active);
+            $this->assertSame('scale', $question->question_type);
+            $this->assertSame(
+                ['Never', 'Rarely', 'Sometimes', 'Often', 'Always'],
+                $question->options()->orderBy('position')->pluck('label')->all(),
+            );
+            $this->assertSame([1, 2, 3, 4, 5], $question->options()->orderBy('position')->pluck('score')->map(fn ($s) => (int) $s)->all());
+        }
+
+        // A yes/no scale sets the matching question type.
+        $this->actingAs($admin)
+            ->post(route('admin.questionnaires.sections.questions.bulk', [$questionnaire, $section]), [
+                'questions_text' => 'I have someone to talk to.',
+                'scale' => 'yes_no',
+            ])
+            ->assertRedirect();
+        $last = $questionnaire->questions()->orderByDesc('questionnaire_questions.position')->first();
+        $this->assertSame('yes_no', $last->question_type);
+        $this->assertSame(4, (int) $last->pivot->position);
+
+        // An empty box is an error, not a silent no-op.
+        $this->actingAs($admin)
+            ->from(route('admin.questionnaires.sections.index', $questionnaire))
+            ->post(route('admin.questionnaires.sections.questions.bulk', [$questionnaire, $section]), [
+                'questions_text' => "  \n\n", 'scale' => 'agree5',
+            ])
+            ->assertSessionHasErrors('questions_text');
+    }
+
+    public function test_a_new_section_can_bring_its_first_questions_along(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $questionnaire = Questionnaire::query()->create(['title' => 'Wellbeing', 'type' => 'stress', 'version' => 1]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.questionnaires.sections.store', $questionnaire), [
+                'title' => 'Social',
+                'description' => 'Your relationships and support.',
+                'category_weight' => 1,
+                'is_active' => '1',
+                'questions_text' => "I have positive relationships with my family.\nI feel supported by my friends.",
+            ])
+            ->assertRedirect(route('admin.questionnaires.sections.index', $questionnaire))
+            ->assertSessionHas('status', 'Section added with 2 questions.');
+
+        $section = $questionnaire->sections()->firstOrFail();
+        $this->assertSame('Your relationships and support.', $section->description);
+        $questions = $questionnaire->questions()->wherePivot('questionnaire_section_id', $section->id)->get();
+        $this->assertCount(2, $questions);
+        // The default scale is the five-point agreement scale.
+        $this->assertSame('Strongly agree', $questions->first()->options()->orderByDesc('position')->value('label'));
+    }
+
+    public function test_sections_and_questions_can_be_moved_up_and_down(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $questionnaire = Questionnaire::query()->create(['title' => 'Wellbeing', 'type' => 'stress', 'version' => 1]);
+        $first = QuestionnaireSection::query()->create(['questionnaire_id' => $questionnaire->id, 'title' => 'First', 'position' => 1, 'category_weight' => 1, 'is_active' => true]);
+        $second = QuestionnaireSection::query()->create(['questionnaire_id' => $questionnaire->id, 'title' => 'Second', 'position' => 2, 'category_weight' => 1, 'is_active' => true]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.questionnaires.sections.move', [$questionnaire, $second]), ['direction' => 'up'])
+            ->assertRedirect();
+        $this->assertSame(['Second', 'First'], $questionnaire->sections()->orderBy('position')->pluck('title')->all());
+
+        // Already at the top: nothing changes, nothing breaks.
+        $this->actingAs($admin)
+            ->patch(route('admin.questionnaires.sections.move', [$questionnaire, $second]), ['direction' => 'up'])
+            ->assertRedirect();
+        $this->assertSame(['Second', 'First'], $questionnaire->sections()->orderBy('position')->pluck('title')->all());
+
+        $this->actingAs($admin)
+            ->post(route('admin.questionnaires.sections.questions.bulk', [$questionnaire, $first]), [
+                'questions_text' => "A\nB\nC", 'scale' => 'agree5',
+            ]);
+        $ordered = fn () => $questionnaire->questions()->wherePivot('questionnaire_section_id', $first->id)
+            ->orderBy('questionnaire_questions.position')->pluck('question_text')->all();
+        $b = $questionnaire->questions()->where('question_text', 'B')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->patch(route('admin.questionnaires.sections.questions.move', [$questionnaire, $first, $b]), ['direction' => 'down'])
+            ->assertRedirect();
+        $this->assertSame(['A', 'C', 'B'], $ordered());
+
+        $this->actingAs($admin)
+            ->patch(route('admin.questionnaires.sections.questions.move', [$questionnaire, $first, $b]), ['direction' => 'up'])
+            ->assertRedirect();
+        $this->assertSame(['A', 'B', 'C'], $ordered());
+
+        // A question is moved only within its own section.
+        $this->actingAs($admin)
+            ->patch(route('admin.questionnaires.sections.questions.move', [$questionnaire, $second, $b]), ['direction' => 'up'])
+            ->assertNotFound();
     }
 }

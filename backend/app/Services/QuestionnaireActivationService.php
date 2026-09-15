@@ -104,15 +104,10 @@ class QuestionnaireActivationService
      */
     private function validateFlat(Questionnaire $questionnaire): void
     {
-        $minimumTotal = 0;
-        $maximumTotal = 0;
-        foreach ($questionnaire->questions as $question) {
-            $options = $question->options;
-            $minimum = (int) $options->min('score');
-            $maximum = (int) $options->max('score');
-            $minimumTotal += $question->pivot->is_required ? $minimum : min(0, $minimum);
-            $maximumTotal += max(0, $maximum);
-        }
+        // The ranges cover the client's scale when one is configured (raw
+        // totals are normalised onto it), otherwise the raw total itself.
+        [$minimumTotal, $maximumTotal] = $questionnaire->resultScale()
+            ?? AssessmentScoringService::flatTotalRange($questionnaire->questions);
 
         $bands = $questionnaire->scoreBands->where('scope', StressScoreBand::SCOPE_OVERALL)->values();
         if ($bands->isEmpty()) {
@@ -159,12 +154,22 @@ class QuestionnaireActivationService
             }
         }
 
-        $sumWeights = (float) $activeSections->sum('category_weight');
+        // The ranges live on the client's result scale (the raw total is
+        // normalised into it), so they must cover that scale end to end.
+        $scale = $questionnaire->resultScale();
+        if ($scale !== null && $scale[1] <= $scale[0]) {
+            $this->fail('result_scale', 'The result scale maximum must be higher than its minimum.');
+        }
+        [$rawMin, $rawMax] = AssessmentScoringService::possibleTotalRange($questionnaire->questions);
+        if ($scale !== null && $rawMax <= $rawMin) {
+            $this->fail('questions', 'The questions need answer points that can differ, so a result can be placed on the scale.');
+        }
+        [$lowest, $highest] = $scale ?? [$rawMin, $rawMax];
         $overallBands = $questionnaire->scoreBands->where('scope', StressScoreBand::SCOPE_OVERALL)->values();
         if ($overallBands->isEmpty()) {
-            $this->fail('score_bands', 'Add overall wellbeing result ranges before activation.');
+            $this->fail('score_bands', "Add result ranges that together cover the whole result scale ({$lowest}–{$highest}) before publishing.");
         }
-        $this->assertCoversRange($overallBands, 0, (int) ceil($sumWeights), 'wellbeing result ranges');
+        $this->assertCoversRange($overallBands, $lowest, $highest, 'result ranges');
 
         $hasStressQuestions = $questionnaire->questions->contains(fn ($question) => (bool) $question->stress_relevant);
         if ($hasStressQuestions) {

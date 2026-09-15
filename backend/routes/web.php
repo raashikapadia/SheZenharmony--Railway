@@ -47,17 +47,25 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::patch('questionnaires/{questionnaire}/ranges', [AdminQuestionnaireController::class, 'updateRanges'])->name('questionnaires.ranges');
     Route::post('questionnaires/{questionnaire}/new-version', [AdminQuestionnaireController::class, 'createVersion'])->name('questionnaires.new-version');
     Route::get('questionnaires/{questionnaire}/preview', [AdminQuestionnaireController::class, 'preview'])->name('questionnaires.preview');
+    // The three screens: Details → Sections & questions → Review & publish.
+    Route::get('questionnaires/{questionnaire}/details', [AdminQuestionnaireController::class, 'details'])->name('questionnaires.show-details');
+    // Review & Publish: the one gate every publish goes through.
+    Route::get('questionnaires/{questionnaire}/review', [AdminQuestionnaireController::class, 'review'])->name('questionnaires.review');
     Route::patch('questionnaires/{questionnaire}/publish', [AdminQuestionnaireController::class, 'publish'])->name('questionnaires.publish');
     Route::patch('questionnaires/{questionnaire}/archive', [AdminQuestionnaireController::class, 'archive'])->name('questionnaires.archive');
     Route::patch('questionnaires/{questionnaire}/restore', [AdminQuestionnaireController::class, 'restore'])->name('questionnaires.restore');
     Route::delete('questionnaires/{questionnaire}/force', [AdminQuestionnaireController::class, 'forceDestroy'])->name('questionnaires.force-destroy');
     Route::get('questionnaires/{questionnaire}/scoring', [AdminQuestionnaireController::class, 'scoring'])->name('questionnaires.scoring');
     Route::resource('questionnaires.sections', AdminSectionController::class)->except(['show']);
+    Route::patch('questionnaires/{questionnaire}/sections/{section}/move', [AdminSectionController::class, 'moveSection'])->name('questionnaires.sections.move');
     Route::prefix('questionnaires/{questionnaire}/sections/{section}/questions')
         ->name('questionnaires.sections.questions.')
         ->group(function (): void {
             Route::get('create', [AdminSectionController::class, 'createQuestion'])->name('create');
             Route::post('/', [AdminSectionController::class, 'storeQuestion'])->name('store');
+            // Several at once: one question per line, sharing an answer scale.
+            Route::post('bulk', [AdminSectionController::class, 'storeQuestions'])->name('bulk');
+            Route::patch('{question}/move', [AdminSectionController::class, 'moveQuestion'])->name('move');
             Route::get('{question}/edit', [AdminSectionController::class, 'editQuestion'])->name('edit');
             Route::put('{question}', [AdminSectionController::class, 'updateQuestion'])->name('update');
             Route::delete('{question}', [AdminSectionController::class, 'destroyQuestion'])->name('destroy');

@@ -150,7 +150,7 @@ class _PersonalGuidanceCardState extends State<PersonalGuidanceCard> {
                 child: CustomPaint(
                   painter: BotanicalSprigPainter(
                     color: AppColors.brand,
-                    opacity: 0.26,
+                    opacity: 0.2,
                   ),
                 ),
               ),
@@ -164,7 +164,7 @@ class _PersonalGuidanceCardState extends State<PersonalGuidanceCard> {
                 child: CustomPaint(
                   painter: BotanicalSprigPainter(
                     color: AppColors.blush,
-                    opacity: 0.3,
+                    opacity: 0.22,
                   ),
                 ),
               ),
@@ -172,9 +172,9 @@ class _PersonalGuidanceCardState extends State<PersonalGuidanceCard> {
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.xl,
-                AppSpacing.lg,
                 AppSpacing.xl,
-                AppSpacing.lg,
+                AppSpacing.xl,
+                AppSpacing.xl,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -205,7 +205,7 @@ class _PersonalGuidanceCardState extends State<PersonalGuidanceCard> {
                       child: _buildContent(context),
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.lg),
+                  const SizedBox(height: AppSpacing.xl),
                   _Actions(
                     showFavourite: _guidance != null,
                     isFavourite: _guidance?.isFavourite ?? false,
@@ -215,7 +215,7 @@ class _PersonalGuidanceCardState extends State<PersonalGuidanceCard> {
                     onAnother: _guidance == null && _error == null
                         ? null
                         : (_error != null ? _load : _another),
-                    anotherLabel: _error != null ? 'Try again' : 'Another one',
+                    anotherLabel: _error != null ? 'Try again' : 'Show another',
                   ),
                 ],
               ),
