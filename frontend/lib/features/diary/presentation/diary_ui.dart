@@ -85,7 +85,7 @@ class DiaryPrivacyNote extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Only on this phone',
+                'Yours, and kept for you',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                   color: AppColors.primary,
@@ -93,9 +93,10 @@ class DiaryPrivacyNote extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               const Text(
-                'Your diary is never sent to SheZen, so nobody on the team '
-                'can read it. It also means it is erased if you uninstall '
-                'the app.',
+                'Your diary is saved to your account and stored scrambled, so '
+                'it cannot be read out of our records. It never appears in any '
+                'staff or admin screen. It comes back when you sign in again, '
+                'on this phone or a new one.',
                 style: TextStyle(
                   color: AppColors.muted,
                   fontSize: 12.5,

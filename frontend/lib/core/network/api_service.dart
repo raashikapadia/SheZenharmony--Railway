@@ -438,6 +438,35 @@ class ApiService {
     );
   }
 
+  /// Pushes the device's diary up and returns the merged result.
+  ///
+  /// Deliberately untyped: the diary models and the merge rules live in the
+  /// diary feature, and this facade only carries the request, so the contract
+  /// can change without touching shared network code.
+  ///
+  /// [lock] is the student's single diary PIN as this device knows it. Omitted
+  /// when the device has none to offer, which the server reads as "no opinion"
+  /// rather than "remove it".
+  Future<({List<Map<String, dynamic>> diaries, Map<String, dynamic>? lock})>
+  syncDiaries(
+    String token,
+    List<Map<String, dynamic>> diaries, {
+    Map<String, dynamic>? lock,
+  }) async {
+    final body = await _sendJson(
+      'POST',
+      Uri.parse('${ApiConfig.baseUrl}/v1/diary/sync'),
+      token,
+      {'diaries': diaries, 'lock': ?lock},
+    );
+    return (
+      diaries: (body['data'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .toList(),
+      lock: body['lock'] as Map<String, dynamic>?,
+    );
+  }
+
   // ---------------------------------------------------------------------
   // Personal Guidance (student Home Page) — small, admin-authored moments
   // of encouragement. Separate from wellbeing activities and stress content.

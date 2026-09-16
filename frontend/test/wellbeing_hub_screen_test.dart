@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shezen_harmony/features/auth/application/auth_provider.dart';
 import 'package:shezen_harmony/core/network/api_service.dart';
 import 'package:shezen_harmony/core/theme/app_theme.dart';
 import 'package:shezen_harmony/features/activities/data/support_content.dart';
@@ -48,10 +50,15 @@ void main() {
     ]);
     addTearDown(api.close);
 
+    // The real app puts AuthProvider above every screen; the diary behind the
+    // journaling tile reads the session from it before syncing.
     await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        home: WellbeingHubScreen(apiService: api),
+      ChangeNotifierProvider<AuthProvider>(
+        create: (_) => AuthProvider(),
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: WellbeingHubScreen(apiService: api),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -192,7 +199,7 @@ void main() {
     await tester.tap(find.text('Journaling'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Only on this phone'), findsOneWidget);
+    expect(find.text('Yours, and kept for you'), findsOneWidget);
     // Admin-published journaling content does not live behind this tile.
     expect(find.text('Gratitude journal'), findsNothing);
   });

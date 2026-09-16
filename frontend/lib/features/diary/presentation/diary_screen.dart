@@ -2,9 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../data/diary.dart';
+import '../data/diary_lock.dart';
 import 'diary_composer.dart';
 import 'diary_page_editor_screen.dart';
+import 'diary_pin.dart';
 import 'diary_ui.dart';
+
+/// Items in the diary's overflow menu. Which of them are offered depends on
+/// whether the diary currently has a PIN.
+enum _DiaryAction { rename, lock, unlock, changePin, delete }
 
 /// One diary and its pages.
 ///
@@ -14,13 +20,23 @@ class DiaryScreen extends StatefulWidget {
   const DiaryScreen({
     super.key,
     required this.diary,
+    required this.hasPin,
     required this.onSave,
     required this.onDelete,
+    required this.onSetPin,
   });
 
   final Diary diary;
+
+  /// Whether the student has already chosen their PIN. If they have, locking
+  /// this diary reuses it rather than asking for another.
+  final bool hasPin;
+
   final Future<bool> Function(Diary diary) onSave;
   final Future<bool> Function(Diary diary) onDelete;
+
+  /// Sets the student's one PIN, or clears it when given null.
+  final Future<bool> Function(DiaryLock? lock) onSetPin;
 
   @override
   State<DiaryScreen> createState() => _DiaryScreenState();
@@ -80,6 +96,88 @@ class _DiaryScreenState extends State<DiaryScreen> {
     }
   }
 
+  /// Puts this diary behind the student's PIN.
+  ///
+  /// Only asks for a PIN if they have not chosen one yet. Once they have, every
+  /// diary they lock uses that same PIN — they are never asked to invent or
+  /// remember a second one.
+  Future<void> _lockDiary() async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (!widget.hasPin) {
+      final pin = await showDiaryPinSetup(
+        context,
+        heading: 'Choose your PIN',
+        subheading:
+            'One PIN for your diary. You will need it to open '
+            '"${_diary.title}" and anything else you lock.',
+      );
+      if (pin == null || !mounted) return;
+      if (!await widget.onSetPin(DiaryLock.fromPin(pin)) || !mounted) return;
+    }
+
+    final updated = _diary.locked();
+    if (await widget.onSave(updated) && mounted) {
+      setState(() => _diary = updated);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('This diary is locked.')),
+      );
+    }
+  }
+
+  /// Changes the PIN for every diary the student has locked, not just this one.
+  ///
+  /// The current PIN is not asked for again: reaching this menu meant unlocking
+  /// a diary with it a moment ago.
+  Future<void> _changePin() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final pin = await showDiaryPinSetup(
+      context,
+      heading: 'Choose a new PIN',
+      subheading: 'This replaces the PIN for every diary you have locked.',
+    );
+    if (pin == null || !mounted) return;
+
+    if (await widget.onSetPin(DiaryLock.fromPin(pin)) && mounted) {
+      messenger.showSnackBar(const SnackBar(content: Text('PIN changed.')));
+    }
+  }
+
+  /// Takes this diary out from behind the PIN, leaving the PIN itself alone.
+  Future<void> _unlockDiary() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Stop locking this diary?'),
+        content: const Text(
+          'It will open straight from the list, without asking for anything. '
+          'Your PIN stays as it is, and your other locked diaries still use '
+          'it.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep it locked'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Stop locking'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final updated = _diary.unlocked();
+    if (await widget.onSave(updated) && mounted) {
+      setState(() => _diary = updated);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('This diary is no longer locked.')),
+      );
+    }
+  }
+
   Future<void> _confirmDelete() async {
     final navigator = Navigator.of(context);
     final confirmed = await showDialog<bool>(
@@ -121,13 +219,41 @@ class _DiaryScreenState extends State<DiaryScreen> {
       appBar: AppBar(
         title: Text(_diary.title, overflow: TextOverflow.ellipsis),
         actions: [
-          PopupMenuButton<String>(
+          PopupMenuButton<_DiaryAction>(
             tooltip: 'Diary options',
-            onSelected: (value) =>
-                value == 'rename' ? _rename() : _confirmDelete(),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'rename', child: Text('Rename or recolour')),
-              PopupMenuItem(value: 'delete', child: Text('Delete diary')),
+            onSelected: (action) => switch (action) {
+              _DiaryAction.rename => _rename(),
+              _DiaryAction.lock => _lockDiary(),
+              _DiaryAction.unlock => _unlockDiary(),
+              _DiaryAction.changePin => _changePin(),
+              _DiaryAction.delete => _confirmDelete(),
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: _DiaryAction.rename,
+                child: Text('Rename or recolour'),
+              ),
+              if (_diary.isLocked) ...[
+                const PopupMenuItem(
+                  value: _DiaryAction.unlock,
+                  child: Text('Stop locking this diary'),
+                ),
+                // Worded so it is clear this is not a per-diary setting.
+                const PopupMenuItem(
+                  value: _DiaryAction.changePin,
+                  child: Text('Change your PIN'),
+                ),
+              ] else
+                PopupMenuItem(
+                  value: _DiaryAction.lock,
+                  child: Text(
+                    widget.hasPin ? 'Lock with your PIN' : 'Lock with a PIN',
+                  ),
+                ),
+              const PopupMenuItem(
+                value: _DiaryAction.delete,
+                child: Text('Delete diary'),
+              ),
             ],
           ),
         ],

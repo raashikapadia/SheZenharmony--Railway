@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\ScoreBandController as AdminScoreBandControll
 use App\Http\Controllers\Api\AssessmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\DiaryController;
 use App\Http\Controllers\Api\HelplineResourceController;
 use App\Http\Controllers\Api\InterventionController;
 use App\Http\Controllers\Api\GratitudeEntryController;
@@ -50,6 +51,12 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/positive-engagement/gratitude', [GratitudeEntryController::class, 'index']);
         Route::post('/positive-engagement/gratitude', [GratitudeEntryController::class, 'store']);
         Route::delete('/positive-engagement/gratitude/{gratitudeEntry}', [GratitudeEntryController::class, 'destroy']);
+
+        // The student's own diary. There is deliberately no admin equivalent
+        // of these routes: the writing is encrypted at rest and reachable only
+        // by the student who wrote it.
+        Route::get('/diary', [DiaryController::class, 'index']);
+        Route::post('/diary/sync', [DiaryController::class, 'sync']);
 
         Route::get('/personal-guidance/for-you', [PersonalGuidanceController::class, 'forYou']);
         Route::get('/personal-guidance/current', [PersonalGuidanceController::class, 'current']);

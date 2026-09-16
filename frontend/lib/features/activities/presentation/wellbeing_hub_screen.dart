@@ -223,7 +223,7 @@ class _HubBody extends StatelessWidget {
         _OptionCard(
           icon: Icons.edit_note_rounded,
           title: 'Journaling',
-          description: 'Your private diary, kept only on this phone.',
+          description: 'Your private diary, saved to your account.',
           tint: AppColors.softGold,
           isPrivate: true,
           onTap: onOpenDiary,

@@ -2,9 +2,11 @@ import 'dart:math';
 
 /// Identifier for a locally created diary or page.
 ///
-/// The diary never leaves the device, so ids only need to be unique within one
-/// installation — a timestamp plus a random suffix is enough, and avoids
-/// pulling in a uuid dependency for it.
+/// Minted on the device and kept for the life of the record: the server stores
+/// it as `client_id` and matches on it, so a reinstalled app re-attaches to the
+/// student's existing rows rather than duplicating them. A timestamp plus a
+/// random suffix is unique enough for one person's diaries across their own
+/// devices, and avoids pulling in a uuid dependency for it.
 String newLocalId() {
   final random = Random();
   final suffix = random.nextInt(1 << 32).toRadixString(36);
@@ -72,7 +74,7 @@ class DiaryPage {
   }
 }
 
-/// A private notebook of [DiaryPage]s, stored only on this device.
+/// A private notebook of [DiaryPage]s.
 class Diary {
   const Diary({
     required this.id,
@@ -81,13 +83,17 @@ class Diary {
     required this.createdAt,
     required this.updatedAt,
     required this.pages,
+    this.isLocked = false,
   });
 
-  Diary.create({required this.title, this.coverIndex = 0})
-    : id = newLocalId(),
-      createdAt = DateTime.now(),
-      updatedAt = DateTime.now(),
-      pages = const [];
+  Diary.create({
+    required this.title,
+    this.coverIndex = 0,
+    this.isLocked = false,
+  }) : id = newLocalId(),
+       createdAt = DateTime.now(),
+       updatedAt = DateTime.now(),
+       pages = const [];
 
   final String id;
   final String title;
@@ -99,6 +105,14 @@ class Diary {
   final DateTime updatedAt;
   final List<DiaryPage> pages;
 
+  /// Whether this diary asks for the student's PIN before it opens.
+  ///
+  /// Which PIN is not recorded here. A student chooses one PIN, kept in
+  /// [DiaryLockStore], and every diary they lock opens with that same one.
+  final bool isLocked;
+
+  /// Leaves [isLocked] alone. Use [locked] and [unlocked] to change it, so
+  /// "nothing said about the lock" can never be mistaken for "unlock it".
   Diary copyWith({
     String? title,
     int? coverIndex,
@@ -111,6 +125,24 @@ class Diary {
     createdAt: createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     pages: pages ?? this.pages,
+    isLocked: isLocked,
+  );
+
+  /// Makes this diary one of the ones that asks for the student's PIN.
+  Diary locked() => _withLockFlag(true);
+
+  /// Opens straight from the library again. The student's PIN is untouched —
+  /// their other locked diaries still use it.
+  Diary unlocked() => _withLockFlag(false);
+
+  Diary _withLockFlag(bool value) => Diary(
+    id: id,
+    title: title,
+    coverIndex: coverIndex,
+    createdAt: createdAt,
+    updatedAt: DateTime.now(),
+    pages: pages,
+    isLocked: value,
   );
 
   /// Replaces [page] if the diary already holds its id, otherwise adds it.
@@ -137,6 +169,7 @@ class Diary {
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
     'pages': pages.map((page) => page.toJson()).toList(),
+    'is_locked': isLocked,
   };
 
   factory Diary.fromJson(Map<String, dynamic> json) {
@@ -154,6 +187,7 @@ class Diary {
           .whereType<Map<String, dynamic>>()
           .map(DiaryPage.fromJson)
           .toList(),
+      isLocked: json['is_locked'] as bool? ?? false,
     );
   }
 }

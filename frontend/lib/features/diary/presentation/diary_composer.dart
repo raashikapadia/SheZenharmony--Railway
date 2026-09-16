@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../data/diary_lock.dart';
 import 'diary_ui.dart';
 
 /// Name-and-cover sheet, shared by "New diary" and "Rename".
 ///
-/// Returns null if the student backs out.
-Future<({String title, int coverIndex})?> showDiaryComposer(
+/// Returns null if the student backs out. [lockWithPin] is only ever true when
+/// [offerPin] was set; the caller is responsible for actually asking for the
+/// PIN, because choosing one needs a screen of its own.
+Future<({String title, int coverIndex, bool lockWithPin})?> showDiaryComposer(
   BuildContext context, {
   required String heading,
   required String actionLabel,
   String initialTitle = '',
   int initialCoverIndex = 0,
-}) => showModalBottomSheet<({String title, int coverIndex})>(
+  bool offerPin = false,
+}) => showModalBottomSheet<({String title, int coverIndex, bool lockWithPin})>(
   context: context,
   isScrollControlled: true,
   backgroundColor: AppColors.surface,
@@ -24,6 +28,7 @@ Future<({String title, int coverIndex})?> showDiaryComposer(
     actionLabel: actionLabel,
     initialTitle: initialTitle,
     initialCoverIndex: initialCoverIndex,
+    offerPin: offerPin,
   ),
 );
 
@@ -33,12 +38,18 @@ class _DiaryComposerSheet extends StatefulWidget {
     required this.actionLabel,
     required this.initialTitle,
     required this.initialCoverIndex,
+    required this.offerPin,
   });
 
   final String heading;
   final String actionLabel;
   final String initialTitle;
   final int initialCoverIndex;
+
+  /// Renaming an existing diary does not show the toggle — that diary's PIN is
+  /// managed from its own screen, where adding, changing and removing one all
+  /// live together.
+  final bool offerPin;
 
   @override
   State<_DiaryComposerSheet> createState() => _DiaryComposerSheetState();
@@ -49,6 +60,7 @@ class _DiaryComposerSheetState extends State<_DiaryComposerSheet> {
     text: widget.initialTitle,
   );
   late int _coverIndex = widget.initialCoverIndex;
+  bool _lockWithPin = false;
 
   @override
   void dispose() {
@@ -58,9 +70,11 @@ class _DiaryComposerSheetState extends State<_DiaryComposerSheet> {
 
   void _submit() {
     final title = _controller.text.trim();
-    Navigator.of(
-      context,
-    ).pop((title: title.isEmpty ? 'My diary' : title, coverIndex: _coverIndex));
+    Navigator.of(context).pop((
+      title: title.isEmpty ? 'My diary' : title,
+      coverIndex: _coverIndex,
+      lockWithPin: widget.offerPin && _lockWithPin,
+    ));
   }
 
   @override
@@ -126,11 +140,80 @@ class _DiaryComposerSheetState extends State<_DiaryComposerSheet> {
                   ),
               ],
             ),
+            if (widget.offerPin) ...[
+              const SizedBox(height: AppSpacing.xl),
+              _LockToggle(
+                value: _lockWithPin,
+                onChanged: (value) => setState(() => _lockWithPin = value),
+              ),
+            ],
             const SizedBox(height: AppSpacing.xxl),
             FilledButton(onPressed: _submit, child: Text(widget.actionLabel)),
           ],
         ),
       ),
+    ),
+  );
+}
+
+/// Opt-in row for putting a PIN on a diary as it is created.
+///
+/// States the cost up front rather than after the fact: a diary that only
+/// exists on this phone has nothing behind it to reset a forgotten PIN from.
+class _LockToggle extends StatelessWidget {
+  const _LockToggle({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(
+      AppSpacing.lg,
+      AppSpacing.sm,
+      AppSpacing.sm,
+      AppSpacing.sm,
+    ),
+    decoration: BoxDecoration(
+      color: value ? AppColors.softLavender : AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      border: Border.all(
+        color: value
+            ? AppColors.primary.withValues(alpha: 0.25)
+            : AppColors.outline,
+      ),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Lock with a PIN',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value
+                    ? 'You will pick a $diaryPinLength-digit PIN next. Keep it '
+                          'somewhere safe — a forgotten PIN cannot be reset.'
+                    : 'Ask for a $diaryPinLength-digit PIN before this diary '
+                          'opens.',
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 12.5,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Switch(value: value, onChanged: onChanged),
+      ],
     ),
   );
 }

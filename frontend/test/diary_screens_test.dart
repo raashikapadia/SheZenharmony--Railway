@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shezen_harmony/features/auth/application/auth_provider.dart';
 import 'package:shezen_harmony/core/theme/app_theme.dart';
 import 'package:shezen_harmony/features/diary/data/diary.dart';
+import 'package:shezen_harmony/features/diary/data/diary_lock.dart';
 import 'package:shezen_harmony/features/diary/data/diary_storage.dart';
+import 'package:shezen_harmony/features/diary/data/diary_tombstone.dart';
 import 'package:shezen_harmony/features/diary/presentation/diary_library_screen.dart';
 
 void main() {
@@ -12,10 +16,15 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    // Signed out, so the screen stays on the device copy and never reaches for
+    // the network — these tests are about the local diary, not syncing.
     await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        home: DiaryLibraryScreen(storage: storage),
+      ChangeNotifierProvider<AuthProvider>(
+        create: (_) => AuthProvider(),
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: DiaryLibraryScreen(storage: storage),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -83,8 +92,21 @@ void main() {
   ) async {
     await pumpLibrary(tester, _MemoryDiaryStorage());
 
-    expect(find.text('Only on this phone'), findsOneWidget);
-    expect(find.textContaining('never sent to SheZen'), findsOneWidget);
+    expect(find.text('Yours, and kept for you'), findsOneWidget);
+    // Both halves of the promise: unreadable in our records, and it comes back.
+    expect(find.textContaining('stored scrambled'), findsOneWidget);
+    expect(find.textContaining('staff or admin screen'), findsOneWidget);
+    expect(find.textContaining('sign in again'), findsOneWidget);
+  });
+
+  testWidgets('the note no longer claims the diary stays on the phone', (
+    tester,
+  ) async {
+    // The diary is synced now, so the old wording would be a false promise.
+    await pumpLibrary(tester, _MemoryDiaryStorage());
+
+    expect(find.textContaining('never sent to SheZen'), findsNothing);
+    expect(find.textContaining('erased if you uninstall'), findsNothing);
   });
 
   testWidgets('a refused write reports the failure instead of pretending', (
@@ -119,6 +141,24 @@ class _MemoryDiaryStorage extends DiaryStorage {
   _MemoryDiaryStorage([List<Diary> initial = const []]) : saved = [...initial];
 
   List<Diary> saved;
+  List<DiaryTombstone> tombstones = [];
+
+  /// The student's PIN, kept in memory so these tests never reach for the
+  /// secure-storage plugin.
+  DiaryLockState? lockState;
+
+  @override
+  Future<DiaryLockState?> readLock() async => lockState;
+
+  @override
+  Future<void> writeLock(DiaryLockState state) async => lockState = state;
+
+  @override
+  Future<List<DiaryTombstone>> readTombstones() async => tombstones;
+
+  @override
+  Future<void> writeTombstones(List<DiaryTombstone> next) async =>
+      tombstones = [...next];
 
   @override
   Future<List<Diary>> readAll() async => saved;
@@ -134,6 +174,14 @@ class _FailingDiaryStorage extends DiaryStorage {
   @override
   Future<void> writeAll(List<Diary> diaries) async =>
       throw const DiaryStorageException('Could not save to this device.');
+
+  // Answered in memory so the test never reaches the secure-storage plugin;
+  // what is under test here is the refused write, not the PIN.
+  @override
+  Future<DiaryLockState?> readLock() async => null;
+
+  @override
+  Future<void> writeLock(DiaryLockState state) async {}
 }
 
 class _UnreadableDiaryStorage extends DiaryStorage {

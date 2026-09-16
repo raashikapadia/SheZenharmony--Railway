@@ -81,4 +81,17 @@ class StudentIdentity extends Model
     {
         return $this->hasMany(GratitudeEntry::class);
     }
+
+    public function diaries(): HasMany
+    {
+        return $this->hasMany(Diary::class);
+    }
+
+    /**
+     * The single PIN this student uses for every diary they lock.
+     */
+    public function diaryLock(): HasOne
+    {
+        return $this->hasOne(DiaryLock::class);
+    }
 }

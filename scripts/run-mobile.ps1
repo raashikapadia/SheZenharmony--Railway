@@ -85,8 +85,11 @@ function Test-AndroidBooted {
     $ErrorActionPreference = "Continue"
 
     $bootCompleted = (& $AdbPath -s $DeviceId shell getprop sys.boot_completed 2>$null | Out-String).Trim()
+    # Images built with debug.sf.nobootanimation=1 never start the bootanim
+    # service, so init.svc.bootanim stays empty instead of reaching "stopped".
+    # Only a still-"running" animation means Android has not finished booting.
     $bootAnimation = (& $AdbPath -s $DeviceId shell getprop init.svc.bootanim 2>$null | Out-String).Trim()
-    return ($bootCompleted -eq "1" -and $bootAnimation -eq "stopped")
+    return ($bootCompleted -eq "1" -and $bootAnimation -ne "running")
 }
 
 function Test-FlutterDetectsAndroid {
