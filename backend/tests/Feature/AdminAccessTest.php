@@ -20,6 +20,21 @@ class AdminAccessTest extends TestCase
         $this->get('/admin')->assertRedirect(route('admin.login'));
     }
 
+    public function test_admin_login_page_uses_the_split_visual_layout_without_changing_form_fields(): void
+    {
+        $this->get(route('admin.login'))
+            ->assertOk()
+            ->assertSee('admin-login-shell', false)
+            ->assertSee('admin-login-floral-logo', false)
+            ->assertSee('images/admin-login-floral-logo.png', false)
+            ->assertSee('admin-login-illustration', false)
+            ->assertSee('images/admin-login-workspace-illustration-transparent.png', false)
+            ->assertDontSee('Forgot your password?')
+            ->assertSee('name="email"', false)
+            ->assertSee('name="password"', false)
+            ->assertSee('name="remember"', false);
+    }
+
     public function test_admin_can_sign_in_and_view_dashboard(): void
     {
         $admin = User::factory()->create([
