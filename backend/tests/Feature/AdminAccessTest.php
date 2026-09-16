@@ -28,7 +28,7 @@ class AdminAccessTest extends TestCase
             ->assertSee('admin-login-floral-logo', false)
             ->assertSee('images/admin-login-floral-logo.png', false)
             ->assertSee('admin-login-illustration', false)
-            ->assertSee('images/admin-login-workspace-illustration-transparent.png', false)
+            ->assertSee('images/admin-login-office.png', false)
             ->assertDontSee('Forgot your password?')
             ->assertSee('name="email"', false)
             ->assertSee('name="password"', false)

@@ -20,13 +20,11 @@ enum AssessmentLoadState { loading, loaded, error }
 /// anyone laying them out by hand.
 class AssessmentProvider extends ChangeNotifier {
   AssessmentProvider({
-    required ApiService apiService,
+    required this._apiService,
     required String token,
     this.closeApiServiceOnDispose = false,
-    QuestionnairePager pager = const QuestionnairePager(),
-  }) : _apiService = apiService,
-       _token = token,
-       _pager = pager;
+    this._pager = const QuestionnairePager(),
+  }) : _token = token;
 
   final ApiService _apiService;
   final String _token;

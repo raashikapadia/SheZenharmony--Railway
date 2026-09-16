@@ -43,10 +43,8 @@
             </div>
         </div>
 
-        <aside class="admin-login-visual-pane" aria-label="Administrator dashboard illustration">
-            <span class="admin-login-orb admin-login-orb-one" aria-hidden="true"></span>
-            <span class="admin-login-orb admin-login-orb-two" aria-hidden="true"></span>
-            <img class="admin-login-illustration" src="{{ asset('images/admin-login-workspace-illustration-transparent.png') }}" alt="Administrator working at a wellbeing platform desk">
+        <aside class="admin-login-visual-pane admin-login-visual-pane--office" aria-label="Administrator dashboard illustration">
+            <img class="admin-login-illustration" src="{{ asset('images/admin-login-office.png') }}" alt="Two colleagues reviewing a wellbeing dashboard in a calm office">
         </aside>
     </section>
 </main>
