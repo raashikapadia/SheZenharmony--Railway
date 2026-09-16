@@ -1,17 +1,21 @@
 @extends('layouts.admin')
 @section('title', 'Dashboard')
 @section('body')
-<main class="content">
-    <div class="page-intro"><div><h2>Platform overview</h2><p class="muted">A privacy-conscious view of the current SheZen Harmony prototype.</p></div></div>
+<main class="content admin-dashboard-content">
+    <div class="page-intro"><div><div class="eyebrow">Welcome back</div><h2>Dashboard</h2><p class="muted">Logged in as {{ auth()->user()->name }} &nbsp;·&nbsp; SheZen Harmony administration</p></div></div>
     <section class="cards" aria-label="Platform totals">
-        <article class="card"><div class="muted">Registered Students</div><div class="metric">{{ $studentCount }}</div><div class="metric-note">Across all account statuses</div></article>
-        <article class="card"><div class="muted">Assessments Completed</div><div class="metric">{{ $assessmentCount }}</div><div class="metric-note">Across all questionnaire versions</div></article>
-        <article class="card"><div class="muted">Active Questions</div><div class="metric">{{ $questionCount }}</div><div class="metric-note">Available for questionnaires</div></article>
-        <article class="card"><div class="muted">Active Support Content</div><div class="metric">{{ $interventionCount }}</div><div class="metric-note">Guided activities and reflections available</div></article>
-        <a class="card" href="#" data-coming-soon="Assessments Due" style="text-decoration:none"><div class="muted">Assessments Due</div><div class="metric">—</div><div class="metric-note">Feature still in progress</div></a>
-        <a class="card" href="#" data-coming-soon="Intervention Sessions" style="text-decoration:none"><div class="muted">Intervention Sessions</div><div class="metric">—</div><div class="metric-note">Feature still in progress</div></a>
-        <a class="card" href="#" data-coming-soon="Notifications"><div class="muted">Notifications Sent</div><div class="metric">—</div><div class="metric-note">Feature still in progress</div></a>
-        <a class="card" href="#" data-coming-soon="Deletion Requests"><div class="muted">Deletion Requests</div><div class="metric">—</div><div class="metric-note">Feature still in progress</div></a>
+        <article class="card dashboard-card"><span class="tile-icon" aria-hidden="true"><i data-lucide="users"></i></span><div class="muted">Registered Students</div><div class="metric">{{ $studentCount }}</div><div class="metric-note">Across all account statuses</div></article>
+        <article class="card dashboard-card"><span class="tile-icon" aria-hidden="true"><i data-lucide="file-check-2"></i></span><div class="muted">Assessments Completed</div><div class="metric">{{ $assessmentCount }}</div><div class="metric-note">Across all questionnaire versions</div></article>
+        <article class="card dashboard-card"><span class="tile-icon" aria-hidden="true"><i data-lucide="circle-help"></i></span><div class="muted">Active Questions</div><div class="metric">{{ $questionCount }}</div><div class="metric-note">Available for questionnaires</div></article>
+        <article class="card dashboard-card"><span class="tile-icon" aria-hidden="true"><i data-lucide="book-open"></i></span><div class="muted">Active Support Content</div><div class="metric">{{ $interventionCount }}</div><div class="metric-note">Guided activities and reflections available</div></article>
+        <a class="card dashboard-card" href="#" data-coming-soon="Assessments Due"><span class="tile-icon" aria-hidden="true"><i data-lucide="calendar-days"></i></span><div class="muted">Assessments Due</div><div class="metric">—</div><div class="metric-note">Feature still in progress</div></a>
+        <a class="card dashboard-card" href="#" data-coming-soon="Intervention Sessions"><span class="tile-icon" aria-hidden="true"><i data-lucide="heart"></i></span><div class="muted">Intervention Sessions</div><div class="metric">—</div><div class="metric-note">Feature still in progress</div></a>
+        <a class="card dashboard-card" href="#" data-coming-soon="Notifications"><span class="tile-icon" aria-hidden="true"><i data-lucide="bell"></i></span><div class="muted">Notifications Sent</div><div class="metric">—</div><div class="metric-note">Feature still in progress</div></a>
+        <a class="card dashboard-card" href="#" data-coming-soon="Deletion Requests"><span class="tile-icon" aria-hidden="true"><i data-lucide="trash-2"></i></span><div class="muted">Deletion Requests</div><div class="metric">—</div><div class="metric-note">Feature still in progress</div></a>
+    </section>
+    <section class="dashboard-lower">
+        <article class="panel"><div class="dashboard-panel-title"><i data-lucide="clock-3"></i>Recent Activity</div><p class="dashboard-panel-subtitle">Latest actions across the platform</p><ul class="activity-list"><li><span class="activity-dot"></span>Dashboard data refreshed <time>Just now</time></li><li><span class="activity-dot"></span>Questionnaire management available <time>Today</time></li><li><span class="activity-dot"></span>Support content available <time>Today</time></li></ul></article>
+        <article class="panel"><div class="dashboard-panel-title"><i data-lucide="zap"></i>Quick Actions</div><p class="dashboard-panel-subtitle">Common tasks</p><div class="quick-actions"><a class="quick-action" href="{{ route('admin.questionnaires.index') }}"><i data-lucide="file-text"></i><span>Manage Questionnaires</span><i data-lucide="chevron-right"></i></a><a class="quick-action" href="{{ route('admin.interventions.index') }}"><i data-lucide="circle-plus"></i><span>Add Support Content</span><i data-lucide="chevron-right"></i></a><a class="quick-action" href="{{ route('admin.students.index') }}"><i data-lucide="users-round"></i><span>View Registered Students</span><i data-lucide="chevron-right"></i></a><a class="quick-action" href="{{ route('admin.student-stress.analytics') }}"><i data-lucide="chart-column"></i><span>View Reports</span><i data-lucide="chevron-right"></i></a></div></article>
     </section>
 </main>
 @endsection
