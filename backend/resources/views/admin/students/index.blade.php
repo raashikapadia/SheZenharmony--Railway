@@ -9,6 +9,16 @@
                 <p class="muted">Pseudonymous student accounts. Authentication names and emails are not shown here.</p>
             </div>
         </div>
+        <form method="GET" class="field-row" style="margin-bottom:18px">
+            <select name="country"><option value="">All countries</option>@foreach($countries as $value)<option value="{{ $value }}" @selected(($filters['country'] ?? '') === $value)>{{ $value }}</option>@endforeach</select>
+            <select name="gender"><option value="">All genders</option>@foreach($genders as $value)<option value="{{ $value }}" @selected(($filters['gender'] ?? '') === $value)>{{ $value }}</option>@endforeach</select>
+            <select name="employment"><option value="">All employment</option>@foreach($employments as $value)<option value="{{ $value }}" @selected(($filters['employment'] ?? '') === $value)>{{ $value }}</option>@endforeach</select>
+            <select name="baseline"><option value="">All baseline statuses</option><option value="completed" @selected(($filters['baseline'] ?? '') === 'completed')>Completed</option><option value="required" @selected(($filters['baseline'] ?? '') === 'required')>Required</option></select>
+            <div class="student-filter-actions" style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+                <button class="button" type="submit">Filter</button>
+                <a class="button button-secondary" href="{{ route('admin.students.index') }}">Reset filters</a>
+            </div>
+        </form>
         <div class="table-wrap">
             <table>
                 <thead><tr><th>SheZen ID</th><th>Status</th><th>Country</th><th>Gender</th><th>Employment</th><th>Baseline</th><th>Registered</th><th></th></tr></thead>

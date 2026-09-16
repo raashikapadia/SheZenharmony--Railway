@@ -45,10 +45,10 @@ class AdminQuestionnairePagesRenderTest extends TestCase
 
         $this->actingAs($admin);
 
-        // Assessment has two entries: Questionnaire Management + Stress Level Assessment.
+        // Assessment has two entries: Questionnaire Management + Assessments.
         $this->get(route('admin.questionnaires.index'))->assertOk()
             ->assertSee('Questionnaire Management')
-            ->assertSee('Stress Level Assessment')
+            ->assertSee('Assessments')
             ->assertDontSee('Question Builder');
 
         $this->get(route('admin.questionnaires.create'))->assertOk();

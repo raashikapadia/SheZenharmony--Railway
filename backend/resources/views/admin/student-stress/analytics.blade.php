@@ -1,5 +1,5 @@
 @extends('layouts.admin')
-@section('title', 'Analytics · Stress Level Assessment')
+@section('title', 'Analytics · Assessments')
 @section('body')
 <main class="content stack">
     @include('admin.student-stress._nav')
