@@ -6,9 +6,7 @@
     <h1>{{ $configuration['title'] }}</h1>
     @if(session('status'))<div class="alert success">{{ session('status') }}</div>@endif
     @if($isGamesSection)
-        <div class="cards">
-            <article class="card"><div class="muted">Total Games</div><div class="metric">Existing</div><div class="metric-note">Existing games are unchanged</div></article>
-        </div>
+        <section class="panel"><div class="panel-head"><h2>Future Development</h2><p class="muted">Games administration will be available in a future update.</p></div></section>
     @else
     <div class="page-intro">
         <div>
