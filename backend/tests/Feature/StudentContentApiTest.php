@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Intervention;
+use App\Models\Quiz;
+use App\Models\QuizQuestion;
 use App\Models\WellbeingActivity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -33,6 +35,38 @@ class StudentContentApiTest extends TestCase
             ->assertJsonPath('data.0.title', 'Grounding pause')
             ->assertJsonMissingPath('data.0.id')
             ->assertJsonMissingPath('data.0.created_by_user_id');
+    }
+
+    public function test_active_admin_quizzes_are_available_to_the_student_app(): void
+    {
+        $activeQuiz = Quiz::query()->create([
+            'name' => 'Grounding check-in',
+            'category' => 'Wellbeing',
+            'description' => 'A short check-in.',
+            'status' => 'active',
+        ]);
+        QuizQuestion::query()->create([
+            'quiz_id' => $activeQuiz->id,
+            'question_text' => 'Which pace feels comfortable?',
+            'option_a' => 'A gentle pace',
+            'option_b' => 'No pause',
+            'option_c' => 'As fast as possible',
+            'option_d' => 'Not sure',
+            'correct_option' => 'a',
+            'sort_order' => 1,
+        ]);
+        Quiz::query()->create([
+            'name' => 'Draft quiz',
+            'category' => 'Wellbeing',
+            'status' => 'inactive',
+        ]);
+
+        $this->getJson('/api/v1/positive-engagement/quizzes')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Grounding check-in')
+            ->assertJsonPath('data.0.questions.0.question_text', 'Which pace feels comfortable?')
+            ->assertJsonMissing(['name' => 'Draft quiz']);
     }
 
     public function test_interventions_can_be_filtered_for_positive_engagement(): void

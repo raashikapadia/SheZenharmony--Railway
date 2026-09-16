@@ -9,12 +9,13 @@
     <form method="POST" action="{{ $intervention->exists ? route($configuration['route'].'.update', $intervention) : route($configuration['route'].'.store') }}">
         @csrf
         @if($intervention->exists) @method('PUT') @endif
-        <label for="title">Title</label>
+        <label for="title">{{ $configuration['route'] === 'admin.positive-engagement.games' ? 'Game name' : 'Title' }}</label>
         <input id="title" name="title" type="text" value="{{ old('title', $intervention->title) }}" required>
-        <label for="description">Short description</label>
+        <label for="description">{{ $configuration['route'] === 'admin.positive-engagement.games' ? 'What students see' : 'Short description' }}</label>
         <textarea id="description" name="description">{{ old('description', $intervention->description) }}</textarea>
-        <label for="instructions">Student instructions</label>
+        <label for="instructions">{{ $configuration['route'] === 'admin.positive-engagement.games' ? 'How students interact' : 'Student instructions' }}</label>
         <textarea id="instructions" name="instructions">{{ old('instructions', $intervention->instructions) }}</textarea>
+        @if($configuration['route'] !== 'admin.positive-engagement.games')
         <div class="field-row">
             <div>
                 <label for="content_type">Content type</label>
@@ -31,7 +32,11 @@
         </div>
         <label for="external_url">Related URL (optional)</label>
         <input id="external_url" name="external_url" type="url" value="{{ old('external_url', $intervention->external_url) }}">
+        @else
+            <input type="hidden" name="content_type" value="positive_engagement">
+        @endif
 
+        @if($configuration['route'] !== 'admin.positive-engagement.games')
         @php($selected = collect(old('recommended_band_ids', $selectedBandIds))->map(fn ($id) => (int) $id)->all())
         <fieldset style="margin:14px 0;border:1px solid var(--line,#dfe7e6);border-radius:12px;padding:12px 14px">
             <legend style="padding:0 6px">Recommended stress levels</legend>
@@ -44,8 +49,9 @@
             @endforelse
             <p class="muted" style="margin-top:6px">Tick “All levels” to clear specific bands. Only published items reach students.</p>
         </fieldset>
+        @endif
 
-        <label class="remember"><input name="is_active" type="checkbox" value="1" @checked(old('is_active', $intervention->exists ? $intervention->is_active : true))> Published (visible to students)</label>
+        <label class="remember"><input name="is_active" type="checkbox" value="1" @checked(old('is_active', $intervention->exists ? $intervention->is_active : true))> {{ $configuration['route'] === 'admin.positive-engagement.games' ? 'Published (visible in the student app)' : 'Published (visible to students)' }}</label>
         <div class="actions"><button class="button" type="submit">Save {{ strtolower($configuration['singular']) }}</button><a class="button button-secondary" href="{{ route($configuration['route'].'.index') }}">Cancel</a></div>
     </form>
 </main>

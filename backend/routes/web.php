@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\AdminAuthController;
 use App\Http\Controllers\Web\AdminChatBuddyController;
 use App\Http\Controllers\Web\AdminDashboardController;
+use App\Http\Controllers\Web\AdminGamesController;
 use App\Http\Controllers\Web\AdminHelplineResourceController;
 use App\Http\Controllers\Web\AdminInterventionController;
 use App\Http\Controllers\Web\AdminPersonalGuidanceController;
@@ -82,6 +83,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         ->except(['show'])
         ->parameters(['games-quizzes' => 'quiz'])
         ->names('positive-engagement.games-quizzes');
+    Route::resource('positive-engagement/games', AdminGamesController::class)
+        ->except(['show'])
+        ->parameters(['games' => 'intervention'])
+        ->names('positive-engagement.games');
     Route::resource('positive-engagement', AdminPositiveEngagementController::class)
         ->except(['show'])
         ->parameters(['positive-engagement' => 'intervention']);

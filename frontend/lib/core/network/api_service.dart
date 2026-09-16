@@ -378,6 +378,63 @@ class ApiService {
         .toList();
   }
 
+  Future<List<PositiveContent>> games() async {
+    const builtInGames = [
+      PositiveContent(
+        title: 'Breathing Challenge',
+        description: 'Follow a simple breathing rhythm and take a calm moment.',
+        contentType: 'positive_engagement',
+        instructions: '',
+        externalUrl: '',
+      ),
+      PositiveContent(
+        title: 'Gratitude Jar',
+        description:
+            'Write down something positive and add it to your gratitude jar.',
+        contentType: 'positive_engagement',
+        instructions: '',
+        externalUrl: '',
+      ),
+      PositiveContent(
+        title: 'Memory Spark',
+        description:
+            'Gently tap the sparks as they appear and practise noticing the moment.',
+        contentType: 'positive_engagement',
+        instructions: '',
+        externalUrl: '',
+      ),
+      PositiveContent(
+        title: 'Mindful Memory',
+        description:
+            'Match peaceful symbols and practise your memory mindfully.',
+        contentType: 'positive_engagement',
+        instructions: '',
+        externalUrl: '',
+      ),
+    ];
+
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/v1/interventions',
+    ).replace(queryParameters: {'content_type': 'positive_engagement'});
+    final List<PositiveContent> games;
+    try {
+      final body = await _getPublicJson(uri);
+      games = (body['data'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(PositiveContent.fromJson)
+          .toList();
+    } on ApiException {
+      return [...builtInGames];
+    }
+    final existingTitles = games.map((game) => game.title).toSet();
+
+    for (final game in builtInGames) {
+      if (!existingTitles.contains(game.title)) games.add(game);
+    }
+
+    return games;
+  }
+
   Future<List<ManagedQuiz>> managedQuizzes() async {
     final body = await _getPublicJson(
       Uri.parse('${ApiConfig.baseUrl}/v1/positive-engagement/quizzes'),

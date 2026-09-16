@@ -1,14 +1,13 @@
 @extends('layouts.admin')
-@section('title', 'Games & Quizzes')
+@section('title', 'Quizzes')
 @section('body')
 <main class="content">
     @if(session('status'))<div class="status">{{ session('status') }}</div>@endif
     <div class="page-intro">
-        <div><h1>Games & Quizzes</h1><p class="lede">Manage quizzes independently from the existing student games.</p></div>
+        <div><h1>Quizzes</h1><p class="lede">Manage quizzes independently from the existing student games.</p></div>
         <a class="button" href="{{ route('admin.positive-engagement.games-quizzes.create') }}">+ Add quiz</a>
     </div>
     <div class="cards" style="margin-bottom:20px">
-        <article class="card"><div class="muted">Total Games</div><div class="metric">Existing</div><div class="metric-note">Existing games are unchanged</div></article>
         <article class="card"><div class="muted">Total Quizzes</div><div class="metric">{{ $stats['totalQuizzes'] }}</div></article>
         <article class="card"><div class="muted">Active Quizzes</div><div class="metric">{{ $stats['activeQuizzes'] }}</div></article>
         <article class="card"><div class="muted">Quiz Questions</div><div class="metric">{{ $stats['totalQuestions'] }}</div></article>

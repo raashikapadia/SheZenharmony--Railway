@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/application/auth_provider.dart';
+import '../../data/support_content.dart';
 import '../../data/managed_quiz.dart';
 import 'gratitude_jar_screen.dart';
 import 'mindful_spark_screen.dart';
@@ -25,12 +26,16 @@ class GamesQuizzesScreen extends StatefulWidget {
 class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
   final GlobalKey _quizzesKey = GlobalKey();
   late final ApiService _api;
+  late Future<List<PositiveContent>> _games;
   late Future<List<ManagedQuiz>> _quizzes;
 
   @override
   void initState() {
     super.initState();
     _api = ApiService();
+    _games = widget.focus == GamesQuizzesSection.games
+        ? _api.games()
+        : Future.value(const <PositiveContent>[]);
     _quizzes = widget.focus == GamesQuizzesSection.quizzes
         ? _api.managedQuizzes()
         : Future.value(const <ManagedQuiz>[]);
@@ -130,72 +135,31 @@ class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
 
                 const SizedBox(height: 14),
 
-                // Breathing Challenge
-                _GameCard(
-                  icon: Icons.air_rounded,
-                  title: 'Breathing Challenge',
-                  description:
-                      'Follow a simple breathing rhythm and take a calm moment.',
-                  color: AppColors.softSage,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const BreathingGameScreen(),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 20),
-
-                // Gratitude Jar
-                _GameCard(
-                  icon: Icons.favorite_rounded,
-                  title: 'Gratitude Jar',
-                  description:
-                      'Write down something positive and add it to your gratitude jar.',
-                  color: AppColors.softBlush,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const GratitudeJarScreen(),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 20),
-
-                // Mindful Spark
-                _GameCard(
-                  icon: Icons.auto_awesome_rounded,
-                  title: 'Mindful Spark',
-                  description:
-                      'Gently tap the sparks as they appear and practise noticing the moment.',
-                  color: AppColors.softLavender,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const MindfulSparkScreen(),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 20),
-
-                // Mindful Memory
-                _GameCard(
-                  icon: Icons.psychology_outlined,
-                  title: 'Mindful Memory',
-                  description:
-                      'Match peaceful symbols and practise your memory mindfully.',
-                  color: AppColors.softSage,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const MindfulMemoryScreen(),
-                      ),
+                FutureBuilder<List<PositiveContent>>(
+                  future: _games,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError ||
+                        (snapshot.data ?? const []).isEmpty) {
+                      return const _QuizNotice(
+                        message: 'No games are available right now.',
+                      );
+                    }
+                    return Column(
+                      children: [
+                        for (final game in snapshot.data!) ...[
+                          _GameCard(
+                            icon: _gameIcon(game.title),
+                            title: game.title,
+                            description: game.description,
+                            color: _gameColor(game.title),
+                            onTap: () => _openGame(game),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      ],
                     );
                   },
                 ),
@@ -267,6 +231,30 @@ class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
         ),
       ),
     );
+  }
+
+  IconData _gameIcon(String title) => switch (title) {
+    'Breathing Challenge' => Icons.air_rounded,
+    'Gratitude Jar' => Icons.favorite_rounded,
+    'Memory Spark' => Icons.auto_awesome_rounded,
+    _ => Icons.psychology_outlined,
+  };
+
+  Color _gameColor(String title) => switch (title) {
+    'Gratitude Jar' => AppColors.softBlush,
+    'Memory Spark' => AppColors.softLavender,
+    _ => AppColors.softSage,
+  };
+
+  void _openGame(PositiveContent game) {
+    final Widget screen = switch (game.title) {
+      'Breathing Challenge' => const BreathingGameScreen(),
+      'Gratitude Jar' => const GratitudeJarScreen(),
+      'Memory Spark' => const MindfulSparkScreen(),
+      'Mindful Memory' => const MindfulMemoryScreen(),
+      _ => const MindfulMemoryScreen(),
+    };
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 }
 

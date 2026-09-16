@@ -2,7 +2,7 @@
 @section('title', $quiz->exists ? 'Edit Quiz' : 'Add Quiz')
 @section('body')
 <main class="content">
-    <a class="backlink" href="{{ route('admin.positive-engagement.games-quizzes.index') }}">← Games &amp; Quizzes</a>
+    <a class="backlink" href="{{ route('admin.positive-engagement.games-quizzes.index') }}">← Games & Quizzes</a>
     <h1>{{ $quiz->exists ? 'Edit quiz' : 'Add quiz' }}</h1>
     <p class="lede">Quiz content here is separate from questionnaire and stress-management content.</p>
     @if($errors->any())<div class="errors"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif

@@ -169,6 +169,34 @@ class DevelopmentSeeder extends Seeder
                     'content_type' => 'positive_engagement',
                     'instructions' => 'Think of three moments that felt helpful, peaceful, or simply okay today. They can be very small.',
                 ],
+                [
+                    'title' => 'Breathing Challenge',
+                    'slug' => 'breathing-challenge',
+                    'description' => 'Follow a simple breathing rhythm and take a calm moment.',
+                    'content_type' => 'positive_engagement',
+                    'instructions' => null,
+                ],
+                [
+                    'title' => 'Gratitude Jar',
+                    'slug' => 'gratitude-jar',
+                    'description' => 'Write down something positive and add it to your gratitude jar.',
+                    'content_type' => 'positive_engagement',
+                    'instructions' => null,
+                ],
+                [
+                    'title' => 'Memory Spark',
+                    'slug' => 'memory-spark',
+                    'description' => 'Gently tap the sparks as they appear and practise noticing the moment.',
+                    'content_type' => 'positive_engagement',
+                    'instructions' => null,
+                ],
+                [
+                    'title' => 'Mindful Memory',
+                    'slug' => 'mindful-memory',
+                    'description' => 'Match peaceful symbols and practise your memory mindfully.',
+                    'content_type' => 'positive_engagement',
+                    'instructions' => null,
+                ],
                 // Short motivational messages shown under Positive Engagement.
                 // The title carries the whole message; admins add, edit and
                 // remove these from /admin/positive-engagement.

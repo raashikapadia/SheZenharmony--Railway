@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Intervention;
+use App\Models\Quiz;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -18,35 +19,34 @@ class AdminPositiveEngagementTest extends TestCase
         $this->actingAs($admin)->get(route('admin.positive-engagement.create'))
             ->assertOk()
             ->assertDontSee('value="affirmation"', false)
-            ->assertSee('value="quiz"', false)
             ->assertSee('value="motivation"', false)
-            ->assertSee('value="positive_engagement"', false)
+            ->assertDontSee('value="positive_engagement"', false)
             ->assertDontSee('value="journaling"', false);
 
         $this->actingAs($admin)->post(route('admin.positive-engagement.store'), [
-            'title' => 'A kinder inner voice quiz',
-            'description' => 'Choose the fairest response.',
-            'content_type' => 'quiz',
+            'title' => 'Daily motivation',
+            'description' => 'Try one positive action today.',
+            'content_type' => 'motivation',
             'instructions' => 'Pick the response you would offer a friend.',
             'is_active' => '1',
             'all_levels' => '1',
         ])->assertRedirect(route('admin.positive-engagement.index'));
 
-        $item = Intervention::query()->where('title', 'A kinder inner voice quiz')->sole();
+        $item = Intervention::query()->where('title', 'Daily motivation')->sole();
 
         $this->actingAs($admin)->get(route('admin.positive-engagement.index'))
             ->assertOk()
-            ->assertSee('A kinder inner voice quiz')
+            ->assertSee('Daily motivation')
             ->assertSee('Published');
 
         $this->getJson('/api/v1/interventions?content_type=quiz,motivation,positive_engagement')
             ->assertOk()
-            ->assertJsonPath('data.0.title', 'A kinder inner voice quiz')
-            ->assertJsonPath('data.0.content_type', 'quiz');
+            ->assertJsonPath('data.0.title', 'Daily motivation')
+            ->assertJsonPath('data.0.content_type', 'motivation');
 
         $this->actingAs($admin)->put(route('admin.positive-engagement.update', $item), [
-            'title' => 'Daily motivation',
-            'description' => 'Try one positive action today.',
+            'title' => 'A calmer inner voice',
+            'description' => 'Try one kind thought today.',
             'content_type' => 'motivation',
             'instructions' => 'Choose one small achievable action.',
             'is_active' => '1',
@@ -55,7 +55,7 @@ class AdminPositiveEngagementTest extends TestCase
 
         $this->assertDatabaseHas('interventions', [
             'id' => $item->id,
-            'title' => 'Daily motivation',
+            'title' => 'A calmer inner voice',
             'content_type' => 'motivation',
             'is_active' => true,
         ]);
@@ -107,6 +107,25 @@ class AdminPositiveEngagementTest extends TestCase
             'id' => $legacyAffirmation->id,
             'content_type' => 'affirmation',
         ]);
+    }
+
+    public function test_admin_quiz_is_available_to_the_student_app_when_active(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAs($admin)->post(route('admin.positive-engagement.games-quizzes.store'), [
+            'name' => 'Grounding check-in',
+            'category' => 'Wellbeing',
+            'description' => 'A short check-in.',
+            'status' => 'active',
+        ])->assertRedirect();
+
+        $quiz = Quiz::query()->where('name', 'Grounding check-in')->sole();
+
+        $this->getJson('/api/v1/positive-engagement/quizzes')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $quiz->id)
+            ->assertJsonPath('data.0.name', 'Grounding check-in');
     }
 
     public function test_positive_engagement_admin_routes_remain_protected(): void

@@ -15,9 +15,7 @@ class AdminPositiveEngagementController extends AdminInterventionController
             'empty' => 'No positive engagement content configured.',
             'studentSection' => 'Positive Engagement',
             'contentTypes' => [
-                'quiz' => 'Quiz / mini-game',
                 'motivation' => 'Motivational message (short — title is the message)',
-                'positive_engagement' => 'Other positive activity',
             ],
         ];
     }

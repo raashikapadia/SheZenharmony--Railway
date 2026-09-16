@@ -100,7 +100,7 @@ class _MindfulSparkScreenState extends State<MindfulSparkScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mindful Spark')),
+      appBar: AppBar(title: const Text('Memory Spark')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -110,7 +110,7 @@ class _MindfulSparkScreenState extends State<MindfulSparkScreen> {
               // TITLE
               // ------------------------------------------------
               Text(
-                'Mindful Spark',
+                'Memory Spark',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
