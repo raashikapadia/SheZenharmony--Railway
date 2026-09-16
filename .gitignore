@@ -29,6 +29,8 @@ frontend/.env.*
 **/*firebase*.json
 **/*private*.key
 **/*.pem
+# Public CA certificate for the shared Aiven MySQL (no private key; safe to commit).
+!backend/certs/aiven-ca.pem
 **/*.key
 **/.env
 **/.env.*
