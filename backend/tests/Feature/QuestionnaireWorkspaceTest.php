@@ -50,7 +50,7 @@ class QuestionnaireWorkspaceTest extends TestCase
             ->assertSee('All questionnaires (1)')
             ->assertSee('SheZen Wellbeing Questionnaire')
             ->assertSee('v3')
-            ->assertSee('Trash (0)');
+            ->assertSee('Open Trash');
 
         // The numeric breakdown lives on Analytics.
         $this->actingAs($admin)->get(route('admin.questionnaires.analytics'))

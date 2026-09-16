@@ -191,7 +191,7 @@
         .admin-login-visual-pane--office .admin-login-illustration{position:absolute;inset:0;width:100%;height:100%;max-height:none;object-fit:cover;filter:none}
     </style>
 </head>
-<body>
+<body class="{{ request()->routeIs('admin.questionnaires.index') ? 'questionnaire-index-page' : '' }}">
 @auth
 <div class="admin-shell">
     <aside class="sidebar">
@@ -212,13 +212,17 @@
 @else
 @yield('body')
 @endauth
-<script src="https://unpkg.com/lucide@0.468.0"></script>
+<script src="https://unpkg.com/lucide@0.468.0" defer></script>
 <script>
-lucide.createIcons({ attrs: { 'stroke-width': 1.8 } });
-document.querySelectorAll('[data-coming-soon]').forEach(function (link) {
-    link.addEventListener('click', function (event) {
-        event.preventDefault();
-        window.alert(link.dataset.comingSoon + ' is still in progress.');
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons({ attrs: { 'stroke-width': 1.8 } });
+    }
+    document.querySelectorAll('[data-coming-soon]').forEach(function (link) {
+        link.addEventListener('click', function (event) {
+            event.preventDefault();
+            window.alert(link.dataset.comingSoon + ' is still in progress.');
+        });
     });
 });
 </script>

@@ -33,7 +33,7 @@ class ResultScaleTest extends TestCase
         $this->assertSame([10, 50], $questionnaire->resultScale());
         $this->assertSame(0, $questionnaire->scoreBands()->count());
 
-        $this->actingAs($admin)->get(route('admin.questionnaires.details', $questionnaire))
+        $this->actingAs($admin)->get(route('admin.questionnaires.scoring', $questionnaire))
             ->assertOk()
             ->assertSee('10–50')
             ->assertSee('No result ranges yet — add ranges that together cover 10–50.');
