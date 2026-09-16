@@ -24,7 +24,7 @@ class AdminStudentStressController extends Controller
     /** Stress Level Assessment → Overview tab: a compact live snapshot. */
     public function overview(AssessmentAnalytics $analytics): View
     {
-        return view('admin.student-stress.overview', ['a' => $analytics->summary()]);
+        return view('admin.student-stress.overview', ['a' => $analytics->overview()]);
     }
 
     public function index(Request $request): View
@@ -98,9 +98,11 @@ class AdminStudentStressController extends Controller
      */
     public function analytics(Request $request, AssessmentAnalytics $analytics): View
     {
+        $tab = $request->string('tab')->toString() ?: 'overall';
+
         return view('admin.student-stress.analytics', [
-            'a' => $analytics->summary(),
-            'tab' => $request->string('tab')->toString() ?: 'overall',
+            'a' => $analytics->forTab($tab),
+            'tab' => $tab,
             'lens' => 'stress',
         ]);
     }

@@ -24,6 +24,49 @@ class AssessmentAnalytics
     /** @return array<string, mixed> */
     public function summary(): array
     {
+        return [
+            ...$this->summaryData(),
+            'wellbeing_bands' => $this->wellbeingBandDistribution(),
+            'stress_bands' => $this->stressBandDistribution(),
+            'categories' => $this->categoryAverages(),
+            'questions' => $this->questionAverages(),
+            'by_questionnaire' => $this->perQuestionnaire(),
+            'demographics' => $this->demographics(),
+            'stress_vs_wellbeing' => $this->stressVsWellbeing(),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public function overview(): array
+    {
+        return [
+            ...$this->summaryData(),
+            'stress_bands' => $this->stressBandDistribution(),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public function forTab(string $tab): array
+    {
+        return match ($tab) {
+            'categories' => ['categories' => $this->categoryAverages()],
+            'questions' => ['questions' => $this->questionAverages()],
+            'demographics' => ['demographics' => $this->demographics()],
+            'vs' => ['stress_vs_wellbeing' => $this->stressVsWellbeing()],
+            'trends', 'factors', 'protective' => [],
+            'overall' => [
+                ...$this->summaryData(),
+                'wellbeing_bands' => $this->wellbeingBandDistribution(),
+                'stress_bands' => $this->stressBandDistribution(),
+                'by_questionnaire' => $this->perQuestionnaire(),
+            ],
+            default => $this->forTab('overall'),
+        };
+    }
+
+    /** @return array<string, mixed> */
+    private function summaryData(): array
+    {
         $completed = fn () => StressAssessment::query()->where('assessment_status', 'completed');
 
         $totalStarted = StressAssessment::query()->count();
@@ -41,13 +84,6 @@ class AssessmentAnalytics
                 'overall_percentage' => $this->round($completed()->whereNotNull('overall_percentage')->avg('overall_percentage')),
                 'stress_score' => $this->round($completed()->whereNotNull('stress_score')->avg('stress_score')),
             ],
-            'wellbeing_bands' => $this->wellbeingBandDistribution(),
-            'stress_bands' => $this->stressBandDistribution(),
-            'categories' => $this->categoryAverages(),
-            'questions' => $this->questionAverages(),
-            'by_questionnaire' => $this->perQuestionnaire(),
-            'demographics' => $this->demographics(),
-            'stress_vs_wellbeing' => $this->stressVsWellbeing(),
         ];
     }
 
@@ -67,14 +103,18 @@ class AssessmentAnalytics
     /** @return Collection<int, array{label: string, total: int}> */
     private function stressBandDistribution()
     {
-        return StressAssessment::query()->where('assessment_status', 'completed')
+        $dist = StressAssessment::query()->where('assessment_status', 'completed')
             ->whereNotNull('stress_result_band_id')
             ->selectRaw('stress_result_band_id, COUNT(*) AS total')
-            ->groupBy('stress_result_band_id')->pluck('total', 'stress_result_band_id')
-            ->map(fn ($total, $id) => [
-                'label' => StressScoreBand::query()->whereKey($id)->value('label') ?? '—',
-                'total' => (int) $total,
-            ])->values();
+            ->groupBy('stress_result_band_id')
+            ->pluck('total', 'stress_result_band_id');
+
+        $labels = StressScoreBand::query()->whereIn('id', $dist->keys())->pluck('label', 'id');
+
+        return $dist->map(fn ($total, $id) => [
+            'label' => $labels[$id] ?? 'Unbanded',
+            'total' => (int) $total,
+        ])->values();
     }
 
     private function categoryAverages()

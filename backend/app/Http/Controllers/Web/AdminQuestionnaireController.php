@@ -265,14 +265,15 @@ class AdminQuestionnaireController extends Controller
     /** Questionnaire Management → Analytics tab (with in-page sub-tabs). */
     public function analytics(Request $request, AssessmentAnalytics $analytics, QuestionnaireActivationService $activation): View
     {
+        $tab = $request->string('tab')->toString() ?: 'overall';
         $primary = $this->primaryQuestionnaire();
         $sections = $primary
             ? $primary->sections()->withCount('questions')->orderBy('position')->orderBy('id')->get()
             : collect();
 
         return view('admin.questionnaires.analytics', [
-            'a' => $analytics->summary(),
-            'tab' => $request->string('tab')->toString() ?: 'overall',
+            'a' => $analytics->forTab($tab),
+            'tab' => $tab,
             'lens' => 'wellbeing',
             'primary' => $primary,
             'structure' => $primary ? $this->workspaceStats($primary, $activation) : null,
