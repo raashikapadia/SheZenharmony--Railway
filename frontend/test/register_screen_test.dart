@@ -7,6 +7,7 @@ import 'package:shezen_harmony/features/auth/application/auth_provider.dart';
 import 'package:shezen_harmony/features/auth/data/auth_session.dart';
 import 'package:shezen_harmony/features/auth/data/auth_challenge.dart';
 import 'package:shezen_harmony/features/auth/presentation/register_screen.dart';
+import 'package:shezen_harmony/features/auth/presentation/survey_consent.dart';
 
 void main() {
   Widget screen({AuthProvider? provider}) => provider == null
@@ -85,38 +86,74 @@ void main() {
     await _advanceToPrivacy(tester);
 
     expect(find.text('Privacy & Consent'), findsOneWidget);
-    expect(find.byType(CheckboxListTile), findsOneWidget);
+    expect(find.text('Purpose of the survey'), findsOneWidget);
     expect(
-      tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
-      isFalse,
+      find.textContaining('female university students'),
+      findsOneWidget,
+    );
+    expect(find.text('Confidentiality'), findsOneWidget);
+    expect(find.text('Participation is voluntary.'), findsOneWidget);
+    expect(
+      find.textContaining('This survey is not a medical diagnosis.'),
+      findsOneWidget,
     );
     expect(
-      tester
-          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue'))
-          .onPressed,
-      isNull,
+      find.textContaining(SurveyConsentContent.consentQuestion),
+      findsOneWidget,
     );
+    expect(find.byKey(const Key('consent-yes')), findsOneWidget);
+    expect(find.byKey(const Key('consent-no')), findsOneWidget);
+    // The old checkbox-and-continue consent is gone: the only way forward
+    // is the explicit "Yes".
+    expect(find.byType(CheckboxListTile), findsNothing);
+    expect(find.widgetWithText(FilledButton, 'Continue'), findsNothing);
+    expect(find.text('Demographics'), findsOneWidget);
+    expect(find.text('Select date of birth'), findsNothing);
   });
 
-  testWidgets('privacy notice opens without losing entered account data', (
+  testWidgets('declining consent during registration closes the app', (
+    tester,
+  ) async {
+    var closed = 0;
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => AuthProvider(),
+        child: MaterialApp(
+          home: RegisterScreen(closeApp: () async => closed++),
+        ),
+      ),
+    );
+    await _advanceToPrivacy(tester);
+
+    final no = find.byKey(const Key('consent-no'));
+    await tester.ensureVisible(no);
+    await tester.tap(no);
+    await tester.pumpAndSettle();
+    expect(find.text('Leave SheZen Harmony?'), findsOneWidget);
+
+    // Changing their mind keeps them on the consent step, data intact, and
+    // still without a way into demographics other than "Yes".
+    await tester.tap(find.text('Go back'));
+    await tester.pumpAndSettle();
+    expect(closed, 0);
+    expect(find.text('Privacy & Consent'), findsOneWidget);
+    expect(find.text('Select date of birth'), findsNothing);
+
+    await tester.tap(no);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('consent-decline-confirm')));
+    // The step shows a busy state while the app closes, so settle by hand.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(closed, 1);
+    expect(find.text('Select date of birth'), findsNothing);
+  });
+
+  testWidgets('going back from consent keeps entered account data', (
     tester,
   ) async {
     await tester.pumpWidget(screen());
     await _advanceToPrivacy(tester);
-
-    final privacyNotice = find.text('Read full Privacy & Data Use');
-    await tester.ensureVisible(privacyNotice);
-    await tester.tap(privacyNotice);
-    await tester.pumpAndSettle();
-    expect(find.text('Information SheZen collects'), findsOneWidget);
-    expect(
-      find.textContaining('pseudonymised, not completely anonymous'),
-      findsOneWidget,
-    );
-    Navigator.of(
-      tester.element(find.text('Information SheZen collects')),
-    ).pop();
-    await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.arrow_back_rounded));
     await tester.pump();
@@ -141,19 +178,16 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    final api = _RegistrationApiService();
     final provider = AuthProvider(
-      apiService: _RegistrationApiService(),
+      apiService: api,
       storage: _MemoryStorage(),
     );
     await tester.pumpWidget(screen(provider: provider));
     await _advanceToPrivacy(tester);
-    final consent = find.byType(CheckboxListTile);
-    await tester.ensureVisible(consent);
-    await tester.tap(consent);
-    await tester.pump();
-    final privacyContinue = find.widgetWithText(FilledButton, 'Continue');
-    await tester.ensureVisible(privacyContinue);
-    await tester.tap(privacyContinue);
+    final yes = find.byKey(const Key('consent-yes'));
+    await tester.ensureVisible(yes);
+    await tester.tap(yes);
     await tester.pump();
     expect(find.text('Preferred language'), findsNothing);
     await _completeDemographics(tester);
@@ -168,9 +202,64 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Your SheZen profile is ready'), findsOneWidget);
-    expect(find.text('SZ-TESTIDENTITY'), findsOneWidget);
+    expect(find.text('SZ7K42P'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Continue'), findsOneWidget);
     expect(provider.hasCompletedRequiredAssessment, isFalse);
+    // "Yes" is what the backend records as the consent row.
+    expect(api.sentConsent, isTrue);
+    // Demographics reach the backend exactly as chosen; a fixed year of
+    // study carries no "Other" specification.
+    expect(api.sentDemographics?['country'], 'Fiji');
+    expect(api.sentDemographics?['year_of_study'], 'Year 3');
+    expect(api.sentDemographics?['year_of_study_detail'], isNull);
+    expect(api.sentDemographics?['date_of_birth'], isNotNull);
+  });
+
+  testWidgets('"Other" year of study must be specified before registering', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 740);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final api = _RegistrationApiService();
+    final provider = AuthProvider(
+      apiService: api,
+      storage: _MemoryStorage(),
+    );
+    await tester.pumpWidget(screen(provider: provider));
+    await _advanceToPrivacy(tester);
+    final yes = find.byKey(const Key('consent-yes'));
+    await tester.ensureVisible(yes);
+    await tester.tap(yes);
+    await tester.pump();
+    await _completeDemographics(tester);
+
+    final other = find.widgetWithText(ChoiceChip, 'Other').first;
+    await tester.ensureVisible(other);
+    await tester.tap(other);
+    await tester.pumpAndSettle();
+    final detail = find.byKey(const Key('year-of-study-detail'));
+    expect(detail, findsOneWidget);
+
+    final create = find.widgetWithText(FilledButton, 'Generate my SheZen ID');
+    await tester.ensureVisible(create);
+    await tester.tap(create);
+    await tester.pumpAndSettle();
+    expect(find.text('Please specify your year of study.'), findsOneWidget);
+    expect(api.sentDemographics, isNull);
+
+    await tester.ensureVisible(detail);
+    await tester.enterText(detail, 'Foundation programme');
+    await tester.ensureVisible(create);
+    await tester.tap(create);
+    await tester.pumpAndSettle();
+    expect(api.sentDemographics?['year_of_study'], 'Other');
+    expect(
+      api.sentDemographics?['year_of_study_detail'],
+      'Foundation programme',
+    );
   });
 }
 
@@ -208,17 +297,15 @@ Future<void> _completeDemographics(WidgetTester tester) async {
     await tester.pump();
   }
 
-  final countryField = find.byType(DropdownMenu<String>);
+  // The form only shows the chosen country; the full list lives in a
+  // searchable sheet, so search it down before selecting.
+  final countryField = find.byKey(const Key('country-field'));
   await tester.ensureVisible(countryField);
   await tester.tap(countryField);
   await tester.pumpAndSettle();
-  // The menu is compact and scrollable, so filter it down before selecting.
-  await tester.enterText(
-    find.descendant(of: countryField, matching: find.byType(TextField)),
-    'Fiji',
-  );
+  await tester.enterText(find.byKey(const Key('country-search')), 'Fiji');
   await tester.pumpAndSettle();
-  await tester.tap(find.widgetWithText(MenuItemButton, 'Fiji').last);
+  await tester.tap(find.widgetWithText(ListTile, 'Fiji'));
   await tester.pumpAndSettle();
 
   for (final option in const [
@@ -236,6 +323,9 @@ Future<void> _completeDemographics(WidgetTester tester) async {
 }
 
 class _RegistrationApiService extends ApiService {
+  bool? sentConsent;
+  Map<String, dynamic>? sentDemographics;
+
   @override
   Future<AuthChallenge> register({
     required String email,
@@ -244,13 +334,17 @@ class _RegistrationApiService extends ApiService {
     required Map<String, dynamic> demographics,
     required bool privacyConsent,
     String deviceName = 'SheZen mobile app',
-  }) async => const AuthChallenge(
-    id: '11111111-1111-4111-8111-111111111111',
-    purpose: 'registration',
-    maskedEmail: 's*******@student.usp.ac.fj',
-    expiresInSeconds: 600,
-    resendAfterSeconds: 60,
-  );
+  }) async {
+    sentConsent = privacyConsent;
+    sentDemographics = demographics;
+    return const AuthChallenge(
+      id: '11111111-1111-4111-8111-111111111111',
+      purpose: 'registration',
+      maskedEmail: 's*******@student.usp.ac.fj',
+      expiresInSeconds: 600,
+      resendAfterSeconds: 60,
+    );
+  }
 
   @override
   Future<AuthSession> verifyOtp({
@@ -259,7 +353,7 @@ class _RegistrationApiService extends ApiService {
   }) async => const AuthSession(
     token: 'new-token',
     role: 'student',
-    shezenId: 'SZ-TESTIDENTITY',
+    shezenId: 'SZ7K42P',
     hasCompletedRequiredAssessment: false,
   );
 }

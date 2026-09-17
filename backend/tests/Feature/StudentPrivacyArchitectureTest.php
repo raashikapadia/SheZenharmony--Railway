@@ -8,6 +8,7 @@ use App\Models\Intervention;
 use App\Models\InterventionUsage;
 use App\Models\ProgressEntry;
 use App\Models\StressAssessment;
+use App\Models\StudentConsent;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Notifications\EmailOtpNotification;
@@ -51,7 +52,7 @@ class StudentPrivacyArchitectureTest extends TestCase
 
         $student = User::query()->where('email', 's12340001@student.usp.ac.fj')->firstOrFail();
         $consent = $student->studentIdentity->consents()->sole();
-        $this->assertSame('shezen-privacy-notice-v1-draft', $consent->policy_version);
+        $this->assertSame(StudentConsent::CURRENT_POLICY_VERSION, $consent->policy_version);
         $this->assertNotNull($consent->accepted_at);
         $this->assertFalse(Schema::hasColumn('student_consents', 'email'));
         $this->assertFalse(Schema::hasColumn('student_consents', 'name'));

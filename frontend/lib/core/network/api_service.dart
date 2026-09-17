@@ -199,6 +199,24 @@ class ApiService {
     return body['data'] as Map<String, dynamic>? ?? const {};
   }
 
+  /// Records agreement to the current consent wording for an existing
+  /// account. New accounts consent inside [register] instead.
+  Future<AuthSession> recordConsent(String token) async {
+    final body = await _sendJson(
+      'POST',
+      Uri.parse('${ApiConfig.baseUrl}/v1/auth/consent'),
+      token,
+      const {'privacy_consent': true},
+    );
+    try {
+      return AuthSession.fromJson({'token': token, 'user': body['user']});
+    } on FormatException {
+      throw const ApiException(
+        'Backend returned an unexpected consent response.',
+      );
+    }
+  }
+
   Future<void> logout(String token) async {
     await _sendJson(
       'POST',

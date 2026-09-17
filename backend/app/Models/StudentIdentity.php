@@ -11,18 +11,51 @@ use Illuminate\Support\Str;
 
 class StudentIdentity extends Model
 {
-    protected $fillable = ['user_id', 'pseudonymous_uuid'];
+    /**
+     * The SheZen ID a student sees and quotes: "SZ" plus five random
+     * characters, e.g. SZ7K42P. The alphabet leaves out 0/O and 1/I/L so the
+     * ID reads the same however it is written down. Uniqueness is enforced by
+     * the database, and the code never changes once the row exists.
+     */
+    public const CODE_PREFIX = 'SZ';
+
+    public const CODE_LENGTH = 5;
+
+    public const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+    protected $fillable = ['user_id', 'pseudonymous_uuid', 'shezen_code'];
 
     public function displayId(): string
     {
-        return 'SZ-'.strtoupper(str_replace('-', '', $this->pseudonymous_uuid));
+        return $this->shezen_code;
     }
 
     protected static function booted(): void
     {
         static::creating(function (StudentIdentity $identity): void {
             $identity->pseudonymous_uuid ??= (string) Str::uuid();
+            $identity->shezen_code ??= self::generateShezenCode();
         });
+    }
+
+    /**
+     * A random code no existing student holds. The pool is ~33 million, so a
+     * clash is rare; the unique index catches the race the check cannot.
+     */
+    public static function generateShezenCode(): string
+    {
+        for ($attempt = 0; $attempt < 25; $attempt++) {
+            $code = self::CODE_PREFIX;
+            for ($i = 0; $i < self::CODE_LENGTH; $i++) {
+                $code .= self::CODE_ALPHABET[random_int(0, strlen(self::CODE_ALPHABET) - 1)];
+            }
+
+            if (! static::query()->where('shezen_code', $code)->exists()) {
+                return $code;
+            }
+        }
+
+        throw new \RuntimeException('Could not allocate a unique SheZen ID.');
     }
 
     public function user(): BelongsTo
@@ -38,6 +71,23 @@ class StudentIdentity extends Model
     public function consents(): HasMany
     {
         return $this->hasMany(StudentConsent::class);
+    }
+
+    /** Whether the student has agreed to the consent wording currently in force. */
+    public function hasCurrentConsent(): bool
+    {
+        return $this->consents()
+            ->where('policy_version', StudentConsent::CURRENT_POLICY_VERSION)
+            ->exists();
+    }
+
+    /** Records agreement to the current wording; a repeat call is a no-op. */
+    public function recordCurrentConsent(): StudentConsent
+    {
+        return $this->consents()->firstOrCreate(
+            ['policy_version' => StudentConsent::CURRENT_POLICY_VERSION],
+            ['accepted_at' => now()],
+        );
     }
 
     public function assessments(): HasMany

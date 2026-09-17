@@ -983,9 +983,10 @@ class AppLoadingView extends StatelessWidget {
 
 /// The SheZen ID as it is drawn on screen.
 ///
-/// The identifier is `SZ-` followed by 32 hex characters — 35 monospace
-/// characters, wider than a phone can show at a readable size. The ends are
-/// the part a student recognises, so the middle is elided.
+/// The backend issues short, readable IDs (`SZ` plus five characters, e.g.
+/// `SZ7K42P`), which are shown whole. Anything longer — the older `SZ-` plus
+/// 32 hex characters form — is wider than a phone can show at a readable
+/// size, so its middle is elided and only the recognisable ends remain.
 ///
 /// Presentation only: the stored and transmitted identifier is unchanged, and
 /// the copy action on [AppIdentityCard] still yields the whole thing.

@@ -4,6 +4,7 @@ class AuthSession {
     required this.role,
     required this.shezenId,
     required this.hasCompletedRequiredAssessment,
+    this.hasCurrentConsent = true,
   });
 
   final String token;
@@ -14,6 +15,12 @@ class AuthSession {
   /// backend is the source of truth for this (derived from real
   /// `stress_assessments` rows), never a locally-stored flag.
   final bool hasCompletedRequiredAssessment;
+
+  /// Whether the user has agreed to the survey consent wording currently in
+  /// force. Same principle as above: derived from the backend's
+  /// `student_consents` rows, so a wording change asks everyone again and
+  /// nothing on the device can claim consent that was never recorded.
+  final bool hasCurrentConsent;
 
   bool get isAdmin => role == 'admin';
 
@@ -31,16 +38,21 @@ class AuthSession {
       shezenId: user['shezen_id'] as String,
       hasCompletedRequiredAssessment:
           user['has_completed_required_assessment'] as bool? ?? false,
+      hasCurrentConsent: user['has_current_consent'] as bool? ?? false,
     );
   }
 
-  AuthSession copyWith({bool? hasCompletedRequiredAssessment}) {
+  AuthSession copyWith({
+    bool? hasCompletedRequiredAssessment,
+    bool? hasCurrentConsent,
+  }) {
     return AuthSession(
       token: token,
       role: role,
       shezenId: shezenId,
       hasCompletedRequiredAssessment:
           hasCompletedRequiredAssessment ?? this.hasCompletedRequiredAssessment,
+      hasCurrentConsent: hasCurrentConsent ?? this.hasCurrentConsent,
     );
   }
 }

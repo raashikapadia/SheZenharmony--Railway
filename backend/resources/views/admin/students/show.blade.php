@@ -18,7 +18,7 @@
             <div><label>Country</label>{{ $student->profile?->country ?? '—' }}</div>
         </div>
         <div class="field-row">
-            <div><label>Year of Study</label>{{ $student->profile?->year_of_study ?? '—' }}</div>
+            <div><label>Year of Study</label>{{ $student->profile?->yearOfStudyDescription() ?? '—' }}</div>
             <div><label>Working</label>{{ $student->profile?->employment_status ?? '—' }}</div>
             <div><label>Relationship Status</label>{{ $student->profile?->relationship_status ?? '—' }}</div>
             <div><label>Children</label>{{ $student->profile?->has_children === null ? '—' : ($student->profile->has_children ? 'Yes' : 'No') }}</div>

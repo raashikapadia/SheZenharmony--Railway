@@ -145,3 +145,30 @@ the shared database — it would make every existing diary entry unreadable.
 Keep your old local settings around (e.g. in `backend/.env.local-backup`,
 which is gitignored) and swap the `DB_*` lines back when you want to test
 something destructive. Run `php artisan config:clear` after every `.env` change.
+
+## 8. Shared demo inbox (Mailtrap)
+
+Student registration and login send a one-time code by email. Mailpit only
+catches mail on the laptop it is running on, so for the demo the team uses a
+**Mailtrap sandbox inbox** instead — a hosted Mailpit: every OTP the backend
+sends lands in one web inbox that everyone can open, and no real email is ever
+delivered. Set these lines in `backend/.env` (credentials from the team, never
+committed):
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_SCHEME=null
+MAIL_HOST=sandbox.smtp.mailtrap.io
+MAIL_PORT=2525
+MAIL_USERNAME=<ask the team>
+MAIL_PASSWORD=<ask the team>
+MAIL_FROM_ADDRESS="hello@shezen.local"
+```
+
+Then `php artisan config:clear`. Open the inbox at
+<https://mailtrap.io/inboxes> (log in with the shared team account) to read
+the OTP during the demo. The free sandbox keeps the most recent messages and
+rate-limits sends, which is plenty for a demo but not for load testing.
+
+To go back to a private local inbox, run Mailpit and set `MAIL_HOST=127.0.0.1`,
+`MAIL_PORT=1025`, `MAIL_USERNAME=null`, `MAIL_PASSWORD=null` (see the README).

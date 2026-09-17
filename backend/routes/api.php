@@ -45,6 +45,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/assessments', [AssessmentController::class, 'store']);
         Route::get('/assessments/{assessment}', [AssessmentController::class, 'show']);
         Route::get('/auth/me', [AuthController::class, 'me']);
+        Route::post('/auth/consent', [AuthController::class, 'consent']);
         Route::get('/profile', [ProfileController::class, 'show']);
         Route::put('/profile', [ProfileController::class, 'update']);
         Route::post('/positive-engagement/quizzes/{quiz}/complete', [QuizController::class, 'complete']);

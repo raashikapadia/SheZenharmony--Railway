@@ -163,7 +163,7 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
                       ),
                       _ProfileRow(
                         label: 'Year of study',
-                        value: profile.yearOfStudy ?? 'Not provided',
+                        value: profile.yearOfStudyDescription ?? 'Not provided',
                       ),
                       _ProfileRow(
                         label: 'Employment',

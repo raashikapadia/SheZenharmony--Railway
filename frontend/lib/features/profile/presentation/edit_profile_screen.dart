@@ -25,6 +25,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _countryController;
   late final TextEditingController _yearOfStudyController;
+  late final TextEditingController _yearOfStudyDetailController;
   late final TextEditingController _employmentController;
   late final TextEditingController _relationshipController;
   late final TextEditingController _livingSituationController;
@@ -40,6 +41,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _countryController = TextEditingController(text: profile.country ?? '');
     _yearOfStudyController = TextEditingController(
       text: profile.yearOfStudy ?? '',
+    );
+    _yearOfStudyDetailController = TextEditingController(
+      text: profile.yearOfStudyDetail ?? '',
     );
     _employmentController = TextEditingController(
       text: profile.employmentStatus ?? '',
@@ -60,6 +64,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void dispose() {
     _countryController.dispose();
     _yearOfStudyController.dispose();
+    _yearOfStudyDetailController.dispose();
     _employmentController.dispose();
     _relationshipController.dispose();
     _livingSituationController.dispose();
@@ -84,6 +89,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   '${_dateOfBirth!.day.toString().padLeft(2, '0')}',
         'country': _countryController.text,
         'year_of_study': _yearOfStudyController.text,
+        'year_of_study_detail':
+            _yearOfStudyController.text == ReferenceData.yearOfStudyOther
+            ? _yearOfStudyDetailController.text.trim()
+            : null,
         'employment_status': _employmentController.text,
         'relationship_status': _relationshipController.text,
         'has_children': _hasChildren,
@@ -156,11 +165,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   controller: _countryController,
                   errorText: errors?['country']?.first,
                 ),
-                ChoiceField(
+                YearOfStudyField(
                   controller: _yearOfStudyController,
-                  label: 'Year of study',
-                  options: ReferenceData.yearOfStudy,
+                  detailController: _yearOfStudyDetailController,
                   errorText: errors?['year_of_study']?.first,
+                  detailErrorText: errors?['year_of_study_detail']?.first,
                 ),
                 ChoiceField(
                   controller: _employmentController,

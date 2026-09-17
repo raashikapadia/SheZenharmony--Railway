@@ -4,20 +4,22 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmailOtpChallenge;
+use App\Models\StudentConsent;
 use App\Models\User;
+use App\Models\UserProfile;
+use App\Rules\MinimumAge;
 use App\Services\EmailOtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    private const STUDENT_PRIVACY_POLICY_VERSION = 'shezen-privacy-notice-v1-draft';
-
     public function register(Request $request, EmailOtpService $otpService): JsonResponse
     {
         $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
@@ -39,8 +41,12 @@ class AuthController extends Controller
                 'device_name' => ['required', 'string', 'max:100'],
                 'privacy_consent' => ['required', 'accepted'],
                 'demographics' => ['required', 'array'],
-                'demographics.date_of_birth' => ['required', 'date', 'before:today'],
-                'demographics.year_of_study' => ['required', 'string', 'max:30'],
+                'demographics.date_of_birth' => ['required', 'date', 'before:today', new MinimumAge(18)],
+                'demographics.year_of_study' => ['required', 'string', Rule::in(UserProfile::YEAR_OF_STUDY_OPTIONS)],
+                'demographics.year_of_study_detail' => [
+                    'required_if:demographics.year_of_study,'.UserProfile::YEAR_OF_STUDY_OTHER,
+                    'nullable', 'string', 'max:100',
+                ],
                 'demographics.gender' => ['required', 'string', 'max:50'],
                 'demographics.country' => ['required', 'string', 'max:100'],
                 'demographics.employment_status' => ['required', 'string', 'max:100'],
@@ -53,7 +59,9 @@ class AuthController extends Controller
                 'email.email' => 'Please enter a valid email address.',
                 'email.unique' => 'An account with this email already exists.',
                 'demographics.date_of_birth.before' => 'Date of birth cannot be in the future.',
-                'privacy_consent.accepted' => 'Please acknowledge the Privacy & Data Use information.',
+                'demographics.year_of_study.in' => 'Select your year of study.',
+                'demographics.year_of_study_detail.required_if' => 'Please specify your year of study.',
+                'privacy_consent.accepted' => 'You must agree to participate in the survey to create an account.',
             ]
         );
 
@@ -69,10 +77,7 @@ class AuthController extends Controller
 
             $identity = $user->studentIdentity()->firstOrFail();
             $identity->profile()->create($data['demographics']);
-            $identity->consents()->create([
-                'policy_version' => self::STUDENT_PRIVACY_POLICY_VERSION,
-                'accepted_at' => now(),
-            ]);
+            $identity->recordCurrentConsent();
 
             return $otpService->issue(
                 $user,
@@ -168,6 +173,23 @@ class AuthController extends Controller
         return response()->json(['user' => $this->userPayload($request->user())]);
     }
 
+    /**
+     * Records the student's agreement to the current consent wording. Called
+     * when an existing account is shown the consent screen again because the
+     * wording changed since they registered. Declining has no endpoint of its
+     * own: the app deletes the account through {@see destroy} instead.
+     */
+    public function consent(Request $request): JsonResponse
+    {
+        $request->validate(['privacy_consent' => ['required', 'accepted']]);
+
+        /** @var User $user */
+        $user = $request->user();
+        $user->studentIdentity()->firstOrFail()->recordCurrentConsent();
+
+        return response()->json(['user' => $this->userPayload($user)]);
+    }
+
     public function logout(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()?->delete();
@@ -213,6 +235,10 @@ class AuthController extends Controller
             'has_completed_required_assessment' => $identity->assessments()
                 ->where('assessment_status', 'completed')
                 ->exists(),
+            // Same idea as above: derived from the consent rows, keyed on the
+            // wording currently in force, so a wording change re-asks everyone.
+            'has_current_consent' => $identity->hasCurrentConsent(),
+            'consent_version' => StudentConsent::CURRENT_POLICY_VERSION,
         ];
     }
 

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/platform/app_exit.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/data/reference_data.dart';
 import '../../../shared/widgets/app_ui.dart';
 import '../../../shared/widgets/form_fields.dart';
 import '../application/auth_provider.dart';
 import 'otp_verification_screen.dart';
+import 'survey_consent.dart';
 
 const _registrationTeal = AppColors.primary;
 const _registrationInk = AppColors.ink;
@@ -16,17 +18,12 @@ final _primaryButtonStyle = FilledButton.styleFrom(
   minimumSize: const Size.fromHeight(52),
 );
 
-const _privacySummary = [
-  'SheZen Harmony is a wellbeing support tool.',
-  'It is not a replacement for professional medical care.',
-  'Your login email is used for authentication only.',
-  'SheZen uses a persistent pseudonymous system ID internally to represent you.',
-  'Assessment data is treated as sensitive information.',
-  'Only authorised administrators may access approved system information.',
-];
-
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({super.key, this.closeApp = closeApplication});
+
+  /// What "No" on the consent step does. Injected so tests can observe the
+  /// exit without ending the test runner.
+  final Future<void> Function() closeApp;
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -40,12 +37,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _genderController = TextEditingController();
   final _countryController = TextEditingController();
   final _yearOfStudyController = TextEditingController();
+  final _yearOfStudyDetailController = TextEditingController();
   final _employmentController = TextEditingController();
   final _relationshipController = TextEditingController();
   final _livingSituationController = TextEditingController();
   bool? _hasChildren;
   DateTime? _dateOfBirth;
   bool _privacyConsent = false;
+  bool _leavingWithoutConsent = false;
   bool _obscurePassword = true;
   int _step = 0;
   bool _registrationComplete = false;
@@ -58,6 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _genderController.dispose();
     _countryController.dispose();
     _yearOfStudyController.dispose();
+    _yearOfStudyDetailController.dispose();
     _employmentController.dispose();
     _relationshipController.dispose();
     _livingSituationController.dispose();
@@ -79,6 +79,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   '${_dateOfBirth!.month.toString().padLeft(2, '0')}-'
                   '${_dateOfBirth!.day.toString().padLeft(2, '0')}',
         'year_of_study': _yearOfStudyController.text,
+        'year_of_study_detail':
+            _yearOfStudyController.text == ReferenceData.yearOfStudyOther
+            ? _yearOfStudyDetailController.text.trim()
+            : null,
         'gender': _genderController.text,
         'country': _countryController.text,
         'employment_status': _employmentController.text,
@@ -320,48 +324,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const _StepProgress(currentStep: 0),
                     ],
                     if (_step == 2) ...[
-                      const SizedBox(height: 4),
-                      for (final item in _privacySummary)
-                        _PrivacyPoint(text: item),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(
-                          onPressed: _showPrivacyNotice,
-                          child: const Text('Read full Privacy & Data Use'),
+                      const Text(
+                        'Please read the information below and let us know whether you agree to take part.',
+                        style: TextStyle(
+                          color: _registrationMuted,
+                          height: 1.45,
                         ),
                       ),
-                      Material(
-                        color: AppColors.softGold,
-                        borderRadius: BorderRadius.circular(24),
-                        child: CheckboxListTile(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          activeColor: _registrationTeal,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          value: _privacyConsent,
-                          onChanged: auth.isLoading
-                              ? null
-                              : (value) => setState(
-                                  () => _privacyConsent = value ?? false,
-                                ),
-                          title: const Text('I understand and agree'),
-                          subtitle:
-                              fieldErrors?['privacy_consent']?.first == null
-                              ? null
-                              : Text(
-                                  fieldErrors!['privacy_consent']!.first,
-                                  style: const TextStyle(color: Colors.red),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        style: _primaryButtonStyle,
-                        onPressed: auth.isLoading || !_privacyConsent
-                            ? null
-                            : _nextStep,
-                        child: const Text('Continue'),
+                      const SizedBox(height: 18),
+                      SurveyConsentContent(
+                        onAccept: _acceptConsent,
+                        onDecline: _declineConsent,
+                        isBusy: auth.isLoading || _leavingWithoutConsent,
+                        errorText: fieldErrors?['privacy_consent']?.first,
                       ),
                       const SizedBox(height: 24),
                       const _StepProgress(currentStep: 1),
@@ -397,12 +372,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         controller: _countryController,
                         errorText: fieldErrors?['demographics.country']?.first,
                       ),
-                      ChoiceField(
+                      YearOfStudyField(
                         controller: _yearOfStudyController,
-                        label: 'Year of study',
-                        options: ReferenceData.yearOfStudy,
+                        detailController: _yearOfStudyDetailController,
                         errorText:
                             fieldErrors?['demographics.year_of_study']?.first,
+                        detailErrorText:
+                            fieldErrors?['demographics.year_of_study_detail']
+                                ?.first,
                       ),
                       ChoiceField(
                         controller: _employmentController,
@@ -491,12 +468,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _step--);
   }
 
-  Future<void> _showPrivacyNotice() => showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (context) => const _PrivacyNotice(),
-  );
+  /// "Yes": remembered here and sent with the registration request, which
+  /// is where the backend records it. Only then does the account exist.
+  void _acceptConsent() {
+    setState(() => _privacyConsent = true);
+    _nextStep();
+  }
+
+  /// "No": no account exists yet, so there is nothing to delete — the app
+  /// simply closes. Coming back later lands on sign-in with a fresh start.
+  Future<void> _declineConsent() async {
+    final confirmed = await confirmConsentDecline(
+      context,
+      deletesAccount: false,
+    );
+    if (!confirmed || !mounted) return;
+    setState(() {
+      _privacyConsent = false;
+      _leavingWithoutConsent = true;
+    });
+    await widget.closeApp();
+  }
 }
 
 class _StepProgress extends StatelessWidget {
@@ -544,40 +536,6 @@ class _StepProgress extends StatelessWidget {
       ],
     );
   }
-}
-
-class _PrivacyPoint extends StatelessWidget {
-  const _PrivacyPoint({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 10),
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: const Color(0xFFD7E0DD)),
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(Icons.check_rounded, color: _registrationTeal, size: 18),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: _registrationMuted,
-              height: 1.4,
-              fontSize: 13,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
 }
 
 class _RegistrationCompleteScreen extends StatelessWidget {
@@ -744,100 +702,5 @@ class _RegistrationField extends StatelessWidget {
         ),
       ),
     ],
-  );
-}
-
-class _PrivacyNotice extends StatelessWidget {
-  const _PrivacyNotice();
-
-  @override
-  Widget build(BuildContext context) => SafeArea(
-    child: DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.82,
-      maxChildSize: 0.95,
-      builder: (context, controller) => ListView(
-        controller: controller,
-        padding: const EdgeInsets.fromLTRB(24, 4, 24, 32),
-        children: [
-          Text(
-            'Privacy & Data Use',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Policy version: shezen-privacy-notice-v1-draft',
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
-          const SizedBox(height: 16),
-          const _NoticeSection(
-            title: 'Information SheZen collects',
-            body:
-                'SheZen uses your email for registration, login, and account security. It also collects the demographic details entered during registration, stress questionnaire responses and results, assessment history, progress information, and interactions with wellbeing resources and supported features.',
-          ),
-          const _NoticeSection(
-            title: 'How your identity is protected',
-            body:
-                'Your real name is not required. After authentication, wellbeing records use a persistent pseudonymous student identity. Your email is not intended to appear alongside assessment, progress, demographic, or wellbeing records in normal application or administration use. SheZen is pseudonymised, not completely anonymous.',
-          ),
-          const _NoticeSection(
-            title: 'Why information is used',
-            body:
-                'Information supports your stress assessment and history, relevant wellbeing features and resources, operation and improvement of SheZen, understanding feature use, and approved aggregate demographic and wellbeing analytics.',
-          ),
-          const _NoticeSection(
-            title: 'Administrator access',
-            body:
-                'Authorised administrators may access approved aggregate or pseudonymous information needed to operate and evaluate SheZen. Normal wellbeing analytics should not show a student name, email, or student ID alongside individual wellbeing information.',
-          ),
-          const _NoticeSection(
-            title: 'Sensitive wellbeing information',
-            body:
-                'Stress questionnaire responses and wellbeing information are sensitive data. Questionnaire answers, scores, stress tiers, names, student IDs, and email addresses must not be placed in application analytics or ordinary debug logs.',
-          ),
-          const _NoticeSection(
-            title: 'Account deletion',
-            body:
-                'Under the current MVP behavior, explicitly deleting your account removes your individual wellbeing records, demographic profile, and identity mapping. Only genuinely aggregated, non-identifying analytics may remain.',
-          ),
-          const Text(
-            'Important: this draft notice and its account-deletion wording require final client/university review and approval.',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 20),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-class _NoticeSection extends StatelessWidget {
-  const _NoticeSection({required this.title, required this.body});
-
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 18),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 4),
-        Text(body),
-      ],
-    ),
   );
 }

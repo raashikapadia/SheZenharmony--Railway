@@ -84,14 +84,55 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(api.lastUpdate?['country'], 'Fiji');
+    expect(api.lastUpdate?['year_of_study'], 'Year 3');
+    expect(api.lastUpdate?['year_of_study_detail'], isNull);
     expect(
       find.text('Your profile has been updated successfully.'),
       findsOneWidget,
     );
   });
+
+  testWidgets('an "Other" year of study is shown with its specification', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 2200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final provider = await signedInProvider();
+    final api = _ProfileApiService(
+      yearOfStudy: 'Other',
+      yearOfStudyDetail: 'Foundation programme',
+    );
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: provider,
+        child: MaterialApp(home: ProfileViewScreen(apiService: api)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Other (Foundation programme)'), findsOneWidget);
+
+    // Editing starts with the specification filled in and sends it back.
+    await tester.tap(find.widgetWithText(FilledButton, 'Edit profile'));
+    await tester.pumpAndSettle();
+    expect(find.text('Foundation programme'), findsOneWidget);
+    final saveButton = find.widgetWithText(FilledButton, 'Save Changes');
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+    expect(api.lastUpdate?['year_of_study'], 'Other');
+    expect(api.lastUpdate?['year_of_study_detail'], 'Foundation programme');
+  });
 }
 
 class _ProfileApiService extends ApiService {
+  _ProfileApiService({this.yearOfStudy = 'Year 3', this.yearOfStudyDetail});
+
+  final String yearOfStudy;
+  final String? yearOfStudyDetail;
   Map<String, dynamic>? lastUpdate;
 
   Map<String, dynamic> _profileJson() => {
@@ -99,7 +140,8 @@ class _ProfileApiService extends ApiService {
     'date_of_birth': '2004-03-15',
     'age': 22,
     'country': 'Fiji',
-    'year_of_study': 'Year 3',
+    'year_of_study': yearOfStudy,
+    'year_of_study_detail': yearOfStudyDetail,
     'employment_status': 'Not employed',
     'relationship_status': 'Single',
     'has_children': true,

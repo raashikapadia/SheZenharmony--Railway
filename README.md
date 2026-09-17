@@ -74,7 +74,9 @@ MFA_OTP_MAX_ATTEMPTS=5
 MFA_RESEND_COOLDOWN_SECONDS=60
 ```
 
-Mailpit exposes the development inbox at `http://127.0.0.1:8025`. For deployment,
+Mailpit exposes the development inbox at `http://127.0.0.1:8025`. For the team
+demo, use the shared Mailtrap sandbox inbox instead — see
+`docs/SHARED_DATABASE.md` §8. For deployment,
 replace the SMTP host, port, username, password and sender with real provider
 credentials. Do not use Laravel's `log` mailer for OTP email because it writes the
 message body to application logs.

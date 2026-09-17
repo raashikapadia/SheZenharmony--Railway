@@ -44,6 +44,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isAdmin => _session?.isAdmin ?? false;
   bool get hasCompletedRequiredAssessment =>
       _session?.hasCompletedRequiredAssessment ?? false;
+  bool get hasCurrentConsent => _session?.hasCurrentConsent ?? false;
 
   /// Resolves the session before ever reporting `signedIn` — the mandatory
   /// questionnaire gate makes a one-time decision as soon as the app
@@ -216,6 +217,45 @@ class AuthProvider extends ChangeNotifier {
     if (_session == null || _session!.hasCompletedRequiredAssessment) return;
     _session = _session!.copyWith(hasCompletedRequiredAssessment: true);
     notifyListeners();
+  }
+
+  /// "Yes" on the consent screen for an account that exists already (the
+  /// wording changed since it registered). New accounts consent as part of
+  /// [register]; both paths write the same backend consent row.
+  Future<bool> acceptConsent() async {
+    final token = _session?.token;
+    if (token == null || _isLoading) return false;
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      _session = await _apiService.recordConsent(token);
+      return true;
+    } on ApiException catch (error) {
+      _error = error.message;
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// "No" on the consent screen. Without consent the account may not keep
+  /// any data, so this is the existing account deletion — then the device is
+  /// signed out whether or not the server call got through, so the app can
+  /// close and reopen only at the sign-in screen. Returns whether the
+  /// backend confirmed the deletion.
+  Future<bool> declineConsent() async {
+    final deleted = await deleteAccount();
+    if (!deleted) {
+      _session = null;
+      _pendingMfa = null;
+      _status = AuthStatus.signedOut;
+      await _storage.clear();
+      notifyListeners();
+    }
+    return deleted;
   }
 
   String? takeAccountHoldNotice() {
