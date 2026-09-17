@@ -146,29 +146,38 @@ Keep your old local settings around (e.g. in `backend/.env.local-backup`,
 which is gitignored) and swap the `DB_*` lines back when you want to test
 something destructive. Run `php artisan config:clear` after every `.env` change.
 
-## 8. Shared demo inbox (Mailtrap)
+## 8. OTP inbox (Mailpit)
 
-Student registration and login send a one-time code by email. Mailpit only
-catches mail on the laptop it is running on, so for the demo the team uses a
-**Mailtrap sandbox inbox** instead — a hosted Mailpit: every OTP the backend
-sends lands in one web inbox that everyone can open, and no real email is ever
-delivered. Set these lines in `backend/.env` (credentials from the team, never
-committed):
+Student registration and login send a one-time code by email. The project uses
+**Mailpit** for this everywhere — local work and the team demo alike. There is
+no hosted inbox: each person runs Mailpit on their own machine and reads the
+codes their own backend sends.
+
+The database is shared; the mail is not. Mailpit only catches mail sent from the
+machine it runs on, so when you trigger an OTP the code arrives in *your* inbox
+at <http://127.0.0.1:8025>. During a demo, whoever is driving the laptop reads
+the code from their own Mailpit.
+
+Install it once:
+
+```powershell
+winget install axllent.mailpit
+```
+
+Keep these lines in `backend/.env` on every machine, shared database or not:
 
 ```dotenv
 MAIL_MAILER=smtp
 MAIL_SCHEME=null
-MAIL_HOST=sandbox.smtp.mailtrap.io
-MAIL_PORT=2525
-MAIL_USERNAME=<ask the team>
-MAIL_PASSWORD=<ask the team>
+MAIL_HOST=127.0.0.1
+MAIL_PORT=1025
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
 MAIL_FROM_ADDRESS="hello@shezen.local"
 ```
 
-Then `php artisan config:clear`. Open the inbox at
-<https://mailtrap.io/inboxes> (log in with the shared team account) to read
-the OTP during the demo. The free sandbox keeps the most recent messages and
-rate-limits sends, which is plenty for a demo but not for load testing.
-
-To go back to a private local inbox, run Mailpit and set `MAIL_HOST=127.0.0.1`,
-`MAIL_PORT=1025`, `MAIL_USERNAME=null`, `MAIL_PASSWORD=null` (see the README).
+Then `php artisan config:clear`. Mailpit has to be running before anyone
+registers or logs in — the backend opens a real SMTP connection to port 1025 and
+the request fails if nothing is listening. Run
+`backend/scripts/mailpit-autostart.ps1` once to have it start with Windows and
+keep its inbox between reboots.

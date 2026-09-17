@@ -58,8 +58,15 @@ DB_USERNAME=root
 DB_PASSWORD=YOUR_LOCAL_PASSWORD
 ```
 
-Student registration and login use email OTP verification. For local development,
-run a local SMTP inbox such as Mailpit and keep these values in `backend/.env`:
+Student registration and login use email OTP verification. The project uses
+**Mailpit** as its mail server everywhere — local development and the team demo.
+Install it once:
+
+```powershell
+winget install axllent.mailpit
+```
+
+Then keep these values in `backend/.env`:
 
 ```dotenv
 MAIL_MAILER=smtp
@@ -74,12 +81,19 @@ MFA_OTP_MAX_ATTEMPTS=5
 MFA_RESEND_COOLDOWN_SECONDS=60
 ```
 
-Mailpit exposes the development inbox at `http://127.0.0.1:8025`. For the team
-demo, use the shared Mailtrap sandbox inbox instead — see
-`docs/SHARED_DATABASE.md` §8. For deployment,
-replace the SMTP host, port, username, password and sender with real provider
-credentials. Do not use Laravel's `log` mailer for OTP email because it writes the
-message body to application logs.
+Mailpit exposes the inbox at `http://127.0.0.1:8025`. It must be running before
+you register or log in: the backend opens a real SMTP connection to port 1025, so
+if nothing is listening there the request fails with a connection error.
+
+To have Mailpit start with Windows instead of launching it by hand, run
+`backend/scripts/mailpit-autostart.ps1` once. It installs a hidden launcher in
+your Startup folder and keeps the inbox at `%LOCALAPPDATA%\Mailpit\mailpit.db`,
+so captured mail survives reboots. To undo it, delete the `Mailpit` shortcut from
+`shell:startup`.
+
+For deployment, replace the SMTP host, port, username, password and sender with
+real provider credentials. Do not use Laravel's `log` mailer for OTP email
+because it writes the message body to application logs.
 
 Create the database:
 
