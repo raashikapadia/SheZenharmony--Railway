@@ -227,12 +227,9 @@
         <button class="coming-soon-ok" type="button" data-coming-soon-close>Got it</button>
     </section>
 </div>
-<script src="https://unpkg.com/lucide@0.468.0" defer></script>
+<script src="https://unpkg.com/lucide@0.468.0" async onload="window.lucide.createIcons({ attrs: { 'stroke-width': 1.8 } })"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    if (window.lucide && typeof window.lucide.createIcons === 'function') {
-        window.lucide.createIcons({ attrs: { 'stroke-width': 1.8 } });
-    }
     var comingSoonModal = document.querySelector('[data-coming-soon-modal]');
     var comingSoonName = comingSoonModal?.querySelector('[data-coming-soon-name]');
     function closeComingSoon() { if (comingSoonModal) comingSoonModal.hidden = true; }
