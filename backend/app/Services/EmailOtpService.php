@@ -21,12 +21,14 @@ class EmailOtpService
         $expiresMinutes = max(1, (int) config('mfa.otp_expires_minutes'));
 
         $challenge = DB::transaction(function () use ($user, $purpose, $deviceName, $code, $expiresMinutes): EmailOtpChallenge {
-            EmailOtpChallenge::query()
+            $previous = EmailOtpChallenge::query()
                 ->where('user_id', $user->id)
                 ->where('purpose', $purpose)
-                ->whereNull('verified_at')
-                ->whereNull('invalidated_at')
-                ->update(['invalidated_at' => now()]);
+                ->whereNull('invalidated_at');
+            if ($purpose !== EmailOtpChallenge::PURPOSE_PASSWORD_RESET) {
+                $previous->whereNull('verified_at');
+            }
+            $previous->update(['invalidated_at' => now()]);
 
             return EmailOtpChallenge::query()->create([
                 'user_id' => $user->id,
@@ -38,7 +40,7 @@ class EmailOtpService
         });
 
         try {
-            $user->notify(new EmailOtpNotification($code, $expiresMinutes));
+            $user->notify(new EmailOtpNotification($code, $expiresMinutes, $purpose));
         } catch (TransportExceptionInterface $exception) {
             $challenge->update(['invalidated_at' => now()]);
             report($exception);
@@ -63,7 +65,10 @@ class EmailOtpService
                 ->lockForUpdate()
                 ->find($challengeId);
 
-            if (! $challenge || $challenge->invalidated_at !== null) {
+            if (! $challenge || $challenge->invalidated_at !== null || ! in_array($challenge->purpose, [
+                EmailOtpChallenge::PURPOSE_LOGIN,
+                EmailOtpChallenge::PURPOSE_REGISTRATION,
+            ], true)) {
                 $this->invalidCode();
             }
 
@@ -127,7 +132,10 @@ class EmailOtpService
     public function resend(string $challengeId): EmailOtpChallenge
     {
         $challenge = EmailOtpChallenge::query()->with('user')->find($challengeId);
-        if (! $challenge || $challenge->verified_at !== null || $challenge->invalidated_at !== null) {
+        if (! $challenge || ! in_array($challenge->purpose, [
+            EmailOtpChallenge::PURPOSE_LOGIN,
+            EmailOtpChallenge::PURPOSE_REGISTRATION,
+        ], true) || $challenge->verified_at !== null || $challenge->invalidated_at !== null) {
             throw ValidationException::withMessages([
                 'challenge_id' => ['This verification request is no longer available.'],
             ]);

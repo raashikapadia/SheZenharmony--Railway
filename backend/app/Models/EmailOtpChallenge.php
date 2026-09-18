@@ -13,6 +13,7 @@ class EmailOtpChallenge extends Model
     public const PURPOSE_LOGIN = 'login';
 
     public const PURPOSE_REGISTRATION = 'registration';
+    public const PURPOSE_PASSWORD_RESET = 'password_reset';
 
     protected $fillable = [
         'user_id',

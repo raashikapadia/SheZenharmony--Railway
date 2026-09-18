@@ -148,7 +148,7 @@ something destructive. Run `php artisan config:clear` after every `.env` change.
 
 ## 8. OTP inbox (Mailpit)
 
-Student registration and login send a one-time code by email. The project uses
+Student registration, login, and password reset send a one-time code by email. The project uses
 **Mailpit** for this everywhere — local work and the team demo alike. There is
 no hosted inbox: each person runs Mailpit on their own machine and reads the
 codes their own backend sends.

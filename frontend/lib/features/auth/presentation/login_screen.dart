@@ -6,6 +6,7 @@ import '../../../shared/widgets/app_ui.dart';
 import '../application/auth_provider.dart';
 import 'register_screen.dart';
 import 'otp_verification_screen.dart';
+import 'password_reset_screen.dart';
 
 const _teal = AppColors.primary;
 const _ink = AppColors.ink;
@@ -90,6 +91,19 @@ class _LoginScreenState extends State<LoginScreen> {
             child: const Text('I understand'),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _openPasswordReset() async {
+    final reset = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const PasswordResetScreen()),
+    );
+    if (!mounted || reset != true) return;
+    _passwordController.clear();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Password reset successfully. Please sign in.'),
       ),
     );
   }
@@ -185,6 +199,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       validator: (value) => value == null || value.isEmpty
                           ? 'Enter your password.'
                           : null,
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: auth.isLoading ? null : _openPasswordReset,
+                        child: const Text('Forgot Password?'),
+                      ),
                     ),
                     const SizedBox(height: 18),
                     FilledButton(

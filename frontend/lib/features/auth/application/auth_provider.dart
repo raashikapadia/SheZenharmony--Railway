@@ -210,6 +210,45 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> requestPasswordReset(String email) =>
+      _runPasswordReset(() => _apiService.requestPasswordReset(email));
+
+  Future<bool> verifyPasswordResetCode(String email, String code) =>
+      _runPasswordReset(() => _apiService.verifyPasswordResetCode(email, code));
+
+  Future<bool> resetPassword({
+    required String email,
+    required String code,
+    required String password,
+    required String passwordConfirmation,
+  }) => _runPasswordReset(
+    () => _apiService.resetPassword(
+      email: email,
+      code: code,
+      password: password,
+      passwordConfirmation: passwordConfirmation,
+    ),
+  );
+
+  Future<bool> _runPasswordReset(Future<void> Function() action) async {
+    if (_isLoading) return false;
+    _isLoading = true;
+    _error = null;
+    _fieldErrors = null;
+    notifyListeners();
+    try {
+      await action();
+      return true;
+    } on ApiException catch (error) {
+      _error = error.message;
+      _fieldErrors = error.fieldErrors;
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Called right after a successful assessment submission so the mandatory
   /// gate clears immediately, without waiting for another round trip. The
   /// underlying truth is still the backend row that was just created.

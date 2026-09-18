@@ -14,6 +14,14 @@ Flutter obtains the base URL from `frontend/lib/core/config/api_config.dart`.
   and only then returns the minimal identity payload and Sanctum token.
 - `POST /api/v1/auth/resend-otp` — rotates an unverified challenge after the
   configured cooldown and invalidates its previous code.
+- `POST /api/v1/auth/forgot-password` — accepts `email` and always returns the
+  same success message for valid addresses, whether an active student account
+  exists or not. Existing students receive a reset code by email.
+- `POST /api/v1/auth/verify-reset-code` — accepts `email` and a six-digit `code`;
+  confirms a valid, unexpired reset code without signing the student in.
+- `POST /api/v1/auth/reset-password` — accepts `email`, `code`, `password`, and
+  `password_confirmation`. The code must already be confirmed. A successful
+  reset consumes it, updates the password, and revokes existing sessions.
 - `GET /api/v1/questions` — retained legacy active-question listing.
 - `GET /api/v1/questionnaires/active` — active dynamic student questionnaire.
 - `GET /api/v1/interventions` — active intervention listing.
@@ -23,7 +31,7 @@ Flutter obtains the base URL from `frontend/lib/core/config/api_config.dart`.
 - `GET /api/v1/positive-engagement/quizzes/{quiz}` — a single quiz with its questions.
 - `POST /api/v1/positive-engagement/quizzes/{quiz}/complete` — record a quiz attempt (authenticated).
 
-Registration, login, OTP verification and resend are rate limited. OTP challenges
+Registration, login, OTP verification, resend, and password reset are rate limited. OTP challenges
 are opaque, hashed, expiring, single-use and attempt-limited. The public
 questionnaire/intervention read routes must not expose student data.
 

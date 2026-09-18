@@ -159,6 +159,37 @@ class ApiService {
     }
   }
 
+  Future<void> requestPasswordReset(String email) async {
+    await _postPublicJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/auth/forgot-password'),
+      {'email': email},
+    );
+  }
+
+  Future<void> verifyPasswordResetCode(String email, String code) async {
+    await _postPublicJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/auth/verify-reset-code'),
+      {'email': email, 'code': code},
+    );
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    await _postPublicJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/auth/reset-password'),
+      {
+        'email': email,
+        'code': code,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      },
+    );
+  }
+
   /// Re-fetches the current user from the backend — used on app resume so
   /// completion status and role always reflect real server state rather
   /// than a cached client value.

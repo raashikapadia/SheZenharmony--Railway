@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Admin\QuestionnaireController as AdminQuestionnaire
 use App\Http\Controllers\Api\Admin\ScoreBandController as AdminScoreBandController;
 use App\Http\Controllers\Api\AssessmentController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\StudentPasswordResetController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\DiaryController;
 use App\Http\Controllers\Api\HelplineResourceController;
@@ -25,6 +26,9 @@ Route::prefix('v1')->group(function (): void {
     Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
     Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:10,1');
     Route::post('/auth/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:3,10');
+    Route::post('/auth/forgot-password', [StudentPasswordResetController::class, 'requestCode'])->middleware('throttle:3,10');
+    Route::post('/auth/verify-reset-code', [StudentPasswordResetController::class, 'verifyCode'])->middleware('throttle:10,1');
+    Route::post('/auth/reset-password', [StudentPasswordResetController::class, 'reset'])->middleware('throttle:10,1');
     Route::get('/questions', [QuestionController::class, 'index']);
     Route::get('/questionnaires/active', [QuestionnaireController::class, 'active']);
     Route::get('/interventions', [InterventionController::class, 'index']);
