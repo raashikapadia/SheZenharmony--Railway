@@ -241,24 +241,26 @@ abstract final class AppTheme {
       textTheme: base.copyWith(
         // Hero statements: serif, because the emotional lines are the ones a
         // student reads slowly.
+        // Weight only. Sizes are untouched so nothing reflows; the headings
+        // simply hold the page more firmly than the copy under them.
         displaySmall: base.displaySmall?.copyWith(
           fontFamily: AppFonts.serif,
           fontSize: 30,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           letterSpacing: -0.4,
           height: 1.18,
         ),
         headlineMedium: base.headlineMedium?.copyWith(
           fontFamily: AppFonts.serif,
           fontSize: 25,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           letterSpacing: -0.3,
           height: 1.2,
         ),
         headlineSmall: base.headlineSmall?.copyWith(
           fontFamily: AppFonts.serif,
           fontSize: 21,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           letterSpacing: -0.2,
           height: 1.25,
         ),
@@ -287,11 +289,13 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
+        // The screen's name, so it carries a step more size and weight than a
+        // heading inside the page. Face, colour and alignment are unchanged.
         titleTextStyle: TextStyle(
           color: AppColors.ink,
           fontFamily: AppFonts.serif,
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
           letterSpacing: -0.2,
         ),
       ),
