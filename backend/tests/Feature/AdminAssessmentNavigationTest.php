@@ -11,7 +11,7 @@ use Tests\TestCase;
 
 /**
  * The admin assessment area exposes exactly two sidebar items — Questionnaire
- * Management and Stress Level Assessment — and everything else is a tab
+ * Management and Assessments — and everything else is a tab
  * inside them, not a separate navigation page.
  */
 class AdminAssessmentNavigationTest extends TestCase
@@ -67,7 +67,7 @@ class AdminAssessmentNavigationTest extends TestCase
 
         foreach (['admin.student-stress.overview', 'admin.student-stress.index', 'admin.student-stress.analytics'] as $route) {
             $this->get(route($route))->assertOk()
-                ->assertSee('aria-label="Stress Level Assessment"', false)
+                ->assertSee('aria-label="Assessments"', false)
                 ->assertSee('Overview')->assertSee('Results')->assertSee('Analytics')
                 ->assertDontSee('aria-label="Questionnaire Management"', false);   // not the questionnaire tab bar
         }

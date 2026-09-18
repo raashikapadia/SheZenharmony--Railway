@@ -21,10 +21,10 @@ enum AssessmentLoadState { loading, loaded, error }
 class AssessmentProvider extends ChangeNotifier {
   AssessmentProvider({
     required this._apiService,
-    required String token,
+    required this._token,
     this.closeApiServiceOnDispose = false,
     this._pager = const QuestionnairePager(),
-  }) : _token = token;
+  });
 
   final ApiService _apiService;
   final String _token;

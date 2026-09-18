@@ -55,7 +55,7 @@ class AdminSectionController extends Controller
             'questionsBySection' => $questionsBySection,
             // The same whole-questionnaire review the Review & Publish page
             // shows, so the step strip never disagrees with it.
-            'review' => $reviewer->run($questionnaire->fresh()),
+            'review' => $reviewer->run($questionnaire),
             'sectionCount' => $activeSections->count(),
             'questionCount' => $questionCount,
         ]);

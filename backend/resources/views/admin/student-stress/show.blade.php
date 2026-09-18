@@ -34,7 +34,7 @@
                         <td>{{ $assessment->total_score ?? '—' }}</td>
                         <td>{{ $assessment->wellbeingBand?->label ?? $assessment->scoreBand?->label ?? $assessment->stress_level ?? '—' }}</td>
                         <td>{{ $assessment->stress_score !== null ? rtrim(rtrim(number_format($assessment->stress_score, 1), '0'), '.').' / 100' : '—' }}</td>
-                        <td class="actions"><a class="button-link" href="{{ route('admin.student-stress.assessment', $assessment) }}">View answers</a></td>
+                        <td class="actions"><a class="button-link" href="{{ route('admin.student-stress.assessment', $assessment) }}">View details</a></td>
                     </tr>
                 @empty
                     <tr><td colspan="5">No completed assessments for this student yet.</td></tr>

@@ -83,7 +83,6 @@ class AdminAccessTest extends TestCase
             ->assertSeeInOrder([
                 'Assessment',
                 'Questionnaire Management',
-                'Stress Level Assessment',
                 'Wellbeing Activities',
                 'Support Content',
                 'Video Activities',
@@ -94,6 +93,7 @@ class AdminAccessTest extends TestCase
                 'Registered Students',
                 'Demographic Reports',
             ])
+            ->assertSee('Assessments')
             ->assertDontSee('Categories');
 
         foreach ([

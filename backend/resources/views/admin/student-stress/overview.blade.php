@@ -1,11 +1,11 @@
 @extends('layouts.admin')
-@section('title', 'Overview · Stress Level Assessment')
+@section('title', 'Overview · Assessments')
 @section('body')
 <main class="content stack">
     @include('admin.student-stress._nav')
 
     <div>
-        <h1 style="margin:0 0 4px">Stress Level Assessment</h1>
+        <h1 style="margin:0 0 4px">Assessments</h1>
         <p class="lede">Reporting and analysis for the stress component of the wellbeing questionnaire. Questions and scoring are configured in Questionnaire Management.</p>
     </div>
 

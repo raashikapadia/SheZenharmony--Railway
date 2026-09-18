@@ -32,6 +32,7 @@ class AdminQuestionnaireController extends Controller
     /** Overview: every questionnaire, drafts first, newest version first. */
     public function index(): View
     {
+        session()->forget('admin_questionnaire_creation_id');
         $statusRank = ['draft' => 0, 'published' => 1, 'archived' => 2];
         $versions = Questionnaire::query()->notInTrash()
             ->withCount(['questions', 'sections', 'scoreBands'])
@@ -90,18 +91,15 @@ class AdminQuestionnaireController extends Controller
         ];
     }
 
-    /** Step 1 of the guided "add a questionnaire" flow: just name it. */
+    /** Open the focused form that starts a new draft questionnaire. */
     public function create(): View
     {
         return view('admin.questionnaires.create');
     }
 
     /**
-     * Create the questionnaire as a draft and drop the admin straight into
-     * the editor (Step 2) to add sections and questions. Type and version are
-     * derived; publishing is a deliberate later step, never a side effect of
-     * creation. Standard wellbeing result ranges are seeded so Step 3 opens
-     * pre-filled rather than blank.
+     * Create an inactive draft and open its Details step. Type and version are
+     * derived; publishing remains a deliberate action on Review & Publish.
      */
     public function store(Request $request): RedirectResponse
     {
@@ -138,9 +136,11 @@ class AdminQuestionnaireController extends Controller
             return $questionnaire;
         });
 
+        $request->session()->put('admin_questionnaire_creation_id', $questionnaire->id);
+
         return redirect()
-            ->route('admin.questionnaires.sections.index', $questionnaire)
-            ->with('status', "Draft created. Add your sections and questions below — then publish, or keep it as a draft until you're ready.");
+            ->route('admin.questionnaires.show-details', $questionnaire)
+            ->with('status', 'Questionnaire created successfully! Review its details, then continue to sections and questions.');
     }
 
     public function edit(Questionnaire $questionnaire): View
@@ -201,8 +201,11 @@ class AdminQuestionnaireController extends Controller
             $this->audit->log($questionnaire->id, 'questionnaire.updated', "Updated details of \"{$questionnaire->title}\" (v{$questionnaire->version}).", $questionnaire, null, $data);
         });
 
+        $continue = (int) $request->session()->get('admin_questionnaire_creation_id') === $questionnaire->id
+            && $questionnaire->status === 'draft' && $request->input('next') === 'sections';
+
         return redirect()
-            ->route('admin.questionnaires.details', $questionnaire)
+            ->route($continue ? 'admin.questionnaires.sections.index' : 'admin.questionnaires.details', $questionnaire)
             ->with('status', 'Details saved.');
     }
 
@@ -238,8 +241,14 @@ class AdminQuestionnaireController extends Controller
             $this->audit->log($questionnaire->id, 'questionnaire.updated', "Updated result ranges of \"{$questionnaire->title}\" (v{$questionnaire->version}).", $questionnaire);
         });
 
+        $creationFlow = (int) $request->session()->get('admin_questionnaire_creation_id') === $questionnaire->id
+            && $questionnaire->status === 'draft';
+        $destination = $creationFlow
+            ? ($request->input('next') === 'review' ? 'admin.questionnaires.review' : 'admin.questionnaires.scoring')
+            : 'admin.questionnaires.details';
+
         return redirect()
-            ->route('admin.questionnaires.details', $questionnaire)
+            ->route($destination, $questionnaire)
             ->with('status', 'Result scale and ranges saved.');
     }
 
@@ -502,7 +511,7 @@ class AdminQuestionnaireController extends Controller
         return redirect()->route('admin.questionnaires.trash')->with('status', "\"{$title}\" was permanently deleted.");
     }
 
-    public function scoring(Questionnaire $questionnaire, QuestionnaireActivationService $activation): View
+    public function scoring(Questionnaire $questionnaire, QuestionnaireActivationService $activation, QuestionnaireReview $reviewer): View
     {
         $questionnaire->load([
             'sections' => fn ($query) => $query->withCount('questions'),
@@ -521,7 +530,7 @@ class AdminQuestionnaireController extends Controller
             $validationError = collect($e->errors())->flatten()->first();
         }
 
-        return view('admin.questionnaires.scoring', [
+        $viewData = [
             'questionnaire' => $questionnaire,
             'sumWeights' => $sumWeights,
             'scoreSpan' => $scoreSpan,
@@ -530,7 +539,20 @@ class AdminQuestionnaireController extends Controller
             'overallBands' => $questionnaire->scoreBands->where('scope', StressScoreBand::SCOPE_OVERALL)->values(),
             'stressBands' => $questionnaire->scoreBands->where('scope', StressScoreBand::SCOPE_STRESS)->values(),
             'validationError' => $validationError,
-        ]);
+        ];
+
+        if ((int) session('admin_questionnaire_creation_id') === $questionnaire->id && $questionnaire->status === 'draft') {
+            $activeOverallBands = $questionnaire->scoreBands
+                ->where('scope', StressScoreBand::SCOPE_OVERALL)->where('is_active', true)->values();
+            $viewData += [
+                'questionCount' => $questionnaire->questions()->count(),
+                'rangeProblems' => $reviewer->rangeProblems($activeOverallBands, $scoreSpan, $questionnaire->resultScale() !== null),
+                'interventions' => Intervention::query()->where('is_active', true)->orderBy('content_type')->orderBy('title')->get(['id', 'title', 'content_type']),
+                'primaryInterventionByBand' => $reviewer->primaryInterventionByBand($questionnaire),
+            ];
+        }
+
+        return view('admin.questionnaires.scoring', $viewData);
     }
 
     private function form(Questionnaire $questionnaire): View

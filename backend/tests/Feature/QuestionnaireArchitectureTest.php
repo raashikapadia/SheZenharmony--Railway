@@ -19,7 +19,7 @@ class QuestionnaireArchitectureTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_creating_a_questionnaire_makes_a_draft_and_opens_the_editor(): void
+    public function test_creating_a_questionnaire_makes_a_draft_and_opens_details(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
@@ -32,8 +32,8 @@ class QuestionnaireArchitectureTest extends TestCase
 
         $questionnaire = Questionnaire::query()->firstOrFail();
 
-        // Creation is name-only; sections, questions and publishing happen in the editor.
-        $response->assertRedirect(route('admin.questionnaires.sections.index', $questionnaire));
+        // Creation saves the basic fields; sections, questions and publishing follow later.
+        $response->assertRedirect(route('admin.questionnaires.show-details', $questionnaire));
         $this->assertSame('stress', $questionnaire->type);
         $this->assertSame(1, $questionnaire->version);
         $this->assertSame('draft', $questionnaire->status);

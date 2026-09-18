@@ -1,13 +1,23 @@
 @extends('layouts.admin')
 @section('title', 'Scoring · '.$questionnaire->title)
 @section('body')
-<main class="content stack">
-    <a class="backlink" href="{{ route('admin.questionnaires.details', $questionnaire) }}">← Back to Details</a>
+@php($creationFlow = (int) session('admin_questionnaire_creation_id') === $questionnaire->id && $questionnaire->status === 'draft')
+<main class="content stack{{ $creationFlow ? ' questionnaire-creation-step' : '' }}">
+    <a class="backlink" href="{{ $creationFlow ? route('admin.questionnaires.sections.index', $questionnaire) : route('admin.questionnaires.details', $questionnaire) }}">← Back to {{ $creationFlow ? 'Sections & Questions' : 'Details' }}</a>
+
+    @if(session('status'))<div class="status">{{ session('status') }}</div>@endif
+    @if($errors->any())<ul class="errors">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>@endif
 
     <div>
-        <h1 style="margin:0 0 4px">Scoring overview</h1>
-        <p class="lede">Read-only summary of how <strong>{{ $questionnaire->title }}</strong> (v{{ $questionnaire->version }}) is scored. Edit weights and ranges in the editor.</p>
+        @if($creationFlow)<div class="eyebrow">Step 3 of 4</div>@endif
+        <h1 style="margin:0 0 4px">{{ $creationFlow ? 'Configure Scoring' : 'Scoring overview' }}</h1>
+        <p class="lede">{{ $creationFlow ? 'Set the result ranges and recommended support for this new questionnaire.' : 'Read-only summary of how '.$questionnaire->title.' (v'.$questionnaire->version.') is scored. Edit weights and ranges in the editor.' }}</p>
     </div>
+
+    @if($creationFlow)
+        @include('admin.questionnaires._creation_progress', ['questionnaire' => $questionnaire, 'step' => 3])
+        @include('admin.questionnaires._ranges_editor')
+    @endif
 
     @if($validationError)
         <div class="errors"><strong>Needs attention before publishing:</strong> {{ $validationError }}</div>

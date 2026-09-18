@@ -5,7 +5,9 @@
 @php($typeLabels = collect(\App\Enums\QuestionType::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()]))
 @php($orderedSections = $questionnaire->sections->sortBy([['position', 'asc'], ['id', 'asc']])->values())
 @php($unsectioned = ($questionsBySection[null] ?? ($questionsBySection[''] ?? collect())))
-<main class="content stack">
+@php($creationFlow = (int) session('admin_questionnaire_creation_id') === $questionnaire->id && $questionnaire->status === 'draft')
+@php($openSectionModal = $errors->has('title') || $errors->has('description') || $errors->has('category_weight'))
+<main class="content stack{{ $creationFlow ? ' questionnaire-creation-step' : '' }}">
     <a class="backlink" href="{{ route('admin.questionnaires.index') }}">← Questionnaire Management</a>
 
     @if(session('status'))<div class="status">{{ session('status') }}</div>@endif
@@ -15,7 +17,7 @@
     <section class="panel">
         <div class="split" style="align-items:flex-start">
             <div style="min-width:0">
-                <div class="eyebrow">Step 2 of 3 · Sections &amp; questions</div>
+                <div class="eyebrow">Step 2 of {{ $creationFlow ? 4 : 3 }} · Sections &amp; questions</div>
                 <h1 style="margin:2px 0 4px;overflow-wrap:anywhere">{{ $questionnaire->title }}
                     <span class="badge {{ $questionnaire->is_active && ! $questionnaire->isScheduled() ? 'active' : '' }}" style="vertical-align:middle;font-family:system-ui,sans-serif">{{ $questionnaire->publishState() }}</span>
                 </h1>
@@ -28,20 +30,26 @@
             </div>
             <div class="actions">
                 <a class="button button-secondary" href="{{ route('admin.questionnaires.details', $questionnaire) }}">Edit details</a>
-                <a class="button" href="{{ route('admin.questionnaires.sections.create', $questionnaire) }}"><span>＋</span>Add section</a>
+                @if($orderedSections->isNotEmpty())
+                    <button class="button" type="button" data-open-section-modal><span>＋</span>Add section</button>
+                @endif
             </div>
         </div>
 
     </section>
 
-    @include('admin.questionnaires._wizard', ['questionnaire' => $questionnaire, 'review' => $review, 'step' => 2])
+    @if($creationFlow)
+        @include('admin.questionnaires._creation_progress', ['questionnaire' => $questionnaire, 'step' => 2])
+    @else
+        @include('admin.questionnaires._wizard', ['questionnaire' => $questionnaire, 'review' => $review, 'step' => 2])
+    @endif
 
     {{-- ============ SECTIONS ============ --}}
     @if($orderedSections->isEmpty())
         <section class="panel empty-state">
             <h2 style="margin:0 0 6px">No sections yet</h2>
             <p class="lede" style="margin:0 auto 18px">Create your first section to start building your questionnaire.</p>
-            <a class="button" href="{{ route('admin.questionnaires.sections.create', $questionnaire) }}"><span>＋</span>Add section</a>
+            <button class="button" type="button" data-open-section-modal><span>＋</span>Add section</button>
         </section>
     @endif
 
@@ -107,7 +115,7 @@
 
                 <div class="actions" style="margin-top:14px;align-items:center">
                     <a class="button" href="{{ route('admin.questionnaires.sections.questions.create', [$questionnaire, $section]) }}"><span>＋</span>Add question</a>
-                    <button type="button" class="button button-link" data-toggle="bulk-{{ $section->id }}">or paste several at once</button>
+                    <button type="button" class="button button-link bulk-paste-button" data-toggle="bulk-{{ $section->id }}">or paste several at once</button>
                 </div>
             @endif
 
@@ -145,12 +153,74 @@
 
     <div class="split" style="align-items:center">
         <a class="button button-secondary" href="{{ route('admin.questionnaires.details', $questionnaire) }}">← Details</a>
-        <a class="button" href="{{ route('admin.questionnaires.review', $questionnaire) }}">Review &amp; publish →</a>
+        <a class="button" href="{{ $creationFlow ? route('admin.questionnaires.scoring', $questionnaire) : route('admin.questionnaires.review', $questionnaire) }}">{{ $creationFlow ? 'Continue to Scoring' : 'Review & publish' }} →</a>
     </div>
 </main>
 
+<div class="section-modal-backdrop" data-section-modal @if($openSectionModal) data-open @endif hidden>
+    <section class="section-modal" role="dialog" aria-modal="true" aria-labelledby="add-section-title">
+        <button class="section-modal-close" type="button" data-close-section-modal aria-label="Close Add Section">&times;</button>
+        <h2 id="add-section-title">Add Section</h2>
+        <p class="section-modal-intro">Create a section to organise related questions together.</p>
+        <form method="POST" action="{{ route('admin.questionnaires.sections.store', $questionnaire) }}" data-section-form>
+            @csrf
+            <input type="hidden" name="category_weight" value="{{ old('category_weight', 1) }}">
+            <div class="section-modal-field">
+                <label for="modal-section-title">Section name <span class="required-mark">*</span></label>
+                <input id="modal-section-title" name="title" type="text" value="{{ old('title') }}" placeholder="e.g. Emotional Wellbeing" required>
+            </div>
+            <div class="section-modal-field">
+                <label for="modal-section-description">Description <span class="muted">(optional)</span></label>
+                <textarea id="modal-section-description" name="description" rows="3" placeholder="e.g. Questions related to mood, emotions and overall mental wellbeing...">{{ old('description') }}</textarea>
+            </div>
+            <label class="section-modal-toggle"><input name="is_active" type="checkbox" value="1" @checked(old('is_active', true))><span class="toggle-track"><span></span></span><span><strong>Visible to students</strong><small>Section and its questions will be visible to students taking the questionnaire.</small></span></label>
+            <div class="section-modal-info"><i data-lucide="info"></i><span>You can add questions to this section after it has been created.</span></div>
+            <div class="section-modal-actions">
+                <button class="button button-secondary" type="button" data-close-section-modal>Cancel</button>
+                <button class="button" type="submit">Create section</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+<style>
+    .section-modal-backdrop{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:20px;background:rgba(17,42,69,.42);backdrop-filter:blur(3px)}.section-modal-backdrop[hidden]{display:none}.section-modal{position:relative;width:min(476px,100%);padding:25px 22px 18px;border:1px solid #dbe5f0;border-radius:14px;background:#fff;box-shadow:0 24px 60px rgba(21,54,89,.24)}.section-modal-close{position:absolute;top:14px;right:16px;padding:0;border:0;background:transparent;color:#66809b;font-size:1.7rem;line-height:1;cursor:pointer}.section-modal h2{margin:0 35px 3px;color:#183b5c;font-size:1.42rem;letter-spacing:-.025em}.section-modal-intro{margin:0 0 20px;color:#60728b;font-size:.78rem}.section-modal-field{margin-top:13px}.section-modal-field label{margin-bottom:6px;color:#183b5c;font-size:.72rem}.section-modal-field input,.section-modal-field textarea{border-color:#d2dfeb;border-radius:8px;font-size:.75rem}.section-modal-field textarea{min-height:64px;resize:vertical}.section-modal-field input:focus,.section-modal-field textarea:focus{border-color:#2877be;box-shadow:0 0 0 3px rgba(40,119,190,.12)}.section-modal-toggle{display:flex;align-items:flex-start;gap:10px;margin:16px 0 15px;color:#24476d;cursor:pointer}.section-modal-toggle>input{position:absolute;opacity:0;pointer-events:none}.toggle-track{display:block;width:40px;height:22px;flex:0 0 40px;padding:3px;border-radius:99px;background:#2877be}.toggle-track span{display:block;width:16px;height:16px;margin-left:18px;border-radius:50%;background:#fff;transition:margin .15s}.section-modal-toggle>input:not(:checked)+.toggle-track{background:#aebdca}.section-modal-toggle>input:not(:checked)+.toggle-track span{margin-left:0}.section-modal-toggle strong{display:block;font-size:.75rem}.section-modal-toggle small{display:block;margin-top:2px;color:#687c91;font-size:.63rem;line-height:1.3}.section-modal-info{display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border-radius:8px;background:#eaf4ff;color:#285783;font-size:.68rem;line-height:1.35}.section-modal-info svg{width:17px;height:17px;flex:0 0 17px;color:#2877be}.section-modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}.section-modal-actions .button{min-height:37px;border-radius:8px;background:#2877be;font-size:.72rem}.section-modal-actions .button-secondary{background:#fff;color:#24476d;border:1px solid #d7e4f1;box-shadow:none}
+    .questionnaire-creation-step .bulk-paste-button{color:#155eab;background:#e4f1ff;border:1px solid #b9d8f2;box-shadow:0 4px 10px rgba(40,119,190,.12)}.questionnaire-creation-step .bulk-paste-button:hover{color:#104b86;background:#d5e9fc}
+    @media(max-width:520px){.section-modal{padding:22px 16px 16px}.section-modal-actions{justify-content:stretch}.section-modal-actions>*{flex:1}}
+</style>
+
 <script>
 (function () {
+    var sectionModal = document.querySelector('[data-section-modal]');
+    var modalOpeners = document.querySelectorAll('[data-open-section-modal]');
+    var modalClosers = document.querySelectorAll('[data-close-section-modal]');
+    var modalTitle = document.getElementById('modal-section-title');
+
+    function openSectionModal() {
+        if (!sectionModal) return;
+        sectionModal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        if (modalTitle) modalTitle.focus();
+    }
+
+    function closeSectionModal() {
+        if (!sectionModal) return;
+        sectionModal.hidden = true;
+        document.body.style.overflow = '';
+    }
+
+    modalOpeners.forEach(function (button) { button.addEventListener('click', openSectionModal); });
+    modalClosers.forEach(function (button) { button.addEventListener('click', closeSectionModal); });
+    if (sectionModal) {
+        sectionModal.addEventListener('click', function (event) {
+            if (event.target === sectionModal) closeSectionModal();
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !sectionModal.hidden) closeSectionModal();
+        });
+        if (sectionModal.hasAttribute('data-open')) openSectionModal();
+    }
+
     // Show / hide panels (details form, bulk add) without leaving the page.
     document.querySelectorAll('[data-toggle]').forEach(function (button) {
         button.addEventListener('click', function () {

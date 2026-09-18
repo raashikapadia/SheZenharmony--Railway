@@ -4,20 +4,25 @@
 @php($summary = $review['summary'])
 @php($issueCount = count($review['issues']))
 @php($warningCount = count($review['warnings']))
-<main class="content stack">
-    <a class="backlink" href="{{ route('admin.questionnaires.sections.index', $questionnaire) }}">← Back to {{ $questionnaire->title }}</a>
+@php($creationFlow = (int) session('admin_questionnaire_creation_id') === $questionnaire->id && $questionnaire->status === 'draft')
+<main class="content stack{{ $creationFlow ? ' questionnaire-creation-step' : '' }}">
+    <a class="backlink" href="{{ $creationFlow ? route('admin.questionnaires.scoring', $questionnaire) : route('admin.questionnaires.sections.index', $questionnaire) }}">← Back to {{ $creationFlow ? 'Scoring' : $questionnaire->title }}</a>
 
     @if(session('status'))<div class="status">{{ session('status') }}</div>@endif
 
     <div>
-        <div class="eyebrow">Review &amp; publish</div>
+        <div class="eyebrow">{{ $creationFlow ? 'Step 4 of 4 · ' : '' }}Review &amp; publish</div>
         <h1 style="margin:2px 0 4px">{{ $questionnaire->title }}
             <span class="badge {{ $questionnaire->is_active && ! $questionnaire->isScheduled() ? 'active' : '' }}" style="vertical-align:middle;font-family:system-ui,sans-serif">{{ $questionnaire->publishState() }}</span>
         </h1>
         <p class="lede">The whole questionnaire has been checked — every section, question, answer and score, the result scale, every range and the support linked to it.</p>
     </div>
 
-    @include('admin.questionnaires._wizard', ['questionnaire' => $questionnaire, 'review' => $review, 'step' => 3])
+    @if($creationFlow)
+        @include('admin.questionnaires._creation_progress', ['questionnaire' => $questionnaire, 'step' => 4])
+    @else
+        @include('admin.questionnaires._wizard', ['questionnaire' => $questionnaire, 'review' => $review, 'step' => 3])
+    @endif
 
     {{-- ============ CHECKS ============ --}}
     <section class="panel">
@@ -38,12 +43,13 @@
             </div>
             <ol class="attention-list">
                 @foreach($review['issues'] as $issue)
+                    @php($fixUrl = $creationFlow && in_array($issue['where'], ['Result scale', 'Result ranges'], true) ? route('admin.questionnaires.scoring', $questionnaire).'#ranges' : $issue['fix'])
                     <li>
                         <div class="grow">
                             <div class="item-title">{{ $issue['where'] }}</div>
                             <div>{{ $issue['what'] }}</div>
                         </div>
-                        <a class="button button-secondary" href="{{ $issue['fix'] }}">Fix</a>
+                        <a class="button button-secondary" href="{{ $fixUrl }}">Fix</a>
                     </li>
                 @endforeach
             </ol>
@@ -59,13 +65,14 @@
             </div>
             <ol class="attention-list">
                 @foreach($review['warnings'] as $warning)
+                    @php($reviewUrl = $creationFlow && $warning['where'] === 'Result ranges' ? route('admin.questionnaires.scoring', $questionnaire).'#ranges' : $warning['fix'])
                     <li>
                         <div class="grow">
                             <div class="item-title">{{ $warning['where'] }}</div>
                             <div>{{ $warning['what'] }}</div>
                             @if($warning['detail'])<div class="muted" style="margin-top:3px;font-size:.88rem">{{ $warning['detail'] }}</div>@endif
                         </div>
-                        <a class="button button-secondary" href="{{ $warning['fix'] }}">Review</a>
+                        <a class="button button-secondary" href="{{ $reviewUrl }}">Review</a>
                     </li>
                 @endforeach
             </ol>

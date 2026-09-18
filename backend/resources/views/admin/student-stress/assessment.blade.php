@@ -1,10 +1,10 @@
 @extends('layouts.admin')
-@section('title', 'Assessment answers')
+@section('title', 'Assessment details')
 @section('body')
 @php($identity = $assessment->studentIdentity)
 <main class="content">
     @include('admin.student-stress._nav')
-    <a href="{{ $identity ? route('admin.student-stress.show', $identity) : route('admin.student-stress.index') }}">← Back</a>
+    <a href="{{ $identity ? route('admin.student-stress.show', [$identity, 'tab' => 'assessments']) : route('admin.student-stress.index') }}">← Back to assessments</a>
 
     <section class="panel" style="margin-top:16px">
         <div class="page-intro">
@@ -60,7 +60,7 @@
     @endif
 
     <section class="panel" style="margin-top:16px">
-        <h3>Answers <span class="muted">({{ $assessment->responses->count() }})</span></h3>
+        <h3>Assessment answers <span class="muted">({{ $assessment->responses->count() }})</span></h3>
         <div class="table-wrap"><table>
             <thead><tr><th>#</th><th>Question</th><th>Answer</th><th>Score</th><th>Scored value</th></tr></thead>
             <tbody>

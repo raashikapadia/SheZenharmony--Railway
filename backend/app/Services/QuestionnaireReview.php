@@ -41,7 +41,9 @@ class QuestionnaireReview
             'questions' => fn ($q) => $q->orderBy('questionnaire_questions.position')->with([
                 'options' => fn ($o) => $o->orderBy('position'),
             ]),
-            'scoreBands' => fn ($q) => $q->orderBy('min_score'),
+            'scoreBands' => fn ($q) => $q->orderBy('min_score')->with([
+                'recommendations' => fn ($r) => $r->where('is_active', true)->with('intervention'),
+            ]),
         ]);
 
         $issues = [];
@@ -210,7 +212,7 @@ class QuestionnaireReview
             ->count();
         $linkedIds = collect();
         foreach ($bands as $band) {
-            $links = $band->recommendations()->where('is_active', true)->with('intervention')->get();
+            $links = $band->recommendations;
             $live = $links->filter(fn ($link) => $link->intervention && $link->intervention->is_active);
             $linkedIds = $linkedIds->merge($live->pluck('intervention_id'));
             if ($links->count() > $live->count()) {
