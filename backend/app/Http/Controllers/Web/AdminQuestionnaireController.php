@@ -272,6 +272,21 @@ class AdminQuestionnaireController extends Controller
     }
 
     /** Questionnaire Management → Analytics tab (with in-page sub-tabs). */
+    /** Reporting and version history hub for Questionnaire Management. */
+    public function reports(): View
+    {
+        $questionnaires = Questionnaire::query()->notInTrash();
+
+        return view('admin.questionnaires.reports', [
+            'activeCount' => (clone $questionnaires)->where('is_active', true)->count(),
+            'draftCount' => (clone $questionnaires)->where('status', 'draft')->count(),
+            'archivedCount' => (clone $questionnaires)->where('status', 'archived')->count(),
+            'assessmentCount' => StressAssessment::query()->where('assessment_status', 'completed')->count(),
+            'attention' => (clone $questionnaires)->where('status', 'draft')->withCount(['questions', 'sections'])->orderByDesc('updated_at')->limit(5)->get(),
+            'recentVersions' => (clone $questionnaires)->withCount(['questions', 'sections'])->orderByDesc('updated_at')->limit(5)->get(),
+        ]);
+    }
+
     public function analytics(Request $request, AssessmentAnalytics $analytics, QuestionnaireActivationService $activation): View
     {
         $tab = $request->string('tab')->toString() ?: 'overall';

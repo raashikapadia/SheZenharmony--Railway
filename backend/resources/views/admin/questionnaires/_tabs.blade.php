@@ -21,7 +21,4 @@
         <a class="button button-secondary" href="{{ route('admin.questionnaires.builder') }}"><i data-lucide="chart-no-axes-combined"></i>Scoring</a>
         <a class="button button-secondary" href="{{ route('admin.questionnaires.builder') }}"><i data-lucide="shield-check"></i>Review &amp; Publish</a>
     @endif
-    <a class="button {{ request()->routeIs('admin.questionnaires.results') ? '' : 'button-secondary' }}" href="{{ route('admin.questionnaires.results') }}"><i data-lucide="clipboard-check"></i>Results</a>
-    <a class="button {{ request()->routeIs('admin.questionnaires.analytics') ? '' : 'button-secondary' }}" href="{{ route('admin.questionnaires.analytics') }}"><i data-lucide="chart-no-axes-column"></i>Analytics</a>
-    <a class="button {{ request()->routeIs('admin.questionnaires.versions') ? '' : 'button-secondary' }}" href="{{ route('admin.questionnaires.versions') }}"><i data-lucide="history"></i>Versions</a>
 </nav>

@@ -43,6 +43,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('questionnaires/results', [AdminQuestionnaireController::class, 'results'])->name('questionnaires.results');
     Route::get('questionnaires/analytics', [AdminQuestionnaireController::class, 'analytics'])->name('questionnaires.analytics');
     Route::get('questionnaires/versions', [AdminQuestionnaireController::class, 'versions'])->name('questionnaires.versions');
+    Route::get('questionnaires/reports', [AdminQuestionnaireController::class, 'reports'])->name('questionnaires.reports');
     Route::resource('questionnaires', AdminQuestionnaireController::class)->except(['show']);
     Route::patch('questionnaires/{questionnaire}/details', [AdminQuestionnaireController::class, 'updateDetails'])->name('questionnaires.details');
     Route::patch('questionnaires/{questionnaire}/ranges', [AdminQuestionnaireController::class, 'updateRanges'])->name('questionnaires.ranges');
