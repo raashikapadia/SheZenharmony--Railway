@@ -23,18 +23,31 @@
         @endforelse
         </tbody></table></div>
     </section>
-    <section class="panel" style="margin-top:20px">
-        <div class="panel-head"><h2>Student completion records</h2><p class="muted">Students are identified by their pseudonymous ID. Admin views and edits are not counted.</p></div>
-        <div class="table-wrap"><table><thead><tr><th>Quiz</th><th>Student ID</th><th>Score</th><th>Completed</th></tr></thead><tbody>
-        @php($hasAttempts = false)
-        @foreach($quizzes as $quiz)
-            @foreach($quiz->attempts as $attempt)
-                @php($hasAttempts = true)
-                <tr><td>{{ $quiz->name }}</td><td>{{ $attempt->studentIdentity?->displayId() ?? 'Unavailable' }}</td><td>{{ $attempt->score === null ? 'Not recorded' : $attempt->score }}</td><td>{{ $attempt->completed_at?->format('d M Y H:i') }}</td></tr>
-            @endforeach
-        @endforeach
-        @if(!$hasAttempts)<tr><td colspan="4">No student quiz completions recorded yet.</td></tr>@endif
-        </tbody></table></div>
-    </section>
+    <details class="panel" style="margin-top:20px;padding:0;overflow:hidden">
+        <summary style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;cursor:pointer;list-style:none">
+            <span><strong>Recent student activity</strong><br><span class="muted">Latest results by quiz. Open to review details.</span></span>
+            <span class="badge active">{{ $stats['totalCompletions'] }} total</span>
+        </summary>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;padding:0 20px 20px">
+            @forelse($quizzes as $quiz)
+                <article style="border:1px solid #d8e5f2;border-radius:12px;padding:14px;background:#f8fbfe">
+                    <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:10px">
+                        <strong>{{ $quiz->name }}</strong>
+                        <span class="muted">{{ $quiz->attempts_count }} plays</span>
+                    </div>
+                    @forelse($quiz->attempts->take(3) as $attempt)
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid #e4edf5;font-size:.86rem">
+                            <span>{{ $attempt->studentIdentity?->displayId() ?? 'Unavailable' }}</span>
+                            <span><strong>Score: {{ $attempt->score === null ? '—' : $attempt->score.'/'.$quiz->questions_count }}</strong> <span class="muted">{{ $attempt->completed_at?->format('d M H:i') }}</span></span>
+                        </div>
+                    @empty
+                        <span class="muted">No student completions yet.</span>
+                    @endforelse
+                </article>
+            @empty
+                <p class="muted">No quizzes configured.</p>
+            @endforelse
+        </div>
+    </details>
 </main>
 @endsection

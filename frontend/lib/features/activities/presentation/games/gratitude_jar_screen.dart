@@ -162,24 +162,32 @@ class _GratitudeJarScreenState extends State<GratitudeJarScreen>
   }
 
   bool _containsEmotionalWords(String text) {
-    final lower = text.toLowerCase();
+    final normalized = text
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
 
-    const emotionalWords = [
-      'sad',
+    const negativePhrases = [
+      'i am sad',
+      'i feel sad',
       'sadness',
-      'lonely',
-      'loneliness',
-      'upset',
-      'stressed',
-      'stress',
-      'anxious',
-      'anxiety',
-      'worried',
+      'i am lonely',
+      'i feel lonely',
+      'i am upset',
+      'i feel upset',
+      'i am stressed',
+      'i feel stressed',
+      'i am anxious',
+      'i feel anxious',
+      'i am worried',
+      'i feel worried',
       'overwhelmed',
       'crying',
-      'cry',
-      'hurt',
-      'angry',
+      'i am hurt',
+      'i feel hurt',
+      'i am angry',
+      'i feel angry',
       'frustrated',
       'hopeless',
       'not okay',
@@ -189,12 +197,30 @@ class _GratitudeJarScreenState extends State<GratitudeJarScreen>
       'feel down',
       'feeling low',
       'feel low',
-      'struggling',
-      'struggle',
+      'i am struggling',
+      'i feel like giving up',
       'difficult day',
     ];
 
-    return emotionalWords.any((word) => lower.contains(word));
+    const reassuringPhrases = [
+      'not sad',
+      'not lonely',
+      'not upset',
+      'not stressed',
+      'not anxious',
+      'not worried',
+      'stress free',
+      'feeling okay',
+      'feel okay',
+      'feeling good',
+      'feel good',
+      'feeling happy',
+      'feel happy',
+    ];
+
+    if (reassuringPhrases.any(normalized.contains)) return false;
+
+    return negativePhrases.any(normalized.contains);
   }
 
   void _showSupportPrompt() {
@@ -586,10 +612,7 @@ class _GratitudeJarScreenState extends State<GratitudeJarScreen>
                   topLeft: Radius.circular(30),
                   topRight: Radius.circular(30),
                 ),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.18),
-                  width: 2,
-                ),
+                border: Border.all(color: AppColors.primary, width: 3),
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.primary.withValues(alpha: 0.10),
@@ -677,10 +700,7 @@ class _GratitudeJarScreenState extends State<GratitudeJarScreen>
               decoration: BoxDecoration(
                 color: AppColors.softLavender,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.18),
-                  width: 2,
-                ),
+                border: Border.all(color: AppColors.primary, width: 3),
               ),
             ),
           ),

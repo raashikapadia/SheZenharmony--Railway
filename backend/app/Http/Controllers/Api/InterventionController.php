@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Intervention;
+use App\Models\InterventionUsage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -36,6 +37,7 @@ class InterventionController extends Controller
 
         return response()->json([
             'data' => $query->get()->map(fn (Intervention $intervention): array => [
+                'id' => $intervention->id,
                 'title' => $intervention->title,
                 'description' => $intervention->description,
                 'content_type' => $intervention->content_type,
@@ -44,5 +46,23 @@ class InterventionController extends Controller
                 'instructions' => $intervention->instructions,
             ])->values(),
         ]);
+    }
+
+    public function play(Request $request, Intervention $intervention): JsonResponse
+    {
+        abort_unless($intervention->is_active && $intervention->content_type === 'positive_engagement', 404);
+
+        $identity = $request->user()->studentIdentity()->firstOrCreate([], [
+            'pseudonymous_uuid' => $request->user()->pseudonymous_uuid,
+        ]);
+
+        InterventionUsage::query()->create([
+            'intervention_id' => $intervention->id,
+            'student_identity_id' => $identity->id,
+            'usage_status' => 'started',
+            'started_at' => now(),
+        ]);
+
+        return response()->json(['data' => ['recorded' => true]], 201);
     }
 }

@@ -183,6 +183,13 @@ class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
 
                 const SizedBox(height: 14),
 
+                const Text(
+                  'Choose a quiz and take it one question at a time.',
+                  style: TextStyle(color: AppColors.muted, height: 1.4),
+                ),
+
+                const SizedBox(height: 16),
+
                 FutureBuilder<List<ManagedQuiz>>(
                   future: _quizzes,
                   builder: (context, snapshot) {
@@ -206,16 +213,11 @@ class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
                     return Column(
                       children: [
                         for (final quiz in quizzes) ...[
-                          _GameCard(
-                            icon: Icons.quiz_outlined,
-                            title: quiz.name,
-                            description: quiz.description.isEmpty
-                                ? quiz.category
-                                : quiz.description,
-                            color: AppColors.softBlush,
+                          _QuizCard(
+                            quiz: quiz,
                             onTap: () => Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => ManagedQuizScreen(quiz: quiz),
+                                builder: (_) => QuizStartScreen(quiz: quiz),
                               ),
                             ),
                           ),
@@ -247,6 +249,10 @@ class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
   };
 
   void _openGame(PositiveContent game) {
+    final token = context.read<AuthProvider>().session?.token;
+    if (token != null && game.id != null) {
+      _api.recordGamePlay(token, game.id!).catchError((_) {});
+    }
     final Widget screen = switch (game.title) {
       'Breathing Challenge' => const BreathingGameScreen(),
       'Gratitude Jar' => const GratitudeJarScreen(),
@@ -261,6 +267,130 @@ class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
 // ============================================================
 // GAME CARD
 // ============================================================
+
+class _QuizCard extends StatelessWidget {
+  const _QuizCard({required this.quiz, required this.onTap});
+
+  final ManagedQuiz quiz;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Ink(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.softBlush, AppColors.softLavender],
+            ),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.18),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      color: AppColors.surface,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.quiz_outlined,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      quiz.name,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    color: AppColors.primary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              if (quiz.category.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: 0.78),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    quiz.category,
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              if (quiz.description.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  quiz.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: AppColors.muted, height: 1.4),
+                ),
+              ],
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.format_list_numbered_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${quiz.questions.length} questions',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Spacer(),
+                  const Text(
+                    'Open quiz',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _GameCard extends StatelessWidget {
   const _GameCard({
@@ -567,12 +697,28 @@ class _BreathingGameScreenState extends State<BreathingGameScreen>
                           width: 210,
                           height: 210,
                           decoration: BoxDecoration(
-                            color: AppColors.softLavender,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                AppColors.primary,
+                                AppColors.softLavender,
+                              ],
+                            ),
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.15),
-                              width: 2,
+                              color: AppColors.primary.withValues(alpha: 0.95),
+                              width: 8,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.35,
+                                ),
+                                blurRadius: 18,
+                                spreadRadius: 3,
+                              ),
+                            ],
                           ),
                           child: Center(
                             child: Text(
@@ -649,6 +795,73 @@ class _QuizNotice extends StatelessWidget {
   }
 }
 
+class QuizStartScreen extends StatelessWidget {
+  const QuizStartScreen({super.key, required this.quiz});
+
+  final ManagedQuiz quiz;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Select quiz')),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                quiz.category.isEmpty ? 'Quiz' : quiz.category,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                quiz.name,
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                quiz.description.isEmpty
+                    ? 'Test your knowledge and learn as you go.'
+                    : quiz.description,
+                style: const TextStyle(color: AppColors.muted, height: 1.45),
+              ),
+              const SizedBox(height: 20),
+              Text('${quiz.questions.length} questions'),
+              const Spacer(),
+              const Center(
+                child: Text('🌟  🧠  ✨', style: TextStyle(fontSize: 34)),
+              ),
+              const SizedBox(height: 14),
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ManagedQuizScreen(quiz: quiz),
+                    ),
+                  ),
+                  icon: const Icon(Icons.play_arrow_rounded),
+                  label: const Text('Start quiz'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class ManagedQuizScreen extends StatefulWidget {
   const ManagedQuizScreen({super.key, required this.quiz});
 
@@ -658,15 +871,248 @@ class ManagedQuizScreen extends StatefulWidget {
   State<ManagedQuizScreen> createState() => _ManagedQuizScreenState();
 }
 
+class _ScoreFeedback extends StatelessWidget {
+  const _ScoreFeedback({
+    required this.score,
+    required this.total,
+    this.corrections = const [],
+  });
+
+  final int score;
+  final int total;
+  final List<_QuizCorrection> corrections;
+
+  ({String title, String message}) get _feedback {
+    if (score == total) {
+      return (
+        title: 'Excellent!',
+        message: 'You got every question correct. Fantastic knowledge!',
+      );
+    }
+    if (score >= 4) {
+      return (
+        title: 'Great job!',
+        message:
+            'You got most questions correct. Keep practising to achieve a perfect score!',
+      );
+    }
+    if (score >= 3) {
+      return (
+        title: 'Good effort!',
+        message:
+            'You got more than half correct. Review the questions you missed and try again.',
+      );
+    }
+    if (score == 2) {
+      return (
+        title: 'Nice try!',
+        message:
+            'You got some questions correct. Keep learning and practising to improve your score.',
+      );
+    }
+    if (score == 1) {
+      return (
+        title: 'Keep going!',
+        message:
+            'You got one question correct. Review the topics and give the quiz another try.',
+      );
+    }
+    return (
+      title: "Don't give up!",
+      message:
+          'This is a great opportunity to learn. Review the answers and try again.',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final feedback = _feedback;
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Score: $score/$total'),
+          const SizedBox(height: 12),
+          Text(
+            feedback.title,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          Text(feedback.message),
+          if (corrections.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Text(
+              'Review your answers',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            for (final correction in corrections) ...[
+              Text(
+                correction.question,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text('Correct answer: ${correction.correctAnswer}'),
+              if (correction.explanation.isNotEmpty)
+                Text('Explanation: ${correction.explanation}'),
+              const SizedBox(height: 12),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _QuizCorrection {
+  const _QuizCorrection({
+    required this.question,
+    required this.correctAnswer,
+    required this.explanation,
+  });
+
+  final String question;
+  final String correctAnswer;
+  final String explanation;
+
+  factory _QuizCorrection.fromJson(Map<String, dynamic> json) {
+    return _QuizCorrection(
+      question: json['question_text'] as String? ?? '',
+      correctAnswer: json['correct_answer'] as String? ?? '',
+      explanation: json['explanation'] as String? ?? '',
+    );
+  }
+}
+
+class _ManagedAnswerFeedback extends StatelessWidget {
+  const _ManagedAnswerFeedback({
+    required this.question,
+    required this.selectedAnswer,
+    required this.feedback,
+  });
+
+  final ManagedQuizQuestion question;
+  final String selectedAnswer;
+  final Map<String, dynamic> feedback;
+
+  @override
+  Widget build(BuildContext context) {
+    final isCorrect = feedback['is_correct'] as bool? ?? false;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isCorrect ? AppColors.softSage : AppColors.softBlush,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isCorrect ? 'Correct!' : 'Not quite!',
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w700,
+              fontSize: 17,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Your answer: ${question.options[selectedAnswer] ?? selectedAnswer}',
+          ),
+          const SizedBox(height: 4),
+          Text('Correct answer: ${feedback['correct_answer']}'),
+          const SizedBox(height: 8),
+          Text(
+            (feedback['explanation'] as String?)?.isNotEmpty == true
+                ? feedback['explanation'] as String
+                : isCorrect
+                ? 'Great job! You got this one right.'
+                : 'Review this answer to reinforce the topic.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ManagedQuizScreenState extends State<ManagedQuizScreen> {
   final Map<int, String> _answers = {};
   late final ApiService _api = ApiService();
+  int _currentQuestion = 0;
+  String? _selectedAnswer;
+  Map<String, dynamic>? _answerFeedback;
+  bool _checkingAnswer = false;
   bool _submitting = false;
 
   @override
   void dispose() {
     _api.close();
     super.dispose();
+  }
+
+  void _selectAnswer(String answer) {
+    if (_checkingAnswer || _answerFeedback != null) return;
+
+    setState(() => _selectedAnswer = answer);
+  }
+
+  Future<void> _submitAnswer() async {
+    if (_checkingAnswer || _answerFeedback != null || _selectedAnswer == null) {
+      return;
+    }
+    final token = context.read<AuthProvider>().session?.token;
+    if (token == null) return;
+
+    final question = widget.quiz.questions[_currentQuestion];
+    final answer = _selectedAnswer!;
+    setState(() {
+      _answers[question.id] = answer;
+      _checkingAnswer = true;
+    });
+    try {
+      final feedback = await _api.answerManagedQuizQuestion(
+        token,
+        widget.quiz.id,
+        question.id,
+        answer,
+      );
+      if (!mounted) return;
+      setState(() {
+        _answerFeedback = {
+          ...feedback,
+          'answer': question.options[answer] ?? answer,
+        };
+        _checkingAnswer = false;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _checkingAnswer = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
+  Future<void> _nextQuestion() async {
+    if (_answerFeedback == null || _submitting) {
+      return;
+    }
+
+    if (_currentQuestion < widget.quiz.questions.length - 1) {
+      setState(() {
+        _currentQuestion++;
+        _selectedAnswer = null;
+        _answerFeedback = null;
+      });
+      return;
+    }
+
+    await _submit();
   }
 
   Future<void> _submit() async {
@@ -684,22 +1130,43 @@ class _ManagedQuizScreenState extends State<ManagedQuizScreen> {
         _answers,
       );
       if (!mounted) return;
+      final corrections =
+          (result['incorrect_questions'] as List<dynamic>? ?? const [])
+              .whereType<Map<String, dynamic>>()
+              .map(_QuizCorrection.fromJson)
+              .toList();
       await showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Quiz complete'),
-          content: Text(
-            'You scored ${result['score']} out of ${result['total_questions']}.',
+          title: const Text('Final score'),
+          content: _ScoreFeedback(
+            score: result['score'] as int,
+            total: result['total_questions'] as int,
+            corrections: corrections,
           ),
           actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                setState(() {
+                  _currentQuestion = 0;
+                  _selectedAnswer = null;
+                  _answerFeedback = null;
+                  _answers.clear();
+                });
+              },
+              child: const Text('Try again'),
+            ),
             FilledButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
               child: const Text('Done'),
             ),
           ],
         ),
       );
-      if (mounted) Navigator.pop(context);
     } on ApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -712,6 +1179,9 @@ class _ManagedQuizScreenState extends State<ManagedQuizScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final question = widget.quiz.questions[_currentQuestion];
+    final selectedAnswer = _selectedAnswer;
+
     return Scaffold(
       appBar: AppBar(title: Text(widget.quiz.name)),
       body: SafeArea(
@@ -724,62 +1194,92 @@ class _ManagedQuizScreenState extends State<ManagedQuizScreen> {
                 style: const TextStyle(color: AppColors.muted, height: 1.4),
               ),
             const SizedBox(height: 18),
-            for (final question in widget.quiz.questions) ...[
-              Text(
-                question.questionText,
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  height: 1.4,
-                ),
+            Text(
+              'Question ${_currentQuestion + 1} of ${widget.quiz.questions.length}',
+              style: const TextStyle(
+                color: AppColors.muted,
+                fontWeight: FontWeight.w600,
               ),
-              const SizedBox(height: 10),
-              for (final option in question.options.entries)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: InkWell(
-                    onTap: _submitting
-                        ? null
-                        : () => setState(() {
-                            _answers[question.id] = option.key;
-                          }),
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: _answers[question.id] == option.key
-                            ? AppColors.softLavender
-                            : AppColors.surface,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: _answers[question.id] == option.key
-                              ? AppColors.primary
-                              : AppColors.primary.withValues(alpha: 0.10),
+            ),
+            const SizedBox(height: 12),
+            if (_answerFeedback == null && !_checkingAnswer)
+              const Text(
+                'Select an answer, then submit to see the result.',
+                style: TextStyle(color: AppColors.muted),
+              ),
+            if (_answerFeedback == null && !_checkingAnswer)
+              const SizedBox(height: 12),
+            Text(
+              question.questionText,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 16),
+            for (final option in question.options.entries)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: InkWell(
+                  onTap: _submitting || _checkingAnswer
+                      ? null
+                      : () => _selectAnswer(option.key),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: selectedAnswer == option.key
+                          ? AppColors.softLavender
+                          : AppColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: selectedAnswer == option.key
+                            ? AppColors.primary
+                            : AppColors.primary.withValues(alpha: 0.10),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          selectedAnswer == option.key
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_unchecked,
+                          color: AppColors.primary,
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            _answers[question.id] == option.key
-                                ? Icons.radio_button_checked
-                                : Icons.radio_button_unchecked,
-                            color: AppColors.primary,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(child: Text(option.value)),
-                        ],
-                      ),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(option.value)),
+                      ],
                     ),
                   ),
                 ),
-              const SizedBox(height: 18),
-            ],
+              ),
+            if (_checkingAnswer)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            if (_answerFeedback != null)
+              _ManagedAnswerFeedback(
+                question: question,
+                selectedAnswer: selectedAnswer!,
+                feedback: _answerFeedback!,
+              ),
+            const SizedBox(height: 18),
             FilledButton(
-              onPressed: _answers.length == widget.quiz.questions.length
-                  ? _submit
-                  : null,
-              child: Text(_submitting ? 'Submitting...' : 'Submit quiz'),
+              onPressed: _answerFeedback == null
+                  ? (selectedAnswer == null || _checkingAnswer
+                        ? null
+                        : _submitAnswer)
+                  : _nextQuestion,
+              child: Text(
+                _answerFeedback == null
+                    ? 'Submit answer'
+                    : _currentQuestion == widget.quiz.questions.length - 1
+                    ? 'See results'
+                    : 'Next question',
+              ),
             ),
           ],
         ),
@@ -811,6 +1311,7 @@ class _WellbeingQuizScreenState extends State<WellbeingQuizScreen> {
         'Staying focused without resting',
       ],
       correctIndex: 0,
+      explanation: 'A short walk gives your body and mind a refreshing break.',
     ),
     _QuizQuestion(
       question: 'What is a positive way to respond when you feel overwhelmed?',
@@ -821,6 +1322,8 @@ class _WellbeingQuizScreenState extends State<WellbeingQuizScreen> {
         'Rush through everything',
       ],
       correctIndex: 0,
+      explanation:
+          'Pausing and breathing can help you feel calmer and more in control.',
     ),
     _QuizQuestion(
       question: 'Why can getting enough sleep support wellbeing?',
@@ -831,6 +1334,8 @@ class _WellbeingQuizScreenState extends State<WellbeingQuizScreen> {
         'It replaces healthy habits',
       ],
       correctIndex: 0,
+      explanation:
+          'Sleep supports the recovery and energy your body and mind need.',
     ),
     _QuizQuestion(
       question: 'Which is an example of positive self-care?',
@@ -841,6 +1346,8 @@ class _WellbeingQuizScreenState extends State<WellbeingQuizScreen> {
         'Constantly comparing yourself with others',
       ],
       correctIndex: 0,
+      explanation:
+          'Positive self-care includes activities that support your wellbeing.',
     ),
     _QuizQuestion(
       question: 'What can help build a positive daily routine?',
@@ -851,6 +1358,8 @@ class _WellbeingQuizScreenState extends State<WellbeingQuizScreen> {
         'Never adjusting your routine',
       ],
       correctIndex: 0,
+      explanation:
+          'Small realistic habits are easier to maintain and build into a routine.',
     ),
   ];
 
@@ -858,15 +1367,22 @@ class _WellbeingQuizScreenState extends State<WellbeingQuizScreen> {
   int _score = 0;
   int? _selectedAnswer;
   bool _answered = false;
+  late final List<int?> _answers = List<int?>.filled(_questions.length, null);
 
   void _selectAnswer(int index) {
     if (_answered) return;
 
-    setState(() {
-      _selectedAnswer = index;
-      _answered = true;
+    setState(() => _selectedAnswer = index);
+  }
 
-      if (index == _questions[_currentQuestion].correctIndex) {
+  void _submitAnswer() {
+    if (_selectedAnswer == null || _answered) return;
+
+    setState(() {
+      _answered = true;
+      _answers[_currentQuestion] = _selectedAnswer;
+
+      if (_selectedAnswer == _questions[_currentQuestion].correctIndex) {
         _score++;
       }
     });
@@ -893,10 +1409,22 @@ class _WellbeingQuizScreenState extends State<WellbeingQuizScreen> {
       _score = 0;
       _selectedAnswer = null;
       _answered = false;
+      _answers.fillRange(0, _answers.length, null);
     });
   }
 
   void _showResults() {
+    final corrections = [
+      for (var index = 0; index < _questions.length; index++)
+        if (_answers[index] != _questions[index].correctIndex)
+          _QuizCorrection(
+            question: _questions[index].question,
+            correctAnswer:
+                _questions[index].options[_questions[index].correctIndex],
+            explanation: 'Review this answer to reinforce the topic.',
+          ),
+    ];
+
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -906,11 +1434,10 @@ class _WellbeingQuizScreenState extends State<WellbeingQuizScreen> {
             borderRadius: BorderRadius.circular(24),
           ),
           title: const Text('Quiz complete'),
-          content: Text(
-            'You scored $_score out of '
-            '${_questions.length}.\n\n'
-            'Keep learning about small habits '
-            'that can support your wellbeing.',
+          content: _ScoreFeedback(
+            score: _score,
+            total: _questions.length,
+            corrections: corrections,
           ),
           actions: [
             TextButton(
@@ -1003,16 +1530,9 @@ class _WellbeingQuizScreenState extends State<WellbeingQuizScreen> {
               const SizedBox(height: 12),
 
               if (_answered)
-                Text(
-                  _selectedAnswer == question.correctIndex
-                      ? 'Correct. Good job.'
-                      : 'Keep going. The correct answer is highlighted.',
-                  style: TextStyle(
-                    color: _selectedAnswer == question.correctIndex
-                        ? AppColors.primary
-                        : AppColors.muted,
-                    fontWeight: FontWeight.w600,
-                  ),
+                _AnswerFeedback(
+                  question: question,
+                  selectedAnswer: _selectedAnswer!,
                 ),
 
               const SizedBox(height: 20),
@@ -1020,11 +1540,17 @@ class _WellbeingQuizScreenState extends State<WellbeingQuizScreen> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: _answered ? _nextQuestion : null,
+                  onPressed: _answered
+                      ? _nextQuestion
+                      : _selectedAnswer == null
+                      ? null
+                      : _submitAnswer,
                   child: Text(
-                    _currentQuestion == _questions.length - 1
-                        ? 'See results'
-                        : 'Next question',
+                    _answered
+                        ? _currentQuestion == _questions.length - 1
+                              ? 'See results'
+                              : 'Next question'
+                        : 'Submit answer',
                   ),
                 ),
               ),
@@ -1058,6 +1584,7 @@ class _MindfulnessQuizScreenState extends State<MindfulnessQuizScreen> {
         'Rush through activities',
       ],
       correctIndex: 0,
+      explanation: 'Mindfulness means paying attention to the present moment.',
     ),
     _QuizQuestion(
       question: 'Which can be part of a mindfulness practice?',
@@ -1068,6 +1595,8 @@ class _MindfulnessQuizScreenState extends State<MindfulnessQuizScreen> {
         'Trying to control every thought',
       ],
       correctIndex: 0,
+      explanation:
+          'Noticing your breathing is a simple way to practise mindfulness.',
     ),
     _QuizQuestion(
       question: 'If your mind wanders during mindfulness, what can you do?',
@@ -1078,6 +1607,8 @@ class _MindfulnessQuizScreenState extends State<MindfulnessQuizScreen> {
         'Try to force your mind to stop',
       ],
       correctIndex: 0,
+      explanation:
+          'Gently returning your attention is a kind and practical response to a wandering mind.',
     ),
     _QuizQuestion(
       question: 'Mindfulness can be practised during which activity?',
@@ -1088,6 +1619,8 @@ class _MindfulnessQuizScreenState extends State<MindfulnessQuizScreen> {
         'Only in complete silence',
       ],
       correctIndex: 0,
+      explanation:
+          'Mindfulness can be practised during ordinary activities throughout the day.',
     ),
     _QuizQuestion(
       question: 'What is a helpful attitude during mindfulness?',
@@ -1098,6 +1631,8 @@ class _MindfulnessQuizScreenState extends State<MindfulnessQuizScreen> {
         'Rushing to finish',
       ],
       correctIndex: 0,
+      explanation:
+          'Curiosity and kindness help you notice your experience without judging yourself.',
     ),
   ];
 
@@ -1105,15 +1640,22 @@ class _MindfulnessQuizScreenState extends State<MindfulnessQuizScreen> {
   int _score = 0;
   int? _selectedAnswer;
   bool _answered = false;
+  late final List<int?> _answers = List<int?>.filled(_questions.length, null);
 
   void _selectAnswer(int index) {
     if (_answered) return;
 
-    setState(() {
-      _selectedAnswer = index;
-      _answered = true;
+    setState(() => _selectedAnswer = index);
+  }
 
-      if (index == _questions[_currentQuestion].correctIndex) {
+  void _submitAnswer() {
+    if (_selectedAnswer == null || _answered) return;
+
+    setState(() {
+      _answered = true;
+      _answers[_currentQuestion] = _selectedAnswer;
+
+      if (_selectedAnswer == _questions[_currentQuestion].correctIndex) {
         _score++;
       }
     });
@@ -1140,10 +1682,22 @@ class _MindfulnessQuizScreenState extends State<MindfulnessQuizScreen> {
       _score = 0;
       _selectedAnswer = null;
       _answered = false;
+      _answers.fillRange(0, _answers.length, null);
     });
   }
 
   void _showResults() {
+    final corrections = [
+      for (var index = 0; index < _questions.length; index++)
+        if (_answers[index] != _questions[index].correctIndex)
+          _QuizCorrection(
+            question: _questions[index].question,
+            correctAnswer:
+                _questions[index].options[_questions[index].correctIndex],
+            explanation: 'Review this answer to reinforce the topic.',
+          ),
+    ];
+
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -1153,11 +1707,10 @@ class _MindfulnessQuizScreenState extends State<MindfulnessQuizScreen> {
             borderRadius: BorderRadius.circular(24),
           ),
           title: const Text('Quiz complete'),
-          content: Text(
-            'You scored $_score out of '
-            '${_questions.length}.\n\n'
-            'Mindfulness is a skill that can be '
-            'practised through small moments of attention.',
+          content: _ScoreFeedback(
+            score: _score,
+            total: _questions.length,
+            corrections: corrections,
           ),
           actions: [
             TextButton(
@@ -1250,16 +1803,9 @@ class _MindfulnessQuizScreenState extends State<MindfulnessQuizScreen> {
               const SizedBox(height: 12),
 
               if (_answered)
-                Text(
-                  _selectedAnswer == question.correctIndex
-                      ? 'Correct. Well done.'
-                      : 'Keep going. The correct answer is highlighted.',
-                  style: TextStyle(
-                    color: _selectedAnswer == question.correctIndex
-                        ? AppColors.primary
-                        : AppColors.muted,
-                    fontWeight: FontWeight.w600,
-                  ),
+                _AnswerFeedback(
+                  question: question,
+                  selectedAnswer: _selectedAnswer!,
                 ),
 
               const SizedBox(height: 20),
@@ -1267,11 +1813,17 @@ class _MindfulnessQuizScreenState extends State<MindfulnessQuizScreen> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: _answered ? _nextQuestion : null,
+                  onPressed: _answered
+                      ? _nextQuestion
+                      : _selectedAnswer == null
+                      ? null
+                      : _submitAnswer,
                   child: Text(
-                    _currentQuestion == _questions.length - 1
-                        ? 'See results'
-                        : 'Next question',
+                    _answered
+                        ? _currentQuestion == _questions.length - 1
+                              ? 'See results'
+                              : 'Next question'
+                        : 'Submit answer',
                   ),
                 ),
               ),
@@ -1292,11 +1844,53 @@ class _QuizQuestion {
     required this.question,
     required this.options,
     required this.correctIndex,
+    required this.explanation,
   });
 
   final String question;
   final List<String> options;
   final int correctIndex;
+  final String explanation;
+}
+
+class _AnswerFeedback extends StatelessWidget {
+  const _AnswerFeedback({required this.question, required this.selectedAnswer});
+
+  final _QuizQuestion question;
+  final int selectedAnswer;
+
+  @override
+  Widget build(BuildContext context) {
+    final isCorrect = selectedAnswer == question.correctIndex;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isCorrect ? AppColors.softSage : AppColors.softBlush,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isCorrect ? 'Correct!' : 'Not quite!',
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w700,
+              fontSize: 17,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text('Your answer: ${question.options[selectedAnswer]}'),
+          const SizedBox(height: 4),
+          Text('Correct answer: ${question.options[question.correctIndex]}'),
+          const SizedBox(height: 8),
+          Text(question.explanation),
+        ],
+      ),
+    );
+  }
 }
 
 // ============================================================
