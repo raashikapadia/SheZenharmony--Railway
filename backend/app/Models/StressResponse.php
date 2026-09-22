@@ -11,6 +11,7 @@ class StressResponse extends Model
         'stress_assessment_id',
         'stress_question_id',
         'question_option_id',
+        'selected_option_ids',
         'numeric_value',
         'answer_text',
         'score',
@@ -22,6 +23,7 @@ class StressResponse extends Model
     protected function casts(): array
     {
         return [
+            'selected_option_ids' => 'array',
             'numeric_value' => 'decimal:2',
             'score' => 'integer',
             'scored_value' => 'decimal:2',

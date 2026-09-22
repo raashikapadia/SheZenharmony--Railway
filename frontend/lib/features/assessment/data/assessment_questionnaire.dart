@@ -18,9 +18,9 @@ class AssessmentOption {
   }
 }
 
-/// How a question expects to be answered. Mirrors the backend's
-/// `QuestionType` enum; anything unrecognised falls back to [scale] so a new
-/// server-side type still renders as a plain option list.
+/// How a question is *presented*. Mirrors the backend's `QuestionType`
+/// enum; anything unrecognised falls back to [scale] so a new server-side
+/// type still renders as a plain option list.
 enum AssessmentQuestionType {
   scale('scale'),
   multipleChoice('multiple_choice'),
@@ -36,6 +36,23 @@ enum AssessmentQuestionType {
   );
 }
 
+/// How a question is *answered* — one option, or several up to a limit.
+/// Separate from the type on purpose: the admin configures the two
+/// independently, and the backend scores from this, never from the type.
+enum AssessmentAnswerMode {
+  single('single'),
+  multiple('multiple');
+
+  const AssessmentAnswerMode(this.wire);
+
+  final String wire;
+
+  static AssessmentAnswerMode parse(String? raw) => values.firstWhere(
+    (mode) => mode.wire == raw,
+    orElse: () => AssessmentAnswerMode.single,
+  );
+}
+
 class AssessmentQuestion {
   const AssessmentQuestion({
     required this.id,
@@ -44,6 +61,9 @@ class AssessmentQuestion {
     required this.position,
     required this.options,
     this.type = AssessmentQuestionType.scale,
+    this.answerMode = AssessmentAnswerMode.single,
+    this.maxSelections = 1,
+    this.helpText,
     this.sectionId,
   });
 
@@ -53,19 +73,33 @@ class AssessmentQuestion {
   final int position;
   final List<AssessmentOption> options;
   final AssessmentQuestionType type;
+  final AssessmentAnswerMode answerMode;
+
+  /// How many options may be ticked when [answerMode] is
+  /// [AssessmentAnswerMode.multiple]; always 1 for a single answer.
+  final int maxSelections;
+  final String? helpText;
 
   /// The [AssessmentSection] this question belongs to, if the questionnaire
   /// is organised into sections.
   final int? sectionId;
 
+  bool get allowsMultiple => answerMode == AssessmentAnswerMode.multiple;
+
   factory AssessmentQuestion.fromJson(Map<String, dynamic> json) {
     final rawOptions = json['options'];
+    final mode = AssessmentAnswerMode.parse(json['answer_mode'] as String?);
     return AssessmentQuestion(
       id: json['id'] as int,
       text: json['text'] as String? ?? '',
       required: json['required'] as bool? ?? true,
       position: json['position'] as int? ?? 0,
       type: AssessmentQuestionType.parse(json['type'] as String?),
+      answerMode: mode,
+      maxSelections: mode == AssessmentAnswerMode.multiple
+          ? (json['max_selections'] as int? ?? 0).clamp(1, 1 << 30)
+          : 1,
+      helpText: json['help_text'] as String?,
       sectionId: json['section_id'] as int?,
       options: rawOptions is List
           ? rawOptions
@@ -102,10 +136,26 @@ class AssessmentSection {
       );
 }
 
-/// The same questionnaire configuration is used for both the mandatory
-/// post-registration assessment and the optional in-app check-in — this
-/// model is the single shape both flows render, sourced from a single API
-/// endpoint (`GET /v1/questionnaires/active`).
+/// Whether a questionnaire is the mandatory post-registration baseline or
+/// one of the library assessments a student chooses to take. The two are
+/// kept apart everywhere: lists, history, and the onboarding gate.
+enum QuestionnairePurpose {
+  registration('registration'),
+  library('library');
+
+  const QuestionnairePurpose(this.wire);
+
+  final String wire;
+
+  static QuestionnairePurpose parse(String? raw) => values.firstWhere(
+    (purpose) => purpose.wire == raw,
+    orElse: () => QuestionnairePurpose.library,
+  );
+}
+
+/// One questionnaire, ready to answer. The same shape serves the mandatory
+/// baseline (`GET /v1/questionnaires/registration`, alias `/active`) and any
+/// library questionnaire (`GET /v1/questionnaires/{id}`).
 class AssessmentQuestionnaire {
   const AssessmentQuestionnaire({
     required this.id,
@@ -113,6 +163,9 @@ class AssessmentQuestionnaire {
     this.description,
     required this.questions,
     this.sections = const [],
+    this.purpose = QuestionnairePurpose.library,
+    this.version,
+    this.estimatedMinutes,
   });
 
   final int id;
@@ -120,6 +173,11 @@ class AssessmentQuestionnaire {
   final String? description;
   final List<AssessmentQuestion> questions;
   final List<AssessmentSection> sections;
+  final QuestionnairePurpose purpose;
+  final int? version;
+  final int? estimatedMinutes;
+
+  bool get isRegistration => purpose == QuestionnairePurpose.registration;
 
   factory AssessmentQuestionnaire.fromJson(Map<String, dynamic> json) {
     final rawQuestions = json['questions'];
@@ -146,6 +204,54 @@ class AssessmentQuestionnaire {
       description: json['description'] as String?,
       questions: questions,
       sections: sections,
+      purpose: QuestionnairePurpose.parse(json['purpose'] as String?),
+      version: json['version'] as int?,
+      estimatedMinutes: json['estimated_minutes'] as int?,
+    );
+  }
+}
+
+/// A row in the list of questionnaires a student can choose to take
+/// (`GET /v1/questionnaires/available`), with their own attempt history
+/// folded in. The registration baseline never appears here.
+class AvailableQuestionnaire {
+  const AvailableQuestionnaire({
+    required this.id,
+    required this.title,
+    this.description,
+    this.purpose = QuestionnairePurpose.library,
+    this.version,
+    this.estimatedMinutes,
+    this.questionCount = 0,
+    this.sectionCount = 0,
+    this.attemptCount = 0,
+    this.lastCompletedAt,
+  });
+
+  final int id;
+  final String title;
+  final String? description;
+  final QuestionnairePurpose purpose;
+  final int? version;
+  final int? estimatedMinutes;
+  final int questionCount;
+  final int sectionCount;
+  final int attemptCount;
+  final DateTime? lastCompletedAt;
+
+  factory AvailableQuestionnaire.fromJson(Map<String, dynamic> json) {
+    final lastRaw = json['last_completed_at'];
+    return AvailableQuestionnaire(
+      id: json['id'] as int,
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String?,
+      purpose: QuestionnairePurpose.parse(json['purpose'] as String?),
+      version: json['version'] as int?,
+      estimatedMinutes: json['estimated_minutes'] as int?,
+      questionCount: json['question_count'] as int? ?? 0,
+      sectionCount: json['section_count'] as int? ?? 0,
+      attemptCount: json['attempt_count'] as int? ?? 0,
+      lastCompletedAt: lastRaw is String ? DateTime.tryParse(lastRaw) : null,
     );
   }
 }

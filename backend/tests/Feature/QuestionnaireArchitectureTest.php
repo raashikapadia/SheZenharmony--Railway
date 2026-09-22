@@ -34,7 +34,10 @@ class QuestionnaireArchitectureTest extends TestCase
 
         // Creation saves the basic fields; sections, questions and publishing follow later.
         $response->assertRedirect(route('admin.questionnaires.show-details', $questionnaire));
-        $this->assertSame('stress', $questionnaire->type);
+        // A new questionnaire is a library assessment in a version family of
+        // its own, derived from its title — nothing ties it to "stress".
+        $this->assertSame(Questionnaire::PURPOSE_LIBRARY, $questionnaire->purpose);
+        $this->assertSame('stress_check', $questionnaire->type);
         $this->assertSame(1, $questionnaire->version);
         $this->assertSame('draft', $questionnaire->status);
         $this->assertFalse((bool) $questionnaire->is_active);
@@ -45,14 +48,23 @@ class QuestionnaireArchitectureTest extends TestCase
         $this->assertSame(0, $questionnaire->scoreBands()->count());
     }
 
-    public function test_new_questionnaire_version_number_follows_the_highest_existing(): void
+    public function test_a_library_questionnaire_starts_its_own_family_while_registration_continues_the_baseline(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
-        Questionnaire::query()->create(['title' => 'Existing', 'type' => 'stress', 'version' => 4]);
+        Questionnaire::query()->create(['title' => 'Existing', 'type' => 'stress', 'version' => 4, 'purpose' => Questionnaire::PURPOSE_REGISTRATION]);
 
         $this->actingAs($admin)->post('/admin/questionnaires', ['title' => 'Next one', 'result_scale_min' => 0, 'result_scale_max' => 100])->assertRedirect();
+        $library = Questionnaire::query()->where('title', 'Next one')->firstOrFail();
+        $this->assertSame(1, $library->version);
+        $this->assertSame('next_one', $library->type);
 
-        $this->assertSame(5, Questionnaire::query()->where('title', 'Next one')->value('version'));
+        $this->actingAs($admin)->post('/admin/questionnaires', [
+            'title' => 'Baseline v5', 'result_scale_min' => 0, 'result_scale_max' => 100,
+            'purpose' => Questionnaire::PURPOSE_REGISTRATION,
+        ])->assertRedirect();
+        $baseline = Questionnaire::query()->where('title', 'Baseline v5')->firstOrFail();
+        $this->assertSame('stress', $baseline->type);
+        $this->assertSame(5, $baseline->version);
     }
 
     public function test_delete_moves_a_questionnaire_to_trash_with_a_purge_date(): void
@@ -123,8 +135,9 @@ class QuestionnaireArchitectureTest extends TestCase
 
     public function test_active_endpoint_excludes_inactive_questionnaires_options_and_scores(): void
     {
-        $inactive = Questionnaire::query()->create(['title' => 'Old', 'type' => 'stress', 'version' => 1, 'status' => 'archived', 'is_active' => false]);
-        $active = Questionnaire::query()->create(['title' => 'Current', 'type' => 'stress', 'version' => 2, 'status' => 'published', 'is_active' => true]);
+        // `/active` serves the registration baseline the onboarding gate needs.
+        $inactive = Questionnaire::query()->create(['title' => 'Old', 'type' => 'stress', 'version' => 1, 'status' => 'archived', 'is_active' => false, 'purpose' => Questionnaire::PURPOSE_REGISTRATION]);
+        $active = Questionnaire::query()->create(['title' => 'Current', 'type' => 'stress', 'version' => 2, 'status' => 'published', 'is_active' => true, 'purpose' => Questionnaire::PURPOSE_REGISTRATION]);
         [$question, $activeOption, $inactiveOption] = $this->questionWithOptions();
         $active->questions()->attach($question, ['position' => 1, 'is_required' => true]);
 

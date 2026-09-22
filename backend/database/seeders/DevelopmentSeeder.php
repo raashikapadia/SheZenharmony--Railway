@@ -52,6 +52,7 @@ class DevelopmentSeeder extends Seeder
                     'description' => 'Development-only assessment for application testing. Not a clinically validated instrument.',
                     'period' => 'Development only',
                     'type' => 'stress',
+                    'purpose' => Questionnaire::PURPOSE_REGISTRATION,
                     'version' => $this->nextStressVersion(),
                     'status' => 'published',
                     'is_active' => true,

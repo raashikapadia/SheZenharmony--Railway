@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Enums\QuestionType;
 use App\Models\Intervention;
 use App\Models\InterventionRecommendation;
 use App\Models\Questionnaire;
+use App\Models\StressQuestion;
 use App\Models\StressScoreBand;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -175,6 +177,7 @@ class QuestionnaireReview
         $checks[] = ['label' => 'Answers configured', 'ok' => $answersOk && $questions->isNotEmpty()];
 
         // ---- Scoring -------------------------------------------------------
+        $scoringPage = route('admin.questionnaires.scoring', $questionnaire);
         $activeQuestions = $questions->filter(fn ($q) => $q->is_active);
         $raw = $sections->isNotEmpty()
             ? AssessmentScoringService::possibleTotalRange($activeQuestions)
@@ -183,25 +186,71 @@ class QuestionnaireReview
         if ($answersOk && $questions->isNotEmpty() && $raw[1] <= $raw[0]) {
             $issues[] = ['where' => 'Scoring', 'what' => 'Every possible total comes out the same, so results cannot be placed on the scale. Give the answers different points.', 'fix' => $editor];
         }
-        $checks[] = ['label' => $scoringOk ? "Scoring configured (raw score {$raw[0]}–{$raw[1]})" : 'Scoring configured', 'ok' => $scoringOk];
+
+        // Each question's own answer and scoring settings must agree with
+        // its options, or the engine could never score an answer to it.
+        foreach ($questions as $question) {
+            $section = $sectionById->get($question->pivot->questionnaire_section_id);
+            $where = $section ? 'Section "'.$section->title.'"' : 'Questions';
+            $number = $this->questionNumber($questions, $question);
+            $fix = $section
+                ? route('admin.questionnaires.sections.questions.edit', [$questionnaire, $section, $question])
+                : $editor;
+            $optionCount = $question->options->where('is_active', true)->count();
+
+            if ($question->allowsMultipleAnswers() && $question->question_type !== QuestionType::MultipleChoice->value) {
+                $scoringOk = false;
+                $issues[] = ['where' => $where, 'what' => "Question {$number} allows several answers, but only a multiple choice question can. Change its type or its answer setting.", 'fix' => $fix];
+            }
+            if ($question->allowsMultipleAnswers() && $question->max_selections !== null && (int) $question->max_selections > $optionCount) {
+                $scoringOk = false;
+                $issues[] = ['where' => $where, 'what' => "Question {$number} lets students pick {$question->max_selections} answers but only has {$optionCount}.", 'fix' => $fix];
+            }
+            if (! in_array($question->scoringMethod(), StressQuestion::scoringMethods(), true)) {
+                $scoringOk = false;
+                $issues[] = ['where' => $where, 'what' => "Question {$number} is missing a scoring configuration.", 'fix' => $fix];
+            }
+            if ($question->min_score !== null && $question->max_score !== null && (int) $question->min_score > (int) $question->max_score) {
+                $scoringOk = false;
+                $issues[] = ['where' => $where, 'what' => "Question {$number} has its lowest points set above its highest points.", 'fix' => $fix];
+            }
+        }
+
+        // Section weights: with custom weighting every section needs a weight
+        // above zero; with equal weighting the engine works them out.
+        if ($sections->isNotEmpty() && ! $questionnaire->usesEqualSectionWeights()) {
+            foreach ($sections as $section) {
+                if ((float) $section->category_weight <= 0) {
+                    $scoringOk = false;
+                    $issues[] = ['where' => 'Scoring', 'what' => "Section \"{$section->title}\" needs a weight above 0, or switch to equal section weights.", 'fix' => $scoringPage];
+                }
+            }
+        }
+
+        $span = AssessmentScoringService::totalSpan($questionnaire, $activeQuestions);
+        $spanLabel = $questionnaire->usesWeightedSections() && $sections->isNotEmpty()
+            ? "weighted total 0–{$span[1]}"
+            : "raw score {$raw[0]}–{$raw[1]}";
+        $checks[] = ['label' => $scoringOk ? "Scoring configured ({$spanLabel})" : 'Scoring configured', 'ok' => $scoringOk];
 
         // ---- Result scale --------------------------------------------------
         $scale = $questionnaire->resultScale();
         $scaleOk = $scale !== null && $scale[1] > $scale[0];
         if ($scale === null) {
-            $issues[] = ['where' => 'Result scale', 'what' => 'Enter the client\'s result scale (its minimum and maximum) so results can be reported on it.', 'fix' => $details.'#ranges'];
+            $issues[] = ['where' => 'Result scale', 'what' => 'Enter the client\'s result scale (its minimum and maximum) so results can be reported on it.', 'fix' => $scoringPage];
         } elseif ($scale[1] <= $scale[0]) {
-            $issues[] = ['where' => 'Result scale', 'what' => 'The scale\'s maximum must be higher than its minimum.', 'fix' => $details.'#ranges'];
+            $issues[] = ['where' => 'Result scale', 'what' => 'The scale\'s maximum must be higher than its minimum.', 'fix' => $scoringPage];
         }
         $checks[] = ['label' => $scaleOk ? "Result scale: {$scale[0]}–{$scale[1]}" : 'Result scale', 'ok' => $scaleOk];
 
         // ---- Result ranges -------------------------------------------------
-        $span = $scaleOk ? $scale : $raw;
+        $levels = route('admin.questionnaires.result-levels', $questionnaire);
+        $span = $scaleOk ? $scale : AssessmentScoringService::totalSpan($questionnaire, $activeQuestions);
         // Outside a configured client scale is a mistake; outside a raw span is
         // merely slack, which the coverage rule below tolerates.
         $rangeProblems = $this->rangeProblems($bands, $span, $scaleOk);
         foreach ($rangeProblems as $problem) {
-            $issues[] = ['where' => 'Result ranges', 'what' => $problem, 'fix' => $details.'#ranges'];
+            $issues[] = ['where' => 'Result ranges', 'what' => $problem, 'fix' => $levels.'#ranges'];
         }
         $checks[] = ['label' => $bands->count().' result '.Str::plural('range', $bands->count()).' configured', 'ok' => $rangeProblems === [] && $bands->isNotEmpty()];
 
@@ -217,11 +266,11 @@ class QuestionnaireReview
             $linkedIds = $linkedIds->merge($live->pluck('intervention_id'));
             if ($links->count() > $live->count()) {
                 $interventionsOk = false;
-                $warnings[] = ['where' => 'Result ranges', 'what' => "\"{$band->label}\" points to a support item that no longer exists or is switched off.", 'detail' => null, 'fix' => $details.'#ranges'];
+                $warnings[] = ['where' => 'Result ranges', 'what' => "\"{$band->label}\" points to a support item that no longer exists or is switched off.", 'detail' => null, 'fix' => $levels.'#ranges'];
             }
             if ($live->isEmpty() && $allLevels === 0) {
                 $interventionsOk = false;
-                $warnings[] = ['where' => 'Result ranges', 'what' => "\"{$band->label}\" has no support item to recommend.", 'detail' => null, 'fix' => $details.'#ranges'];
+                $warnings[] = ['where' => 'Result ranges', 'what' => "\"{$band->label}\" has no support item to recommend.", 'detail' => null, 'fix' => $levels.'#ranges'];
             }
         }
         $interventionCount = $linkedIds->unique()->count() + $allLevels;
@@ -248,6 +297,10 @@ class QuestionnaireReview
                 'questions' => $questions->count(),
                 'scale' => $scale,
                 'raw' => $raw,
+                'span' => $span,
+                'method' => $questionnaire->scoringMethod(),
+                'method_label' => $questionnaire->scoringMethodLabel(),
+                'weighting' => $questionnaire->usesEqualSectionWeights() ? Questionnaire::WEIGHTING_EQUAL : Questionnaire::WEIGHTING_CUSTOM,
                 'ranges' => $bands->count(),
                 'interventions' => $interventionCount,
             ],
@@ -271,6 +324,22 @@ class QuestionnaireReview
         return $questionnaire->sections()->where('is_active', true)->exists()
             ? AssessmentScoringService::possibleTotalRange($questions)
             : AssessmentScoringService::flatTotalRange($questions);
+    }
+
+    /**
+     * The span the overall result levels must cover — the result scale when
+     * one is configured, otherwise what the scoring method can total.
+     *
+     * @return array{0: int, 1: int}
+     */
+    public function levelSpan(Questionnaire $questionnaire): array
+    {
+        $questions = $questionnaire->questions()
+            ->where('stress_questions.is_active', true)
+            ->with(['options' => fn ($o) => $o->where('is_active', true)])
+            ->get();
+
+        return AssessmentScoringService::resultSpan($questionnaire, $questions);
     }
 
     /**

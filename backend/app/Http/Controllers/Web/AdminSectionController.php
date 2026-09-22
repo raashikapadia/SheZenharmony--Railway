@@ -4,19 +4,18 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\CategoryResult;
-use App\Models\Intervention;
 use App\Models\Questionnaire;
 use App\Models\QuestionnaireSection;
 use App\Models\StressQuestion;
-use App\Models\StressScoreBand;
 use App\Services\AssessmentScoringService;
-use App\Services\QuestionnaireActivationService;
 use App\Services\QuestionnaireAuditLogger;
 use App\Services\QuestionnaireReview;
+use App\Services\QuestionnaireVersioner;
 use App\Services\QuestionWriter;
 use App\Support\AnswerScalePresets;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -50,6 +49,10 @@ class AdminSectionController extends Controller
         $activeSections = $questionnaire->sections->where('is_active', true);
         $questionCount = $questionsBySection->reduce(fn ($carry, $group) => $carry + $group->count(), 0);
 
+        // The weight each section actually scores with (derived when the
+        // questionnaire shares weights equally), keyed by section id.
+        $effectiveWeights = AssessmentScoringService::effectiveSectionWeights($questionnaire, $activeSections->values());
+
         return view('admin.sections.index', [
             'questionnaire' => $questionnaire,
             'questionsBySection' => $questionsBySection,
@@ -58,6 +61,8 @@ class AdminSectionController extends Controller
             'review' => $reviewer->run($questionnaire),
             'sectionCount' => $activeSections->count(),
             'questionCount' => $questionCount,
+            'effectiveWeights' => $effectiveWeights,
+            'weightTotal' => array_sum($effectiveWeights),
         ]);
     }
 
@@ -67,6 +72,51 @@ class AdminSectionController extends Controller
             'questionnaire' => $questionnaire,
             'section' => new QuestionnaireSection(['category_weight' => 1, 'is_active' => true]),
         ]);
+    }
+
+    /**
+     * Copy a section and every question in it (fresh question and option
+     * rows, so editing the copy never touches the original), appended to the
+     * end of the questionnaire.
+     */
+    public function duplicate(Questionnaire $questionnaire, QuestionnaireSection $section, QuestionnaireVersioner $versioner): RedirectResponse
+    {
+        $this->ensureOwnership($questionnaire, $section);
+
+        $copy = DB::transaction(function () use ($questionnaire, $section, $versioner): QuestionnaireSection {
+            $copy = $questionnaire->sections()->create([
+                'title' => $section->title.' (copy)',
+                'description' => $section->description,
+                'position' => (int) $questionnaire->sections()->max('position') + 1,
+                'category_weight' => $section->category_weight,
+                'is_active' => $section->is_active,
+            ]);
+
+            $questions = $questionnaire->questions()
+                ->wherePivot('questionnaire_section_id', $section->id)
+                ->with('options')
+                ->orderBy('questionnaire_questions.position')
+                ->get();
+            $position = (int) $questionnaire->questions()->max('questionnaire_questions.position');
+            foreach ($questions as $question) {
+                $clone = $versioner->cloneQuestion($question, auth()->id());
+                $clone->update(['dimension' => $copy->title]);
+                $questionnaire->questions()->attach($clone->id, [
+                    'questionnaire_section_id' => $copy->id,
+                    'position' => ++$position,
+                    'is_required' => (bool) $question->pivot->is_required,
+                ]);
+            }
+
+            return $copy;
+        });
+
+        $this->audit->log($questionnaire->id, 'section.duplicated', "Duplicated section \"{$section->title}\" as \"{$copy->title}\".", $copy);
+
+        return redirect()
+            ->route('admin.questionnaires.sections.index', $questionnaire)
+            ->withFragment('section-'.$copy->id)
+            ->with('status', "Section \"{$section->title}\" duplicated. Rename the copy and adjust its questions as needed.");
     }
 
     public function store(Request $request, Questionnaire $questionnaire): RedirectResponse
@@ -343,11 +393,16 @@ class AdminSectionController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
             'position' => ['nullable', 'integer', 'min:0', 'max:10000'],
-            'category_weight' => ['required', 'numeric', 'min:0.01', 'max:1000'],
+            'category_weight' => ['nullable', 'numeric', 'min:0.01', 'max:1000'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        return array_merge($validated, ['is_active' => $request->boolean('is_active')]);
+        return array_merge($validated, [
+            'is_active' => $request->boolean('is_active'),
+            // The weight only matters under custom weighting; a section made
+            // without one counts as 1 until the admin sets weights.
+            'category_weight' => $validated['category_weight'] ?? 1,
+        ]);
     }
 
     private function ensureOwnership(Questionnaire $questionnaire, QuestionnaireSection $section): void
@@ -447,7 +502,7 @@ class AdminSectionController extends Controller
      *
      * @template T of \Illuminate\Database\Eloquent\Model
      *
-     * @param  \Illuminate\Support\Collection<int, T>  $ordered
+     * @param  Collection<int, T>  $ordered
      * @param  callable(T, T): void  $swap
      */
     private function swapNeighbours($ordered, int $id, string $direction, callable $swap): void

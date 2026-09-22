@@ -17,9 +17,14 @@ class SubmitAssessmentRequest extends FormRequest
         return [
             'questionnaire_id' => ['required', 'integer', 'min:1'],
             'answers' => ['required', 'array', 'min:1'],
-            'answers.*' => ['required', 'array:question_id,option_id'],
+            // One answer per question: either a single `option_id` or, for a
+            // multi-select question, a list of `option_ids`. The engine
+            // checks the choice against the question's own answer mode.
+            'answers.*' => ['required', 'array:question_id,option_id,option_ids'],
             'answers.*.question_id' => ['required', 'integer', 'min:1', 'distinct'],
-            'answers.*.option_id' => ['required', 'integer', 'min:1'],
+            'answers.*.option_id' => ['required_without:answers.*.option_ids', 'nullable', 'integer', 'min:1'],
+            'answers.*.option_ids' => ['required_without:answers.*.option_id', 'nullable', 'array', 'min:1', 'max:50'],
+            'answers.*.option_ids.*' => ['integer', 'min:1', 'distinct'],
             'user_id' => ['prohibited'],
             'total_score' => ['prohibited'],
             'stress_score_band_id' => ['prohibited'],

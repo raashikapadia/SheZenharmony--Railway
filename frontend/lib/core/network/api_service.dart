@@ -312,11 +312,13 @@ class ApiService {
   }
 
   // ---------------------------------------------------------------------
-  // Stress assessment (student-facing) — the same active questionnaire
-  // backs both the mandatory post-registration flow and the optional
-  // in-app check-in.
+  // Assessments (student-facing). The registration baseline and the
+  // library of questionnaires a student chooses from are separate
+  // endpoints; both render through the same questionnaire shape.
   // ---------------------------------------------------------------------
 
+  /// The mandatory post-registration baseline. `/active` is the long-standing
+  /// alias for it, so older server builds keep working.
   Future<AssessmentQuestionnaire> activeQuestionnaire() async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/v1/questionnaires/active');
     final http.Response response;
@@ -339,13 +341,42 @@ class ApiService {
     );
   }
 
-  /// [answers] maps questionId -> optionId. The backend independently
-  /// recalculates the score and stress level from these IDs — it never
-  /// trusts a score computed on the client.
+  /// Every live library questionnaire the signed-in student may take, with
+  /// their own attempt count and last completion folded in. The
+  /// registration baseline is never in this list.
+  Future<List<AvailableQuestionnaire>> availableQuestionnaires(
+    String token,
+  ) async {
+    final body = await _getJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/questionnaires/available'),
+      token,
+    );
+    return (body['data'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(AvailableQuestionnaire.fromJson)
+        .toList();
+  }
+
+  /// One questionnaire, ready to answer. The backend only serves what is
+  /// genuinely open to students, so a draft or scheduled id is a 404.
+  Future<AssessmentQuestionnaire> questionnaire(String token, int id) async {
+    final body = await _getJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/questionnaires/$id'),
+      token,
+    );
+    return AssessmentQuestionnaire.fromJson(
+      body['data'] as Map<String, dynamic>,
+    );
+  }
+
+  /// [answers] maps questionId -> the chosen option id(s). A single-answer
+  /// question sends `option_id`; a multi-select one sends `option_ids`. The
+  /// backend independently recalculates the score and level from these IDs
+  /// — it never trusts a score computed on the client.
   Future<AssessmentResult> submitAssessment(
     String token,
     int questionnaireId,
-    Map<int, int> answers,
+    Map<int, List<int>> answers,
   ) async {
     final body = await _sendJson(
       'POST',
@@ -355,16 +386,27 @@ class ApiService {
         'questionnaire_id': questionnaireId,
         'answers': [
           for (final entry in answers.entries)
-            {'question_id': entry.key, 'option_id': entry.value},
+            if (entry.value.length == 1)
+              {'question_id': entry.key, 'option_id': entry.value.first}
+            else
+              {'question_id': entry.key, 'option_ids': entry.value},
         ],
       },
     );
     return AssessmentResult.fromJson(body);
   }
 
-  Future<List<AssessmentSummary>> myAssessments(String token) async {
+  /// The student's completed attempts, newest first. [purpose] narrows the
+  /// list to `registration` (the baseline) or `library` (chosen
+  /// questionnaires) so the two never mix in a history view.
+  Future<List<AssessmentSummary>> myAssessments(
+    String token, {
+    String? purpose,
+  }) async {
     final body = await _getJson(
-      Uri.parse('${ApiConfig.baseUrl}/v1/assessments'),
+      Uri.parse('${ApiConfig.baseUrl}/v1/assessments').replace(
+        queryParameters: purpose == null ? null : {'purpose': purpose},
+      ),
       token,
     );
     return (body['data'] as List<dynamic>? ?? const [])

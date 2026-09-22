@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Models\Questionnaire;
+use App\Models\QuestionOption;
 use App\Models\StressAssessment;
 use App\Models\StressScoreBand;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -14,7 +16,7 @@ class AssessmentSubmissionService
     public function __construct(private readonly AssessmentScoringService $scoringService) {}
 
     /**
-     * @param  list<array{question_id: int, option_id: int}>  $submittedAnswers
+     * @param  list<array{question_id: int, option_id?: int|null, option_ids?: array<int, int>|null}>  $submittedAnswers
      * @return array{assessment: StressAssessment, score_band: StressScoreBand, scored: array<string, mixed>}
      */
     public function submit(User $user, int $questionnaireId, array $submittedAnswers): array
@@ -29,7 +31,7 @@ class AssessmentSubmissionService
             }
 
             $answerMap = $answers->mapWithKeys(fn (array $answer): array => [
-                (int) $answer['question_id'] => (int) $answer['option_id'],
+                (int) $answer['question_id'] => self::chosenOptions($answer),
             ])->all();
 
             $scored = $this->scoringService->score($questionnaire, $answerMap);
@@ -51,20 +53,27 @@ class AssessmentSubmissionService
 
             foreach ($scored['responses'] as $questionId => $response) {
                 $question = $response['question'];
-                $option = $response['option'];
+                /** @var Collection<int, QuestionOption> $options */
+                $options = $response['options'];
 
                 // Scoring validated these rows in the same transaction; this is a defensive guard.
-                if (! $question || ! $option) {
+                if (! $question || $options->isEmpty()) {
                     throw ValidationException::withMessages(['answers' => 'Questionnaire configuration changed during submission. Please retry.']);
                 }
 
+                // A single-answer question keeps its option FK; a multi-select
+                // answer lists every ticked option so the transcript is
+                // complete and the wording is frozen at submission time.
                 $assessment->responses()->create([
                     'stress_question_id' => $question->id,
-                    'question_option_id' => $option->id,
-                    'score' => $option->score,
-                    'scored_value' => $response['scored_value'] ?? $option->score,
+                    'question_option_id' => $response['option']?->id,
+                    'selected_option_ids' => $question->allowsMultipleAnswers()
+                        ? $options->pluck('id')->map(fn ($id) => (int) $id)->values()->all()
+                        : null,
+                    'score' => $response['raw'],
+                    'scored_value' => $response['scored_value'],
                     'question_text_snapshot' => $question->question_text,
-                    'option_text_snapshot' => $option->label,
+                    'option_text_snapshot' => $options->pluck('label')->join(', '),
                 ]);
             }
 
@@ -85,6 +94,23 @@ class AssessmentSubmissionService
 
             return ['assessment' => $assessment, 'score_band' => $band, 'scored' => $scored];
         });
+    }
+
+    /**
+     * The option id(s) one submitted answer names. `option_ids` wins when
+     * both are present; a lone `option_id` stays an int so single-answer
+     * questions keep their exact historical shape.
+     *
+     * @param  array<string, mixed>  $answer
+     * @return int|array<int, int>
+     */
+    public static function chosenOptions(array $answer): int|array
+    {
+        if (! empty($answer['option_ids']) && is_array($answer['option_ids'])) {
+            return array_values(array_map('intval', $answer['option_ids']));
+        }
+
+        return (int) ($answer['option_id'] ?? 0);
     }
 
     /**

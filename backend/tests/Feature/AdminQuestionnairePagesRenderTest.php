@@ -53,11 +53,11 @@ class AdminQuestionnairePagesRenderTest extends TestCase
 
         $this->get(route('admin.questionnaires.create'))->assertOk();
         $this->get(route('admin.questionnaires.edit', $questionnaire))->assertOk()->assertSee('Manage sections');
-        $this->get(route('admin.questionnaires.scoring', $questionnaire))->assertOk()->assertSee('Scoring overview');
+        $this->get(route('admin.questionnaires.scoring', $questionnaire))->assertOk()->assertSee('Configure scoring');
         $this->get(route('admin.questionnaires.sections.index', $questionnaire))->assertOk()->assertSee('Emotional');
         $this->get(route('admin.questionnaires.sections.create', $questionnaire))->assertOk()->assertSee('Section name');
         $this->get(route('admin.questionnaires.sections.edit', [$questionnaire, $section]))->assertOk();
-        $this->get(route('admin.questions.create'))->assertOk()->assertSee('Answer options');
-        $this->get(route('admin.questions.edit', $question))->assertOk()->assertSee('Reverse scored');
+        $this->get(route('admin.questions.create'))->assertOk()->assertSee('Answer configuration');
+        $this->get(route('admin.questions.edit', $question))->assertOk()->assertSee('Scoring direction');
     }
 }

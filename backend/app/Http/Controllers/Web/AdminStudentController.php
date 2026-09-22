@@ -22,15 +22,23 @@ class AdminStudentController extends Controller
                 'user:id,account_status,account_hold_reason,account_held_at',
                 'profile:id,student_identity_id,gender,country,employment_status',
             ])
+            // "Baseline" means the registration questionnaire specifically —
+            // a library questionnaire the student chose to sit does not
+            // count as their required check-in.
             ->withExists([
                 'assessments as has_completed_required_assessment' => fn (Builder $query) => $query
-                    ->where('assessment_status', 'completed'),
+                    ->where('assessment_status', 'completed')
+                    ->whereHas('questionnaire', fn ($questionnaire) => $questionnaire->registration()),
             ])
             ->when($filters['country'] ?? null, fn ($query, $value) => $query->whereHas('profile', fn ($profile) => $profile->where('country', $value)))
             ->when($filters['gender'] ?? null, fn ($query, $value) => $query->whereHas('profile', fn ($profile) => $profile->where('gender', $value)))
             ->when($filters['employment'] ?? null, fn ($query, $value) => $query->whereHas('profile', fn ($profile) => $profile->where('employment_status', $value)))
-            ->when(($filters['baseline'] ?? null) === 'completed', fn ($query) => $query->whereHas('assessments', fn ($assessment) => $assessment->where('assessment_status', 'completed')))
-            ->when(($filters['baseline'] ?? null) === 'required', fn ($query) => $query->whereDoesntHave('assessments', fn ($assessment) => $assessment->where('assessment_status', 'completed')))
+            ->when(($filters['baseline'] ?? null) === 'completed', fn ($query) => $query->whereHas('assessments', fn ($assessment) => $assessment
+                ->where('assessment_status', 'completed')
+                ->whereHas('questionnaire', fn ($questionnaire) => $questionnaire->registration())))
+            ->when(($filters['baseline'] ?? null) === 'required', fn ($query) => $query->whereDoesntHave('assessments', fn ($assessment) => $assessment
+                ->where('assessment_status', 'completed')
+                ->whereHas('questionnaire', fn ($questionnaire) => $questionnaire->registration())))
             ->latest()
             ->paginate(20)->withQueryString();
 

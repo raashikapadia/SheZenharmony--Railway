@@ -4,26 +4,42 @@
 @php($summary = $review['summary'])
 @php($issueCount = count($review['issues']))
 @php($warningCount = count($review['warnings']))
-@php($creationFlow = (int) session('admin_questionnaire_creation_id') === $questionnaire->id && $questionnaire->status === 'draft')
-<main class="content stack{{ $creationFlow ? ' questionnaire-creation-step' : '' }}">
-    <a class="backlink" href="{{ $creationFlow ? route('admin.questionnaires.scoring', $questionnaire) : route('admin.questionnaires.sections.index', $questionnaire) }}">← Back to {{ $creationFlow ? 'Scoring' : $questionnaire->title }}</a>
+@php($fmt = fn ($n) => rtrim(rtrim(number_format((float) $n, 2), '0'), '.'))
+<main class="content stack questionnaire-creation-step">
+    <a class="backlink" href="{{ route('admin.questionnaires.result-levels', $questionnaire) }}">← Back to Result levels</a>
 
     @if(session('status'))<div class="status">{{ session('status') }}</div>@endif
 
-    <div>
-        <div class="eyebrow">{{ $creationFlow ? 'Step 4 of 4 · ' : '' }}Review &amp; publish</div>
-        <h1 style="margin:2px 0 4px">{{ $questionnaire->title }}
-            <span class="badge {{ $questionnaire->is_active && ! $questionnaire->isScheduled() ? 'active' : '' }}" style="vertical-align:middle;font-family:system-ui,sans-serif">{{ $questionnaire->publishState() }}</span>
-        </h1>
-        <p class="lede">The whole questionnaire has been checked — every section, question, answer and score, the result scale, every range and the support linked to it.</p>
+    <div class="split" style="align-items:flex-start">
+        <div>
+            <div class="eyebrow">Step 5 of 5 · Review &amp; publish</div>
+            <h1 style="margin:2px 0 4px">{{ $questionnaire->title }}
+                <span class="badge {{ $questionnaire->is_active && ! $questionnaire->isScheduled() ? 'active' : '' }}" style="vertical-align:middle;font-family:system-ui,sans-serif">{{ $questionnaire->publishState() }}</span>
+            </h1>
+            <p class="lede">The whole questionnaire has been checked — every section, question, answer and score, the scoring method, the result scale, every level and the support linked to it.</p>
+        </div>
+        <div class="actions">
+            <a class="button button-secondary" href="{{ route('admin.questionnaires.preview', $questionnaire) }}">Preview as a student</a>
+            <form method="POST" action="{{ route('admin.questionnaires.duplicate', $questionnaire) }}">@csrf<button class="button button-secondary" type="submit">Duplicate</button></form>
+        </div>
     </div>
 
-    @if($creationFlow)
-        @include('admin.questionnaires._creation_progress', ['questionnaire' => $questionnaire, 'step' => 4])
-    @else
-        @include('admin.questionnaires._wizard', ['questionnaire' => $questionnaire, 'review' => $review, 'step' => 3])
-    @endif
+    @include('admin.questionnaires._creation_progress', ['questionnaire' => $questionnaire, 'review' => $review, 'step' => 5])
 
+    {{-- ============ OVERVIEW ============ --}}
+    <section class="panel">
+        <div class="panel-head"><h2 style="margin:0">Assessment overview</h2></div>
+        <div class="meta-grid">
+            <div class="tile"><span class="k">Type</span><span class="v" style="font-size:1rem">{{ $questionnaire->isRegistration() ? 'Registration baseline' : 'Library assessment' }}</span></div>
+            <div class="tile"><span class="k">Sections</span><span class="v">{{ $overview['section_count'] }}</span></div>
+            <div class="tile"><span class="k">Questions</span><span class="v">{{ $overview['question_count'] }}</span></div>
+            <div class="tile"><span class="k">Scoring</span><span class="v" style="font-size:1rem">{{ $questionnaire->scoringMethodLabel() }}</span><span class="muted" style="font-size:.8rem">{{ $questionnaire->usesEqualSectionWeights() ? 'equal section weights' : 'custom section weights' }}</span></div>
+            <div class="tile"><span class="k">Maximum score</span><span class="v">{{ $overview['total_span'][1] }}</span></div>
+            <div class="tile"><span class="k">Result scale</span><span class="v">{{ $overview['result_span'][0] }}–{{ $overview['result_span'][1] }}</span><span class="muted" style="font-size:.8rem">{{ $overview['result_scale'] === [0, 100] ? 'percentage' : '' }}</span></div>
+            <div class="tile"><span class="k">Percentage range</span><span class="v">{{ $fmt($overview['percentage_range'][0]) }}–{{ $fmt($overview['percentage_range'][1]) }}%</span></div>
+            <div class="tile"><span class="k">Result levels</span><span class="v">{{ $summary['ranges'] }}</span></div>
+        </div>
+    </section>
     {{-- ============ CHECKS ============ --}}
     <section class="panel">
         <div class="panel-head"><h2 style="margin:0">Review questionnaire</h2></div>
@@ -43,7 +59,7 @@
             </div>
             <ol class="attention-list">
                 @foreach($review['issues'] as $issue)
-                    @php($fixUrl = $creationFlow && in_array($issue['where'], ['Result scale', 'Result ranges'], true) ? route('admin.questionnaires.scoring', $questionnaire).'#ranges' : $issue['fix'])
+                    @php($fixUrl = $issue['fix'])
                     <li>
                         <div class="grow">
                             <div class="item-title">{{ $issue['where'] }}</div>
@@ -65,7 +81,7 @@
             </div>
             <ol class="attention-list">
                 @foreach($review['warnings'] as $warning)
-                    @php($reviewUrl = $creationFlow && $warning['where'] === 'Result ranges' ? route('admin.questionnaires.scoring', $questionnaire).'#ranges' : $warning['fix'])
+                    @php($reviewUrl = $warning['fix'])
                     <li>
                         <div class="grow">
                             <div class="item-title">{{ $warning['where'] }}</div>

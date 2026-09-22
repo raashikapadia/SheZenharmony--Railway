@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Intervention;
+use App\Models\InterventionRecommendation;
 use App\Models\Questionnaire;
 use App\Models\StressAssessment;
 use App\Models\StressQuestion;
@@ -15,6 +16,7 @@ use App\Services\QuestionnaireAuditLogger;
 use App\Services\QuestionnairePurger;
 use App\Services\QuestionnaireReview;
 use App\Services\QuestionnaireVersioner;
+use App\Services\RecommendedInterventionService;
 use App\Services\ScaleBandValidator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,11 +27,20 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use RuntimeException;
 
+/**
+ * The Blade questionnaire workspace. Building a questionnaire is five
+ * screens, always in the same order and always reachable:
+ *
+ *   1 Basic info → 2 Sections & questions → 3 Scoring → 4 Result levels → 5 Review & publish
+ *
+ * Every figure an admin sees (maximum score, weights, spans, coverage) is
+ * computed live by the scoring engine from the stored configuration.
+ */
 class AdminQuestionnaireController extends Controller
 {
     public function __construct(private readonly QuestionnaireAuditLogger $audit) {}
 
-    /** Overview: every questionnaire, drafts first, newest version first. */
+    /** Overview: every questionnaire, grouped by purpose, drafts first, newest version first. */
     public function index(): View
     {
         session()->forget('admin_questionnaire_creation_id');
@@ -45,6 +56,8 @@ class AdminQuestionnaireController extends Controller
 
         return view('admin.questionnaires.index', [
             'versions' => $versions,
+            'registrationVersions' => $versions->filter(fn ($q) => $q->isRegistration())->values(),
+            'libraryVersions' => $versions->reject(fn ($q) => $q->isRegistration())->values(),
             'trashCount' => Questionnaire::query()->inTrash()->count(),
         ]);
     }
@@ -57,20 +70,8 @@ class AdminQuestionnaireController extends Controller
      */
     private function workspaceStats(Questionnaire $questionnaire, QuestionnaireActivationService $activation): array
     {
-        $questionnaire->loadMissing([
-            'sections',
-            'questions' => fn ($q) => $q->where('stress_questions.is_active', true)->with('options'),
-            'scoreBands',
-        ]);
-
-        $maxRaw = (int) $questionnaire->questions->sum(
-            fn ($question) => (int) $question->options->where('is_active', true)->max('score'),
-        );
-
-        $activeSections = $questionnaire->sections->where('is_active', true);
-        $maxWeighted = $activeSections->isNotEmpty()
-            ? round((float) $activeSections->sum('category_weight'), 2)
-            : $maxRaw;
+        $overview = app(AssessmentScoringService::class)->overview($questionnaire);
+        $questionnaire->loadMissing('scoreBands');
 
         $health = ['ok' => true, 'message' => null];
         try {
@@ -80,26 +81,30 @@ class AdminQuestionnaireController extends Controller
         }
 
         return [
-            'max_raw' => $maxRaw,
-            'max_weighted' => $maxWeighted,
-            'weighted' => $activeSections->isNotEmpty(),
+            'max_raw' => $overview['total_span'][1],
+            'max_weighted' => $overview['weight_total'],
+            'weighted' => $overview['section_count'] > 0,
+            'method' => $questionnaire->scoringMethodLabel(),
             'result_levels' => $questionnaire->scoreBands
                 ->where('scope', StressScoreBand::SCOPE_OVERALL)->where('is_active', true)->count(),
             'stress_ranges' => $questionnaire->scoreBands
                 ->where('scope', StressScoreBand::SCOPE_STRESS)->where('is_active', true)->count(),
             'health' => $health,
+            'overview' => $overview,
         ];
     }
 
     /** Open the focused form that starts a new draft questionnaire. */
     public function create(): View
     {
-        return view('admin.questionnaires.create');
+        return view('admin.questionnaires.create', [
+            'hasRegistration' => Questionnaire::query()->notInTrash()->registration()->exists(),
+        ]);
     }
 
     /**
-     * Create an inactive draft and open its Details step. Type and version are
-     * derived; publishing remains a deliberate action on Review & Publish.
+     * Create an inactive draft and open its Basic info step. Type and version
+     * are derived; publishing remains a deliberate action on Review & Publish.
      */
     public function store(Request $request): RedirectResponse
     {
@@ -107,24 +112,41 @@ class AdminQuestionnaireController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
             'published_at' => ['nullable', 'date'],
-            'result_scale_min' => ['required', 'integer', 'min:-10000', 'max:10000'],
-            'result_scale_max' => ['required', 'integer', 'min:-10000', 'max:10000', 'gt:result_scale_min'],
+            'purpose' => ['nullable', Rule::in(Questionnaire::purposes())],
+            'estimated_minutes' => ['nullable', 'integer', 'min:1', 'max:600'],
+            // Results are reported either as a percentage (a 0–100 scale the
+            // engine fills in) or on a scale the admin types in.
+            'result_basis' => ['nullable', Rule::in(['percentage', 'scale'])],
+            'result_scale_min' => ['required_unless:result_basis,percentage', 'nullable', 'integer', 'min:-10000', 'max:10000'],
+            'result_scale_max' => ['required_unless:result_basis,percentage', 'nullable', 'integer', 'min:-10000', 'max:10000', 'gt:result_scale_min'],
+            'scoring_method' => ['nullable', Rule::in(Questionnaire::scoringMethods())],
+            'section_weighting' => ['nullable', Rule::in(Questionnaire::sectionWeightings())],
         ]);
 
         $questionnaire = DB::transaction(function () use ($request, $data): Questionnaire {
-            $version = (int) Questionnaire::query()->where('type', 'stress')->max('version') + 1;
+            // A new questionnaire defaults to the library: the registration
+            // baseline already exists, and creating a second one by accident
+            // would change what every new student is made to complete.
+            $purpose = $data['purpose'] ?? Questionnaire::PURPOSE_LIBRARY;
+            [$type, $version] = $this->familyFor($purpose, $data['title']);
 
-            // The client's result scale is entered, never assumed. Raw
-            // totals are normalised onto it, so it survives any change to the
-            // question count. The result categories on it are the admin's to
-            // define in the editor — none are invented here.
+            $percentage = ($data['result_basis'] ?? null) === 'percentage';
+
+            // New questionnaires start on the simplest configuration: every
+            // section counts the same, each contributes its share of the
+            // result, and the result reads as a percentage. All of it can be
+            // changed on the Scoring step.
             $questionnaire = Questionnaire::query()->create([
                 'title' => $data['title'],
                 'description' => $data['description'] ?? null,
-                'type' => 'stress',
+                'type' => $type,
+                'purpose' => $purpose,
                 'version' => $version,
-                'result_scale_min' => $data['result_scale_min'],
-                'result_scale_max' => $data['result_scale_max'],
+                'estimated_minutes' => $data['estimated_minutes'] ?? null,
+                'result_scale_min' => $percentage ? 0 : $data['result_scale_min'],
+                'result_scale_max' => $percentage ? 100 : $data['result_scale_max'],
+                'scoring_method' => $data['scoring_method'] ?? Questionnaire::SCORING_WEIGHTED_SECTIONS,
+                'section_weighting' => $data['section_weighting'] ?? Questionnaire::WEIGHTING_EQUAL,
                 'status' => 'draft',
                 'is_active' => false,
                 'published_at' => $data['published_at'] ?? null,
@@ -141,6 +163,25 @@ class AdminQuestionnaireController extends Controller
         return redirect()
             ->route('admin.questionnaires.show-details', $questionnaire)
             ->with('status', 'Questionnaire created successfully! Review its details, then continue to sections and questions.');
+    }
+
+    /**
+     * The version family and next version number a questionnaire of the
+     * given purpose belongs to. Registration keeps versioning within the one
+     * baseline family; a library questionnaire starts its own family, so it
+     * versions and publishes without touching anything else.
+     *
+     * @return array{0: string, 1: int}
+     */
+    private function familyFor(string $purpose, string $title, ?int $ignoreId = null): array
+    {
+        $existingType = $purpose === Questionnaire::PURPOSE_REGISTRATION
+            ? Questionnaire::query()->registration()->when($ignoreId, fn ($q) => $q->whereKeyNot($ignoreId))->value('type')
+            : null;
+        $type = $existingType ?? Questionnaire::deriveType($title, $ignoreId);
+        $version = (int) Questionnaire::query()->where('type', $type)->when($ignoreId, fn ($q) => $q->whereKeyNot($ignoreId))->max('version') + 1;
+
+        return [$type, $version];
     }
 
     public function edit(Questionnaire $questionnaire): View
@@ -167,9 +208,8 @@ class AdminQuestionnaireController extends Controller
     }
 
     /**
-     * Update only the questionnaire's labelling and publish state. Never
-     * touches its questions or result ranges, so it is safe to call from the
-     * Sections page where those are edited separately.
+     * Step 1 save: the questionnaire's labelling and publish state. Never
+     * touches its questions, scoring or result levels.
      */
     public function updateDetails(Request $request, Questionnaire $questionnaire, QuestionnaireActivationService $activationService): RedirectResponse
     {
@@ -177,6 +217,8 @@ class AdminQuestionnaireController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
             'period' => ['nullable', 'string', 'max:100'],
+            'estimated_minutes' => ['nullable', 'integer', 'min:1', 'max:600'],
+            'purpose' => ['nullable', Rule::in(Questionnaire::purposes())],
             'version' => ['required', 'integer', 'min:1', Rule::unique('questionnaires')->where(fn ($query) => $query->where('type', $questionnaire->type))->ignore($questionnaire)],
             'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
             'is_active' => ['nullable', 'boolean'],
@@ -184,13 +226,26 @@ class AdminQuestionnaireController extends Controller
         ]);
 
         DB::transaction(function () use ($questionnaire, $data, $request, $activationService): void {
-            $questionnaire->update([
+            $values = [
                 'title' => $data['title'],
                 'description' => $data['description'] ?? null,
                 'period' => $data['period'] ?? null,
+                'estimated_minutes' => $data['estimated_minutes'] ?? null,
                 'version' => $data['version'],
                 'published_at' => $data['published_at'] ?? $questionnaire->published_at,
-            ]);
+            ];
+
+            // Purpose can only move while the questionnaire is still a draft
+            // with no history: it decides which version family it belongs to.
+            $purpose = $data['purpose'] ?? null;
+            if ($purpose !== null && $purpose !== $questionnaire->purpose
+                && $questionnaire->status === 'draft' && ! $questionnaire->assessments()->exists()) {
+                [$type, $version] = $this->familyFor($purpose, $data['title'], $questionnaire->id);
+                $values += ['purpose' => $purpose, 'type' => $type];
+                $values['version'] = $version;
+            }
+
+            $questionnaire->update($values);
 
             if ($data['status'] === 'published' || $request->boolean('is_active')) {
                 $activationService->activate($questionnaire);
@@ -201,16 +256,63 @@ class AdminQuestionnaireController extends Controller
             $this->audit->log($questionnaire->id, 'questionnaire.updated', "Updated details of \"{$questionnaire->title}\" (v{$questionnaire->version}).", $questionnaire, null, $data);
         });
 
-        $continue = (int) $request->session()->get('admin_questionnaire_creation_id') === $questionnaire->id
-            && $questionnaire->status === 'draft' && $request->input('next') === 'sections';
-
         return redirect()
-            ->route($continue ? 'admin.questionnaires.sections.index' : 'admin.questionnaires.details', $questionnaire)
+            ->route($request->input('next') === 'sections' ? 'admin.questionnaires.sections.index' : 'admin.questionnaires.details', $questionnaire)
             ->with('status', 'Details saved.');
     }
 
     /**
-     * Update only the result ranges (overall + stress bands).
+     * Step 3 save: how the overall result is worked out — the scoring
+     * method, how sections are weighted (and each weight when custom), and
+     * the scale results are reported on.
+     */
+    public function updateScoring(Request $request, Questionnaire $questionnaire): RedirectResponse
+    {
+        $data = $request->validate([
+            'scoring_method' => ['required', Rule::in(Questionnaire::scoringMethods())],
+            'section_weighting' => ['required', Rule::in(Questionnaire::sectionWeightings())],
+            'sections' => ['nullable', 'array'],
+            'sections.*.id' => ['required', 'integer', Rule::exists('questionnaire_sections', 'id')->where('questionnaire_id', $questionnaire->id)],
+            'sections.*.category_weight' => ['nullable', 'numeric', 'min:0', 'max:1000'],
+            'result_basis' => ['required', Rule::in(['percentage', 'scale'])],
+            'result_scale_min' => ['required_if:result_basis,scale', 'nullable', 'integer', 'min:-10000', 'max:10000'],
+            'result_scale_max' => ['required_if:result_basis,scale', 'nullable', 'integer', 'min:-10000', 'max:10000', 'gt:result_scale_min'],
+        ]);
+
+        DB::transaction(function () use ($questionnaire, $data): void {
+            $custom = $data['section_weighting'] === Questionnaire::WEIGHTING_CUSTOM;
+
+            if ($custom) {
+                foreach ($data['sections'] ?? [] as $index => $row) {
+                    if (! isset($row['category_weight']) || (float) $row['category_weight'] <= 0) {
+                        $section = $questionnaire->sections()->find($row['id']);
+                        throw ValidationException::withMessages([
+                            "sections.{$index}.category_weight" => 'Section "'.($section?->title ?? $index + 1).'" needs a weight above 0, or switch to equal weights.',
+                        ]);
+                    }
+                    $questionnaire->sections()->whereKey($row['id'])->update(['category_weight' => (float) $row['category_weight']]);
+                }
+            }
+
+            $percentage = $data['result_basis'] === 'percentage';
+            $questionnaire->update([
+                'scoring_method' => $data['scoring_method'],
+                'section_weighting' => $data['section_weighting'],
+                'result_scale_min' => $percentage ? 0 : $data['result_scale_min'],
+                'result_scale_max' => $percentage ? 100 : $data['result_scale_max'],
+            ]);
+
+            $this->audit->log($questionnaire->id, 'questionnaire.updated', "Updated scoring of \"{$questionnaire->title}\" (v{$questionnaire->version}).", $questionnaire, null, $data);
+        });
+
+        return redirect()
+            ->route($request->input('next') === 'results' ? 'admin.questionnaires.result-levels' : 'admin.questionnaires.scoring', $questionnaire)
+            ->with('status', 'Scoring saved.');
+    }
+
+    /**
+     * Step 4 save: the result levels (and the optional stress ranges) with
+     * the support recommended for each.
      */
     public function updateRanges(Request $request, Questionnaire $questionnaire, ScaleBandValidator $bandValidator): RedirectResponse
     {
@@ -220,17 +322,21 @@ class AdminQuestionnaireController extends Controller
             'bands.*.code' => ['required', 'string', 'max:50', 'distinct'],
             'bands.*.scope' => ['nullable', Rule::in([StressScoreBand::SCOPE_OVERALL, StressScoreBand::SCOPE_STRESS])],
             'bands.*.label' => ['required', 'string', 'max:100'],
+            'bands.*.description' => ['nullable', 'string', 'max:2000'],
+            'bands.*.harmony_message' => ['nullable', 'string', 'max:2000'],
             'bands.*.min_score' => ['required', 'integer'],
             'bands.*.max_score' => ['required', 'integer'],
             'bands.*.position' => ['required', 'integer', 'min:0'],
             'bands.*.is_active' => ['nullable', 'boolean'],
             'bands.*.intervention_id' => ['nullable', 'integer', 'exists:interventions,id'],
+            'bands.*.intervention_ids' => ['nullable', 'array'],
+            'bands.*.intervention_ids.*' => ['nullable', 'integer', 'exists:interventions,id'],
             'result_scale_min' => ['required_with:result_scale_max', 'nullable', 'integer', 'min:-10000', 'max:10000'],
             'result_scale_max' => ['required_with:result_scale_min', 'nullable', 'integer', 'min:-10000', 'max:10000', 'gt:result_scale_min'],
         ]);
 
         DB::transaction(function () use ($questionnaire, $data, $bandValidator): void {
-            if (array_key_exists('result_scale_max', $data)) {
+            if (array_key_exists('result_scale_max', $data) && $data['result_scale_max'] !== null) {
                 $questionnaire->update([
                     'result_scale_min' => $data['result_scale_min'] ?? 0,
                     'result_scale_max' => $data['result_scale_max'],
@@ -238,18 +344,12 @@ class AdminQuestionnaireController extends Controller
             }
             $this->assertBandsWithinScale($questionnaire, $data['bands'] ?? []);
             $this->syncBands($questionnaire, $data['bands'] ?? [], $bandValidator);
-            $this->audit->log($questionnaire->id, 'questionnaire.updated', "Updated result ranges of \"{$questionnaire->title}\" (v{$questionnaire->version}).", $questionnaire);
+            $this->audit->log($questionnaire->id, 'questionnaire.updated', "Updated result levels of \"{$questionnaire->title}\" (v{$questionnaire->version}).", $questionnaire);
         });
 
-        $creationFlow = (int) $request->session()->get('admin_questionnaire_creation_id') === $questionnaire->id
-            && $questionnaire->status === 'draft';
-        $destination = $creationFlow
-            ? ($request->input('next') === 'review' ? 'admin.questionnaires.review' : 'admin.questionnaires.scoring')
-            : 'admin.questionnaires.details';
-
         return redirect()
-            ->route($destination, $questionnaire)
-            ->with('status', 'Result scale and ranges saved.');
+            ->route($request->input('next') === 'review' ? 'admin.questionnaires.review' : 'admin.questionnaires.result-levels', $questionnaire)
+            ->with('status', 'Result levels saved.');
     }
 
     /** Questionnaire Management → Questionnaire Builder tab: open the live/draft version's editor. */
@@ -271,7 +371,6 @@ class AdminQuestionnaireController extends Controller
         ]);
     }
 
-    /** Questionnaire Management → Analytics tab (with in-page sub-tabs). */
     /** Reporting and version history hub for Questionnaire Management. */
     public function reports(): View
     {
@@ -335,7 +434,7 @@ class AdminQuestionnaireController extends Controller
     {
         return StressAssessment::query()
             ->where('assessment_status', 'completed')
-            ->with(['studentIdentity', 'questionnaire:id,title,version', 'wellbeingBand', 'stressBand', 'scoreBand'])
+            ->with(['studentIdentity', 'questionnaire:id,title,version,purpose', 'wellbeingBand', 'stressBand', 'scoreBand'])
             ->orderByDesc('completed_at')
             ->paginate(25);
     }
@@ -356,10 +455,80 @@ class AdminQuestionnaireController extends Controller
     }
 
     /**
-     * Read-only "as a student would see it" view of a questionnaire. No
-     * assessment attempt is created.
+     * Copy a questionnaire into a brand-new library questionnaire of its own
+     * — sections, questions, scoring and result levels included — and open
+     * its Basic info step so it can be renamed.
+     */
+    public function duplicate(Questionnaire $questionnaire, QuestionnaireVersioner $versioner): RedirectResponse
+    {
+        $copy = $versioner->duplicate($questionnaire, auth()->id());
+        $this->audit->log($copy->id, 'questionnaire.duplicated', "Duplicated \"{$questionnaire->title}\" v{$questionnaire->version} as \"{$copy->title}\".", $copy);
+
+        return redirect()->route('admin.questionnaires.details', $copy)->with(
+            'status',
+            "\"{$copy->title}\" was created as a draft copy. Rename it, adjust anything you like, then publish it when ready.",
+        );
+    }
+
+    /**
+     * "As a student would see it": the questionnaire rendered with the same
+     * controls the app uses. Answers can be submitted for a dry run through
+     * the real scoring engine — nothing is saved.
      */
     public function preview(Questionnaire $questionnaire): View
+    {
+        return view('admin.questionnaires.preview', $this->previewData($questionnaire));
+    }
+
+    /**
+     * Score a set of preview answers with the real engine and show the
+     * result a student would get. Configuration problems surface here as a
+     * plain message instead of an error page.
+     */
+    public function previewSubmit(Request $request, Questionnaire $questionnaire, AssessmentScoringService $scoring, RecommendedInterventionService $recommendations): View
+    {
+        $data = $request->validate([
+            'answers' => ['nullable', 'array'],
+            'answers.*' => ['nullable'],
+        ]);
+
+        $answers = [];
+        foreach ($data['answers'] ?? [] as $questionId => $chosen) {
+            if ($chosen === null || $chosen === '' || $chosen === []) {
+                continue;
+            }
+            $answers[(int) $questionId] = is_array($chosen)
+                ? array_values(array_map('intval', array_filter($chosen, fn ($v) => $v !== null && $v !== '')))
+                : (int) $chosen;
+        }
+        $answers = array_filter($answers, fn ($v) => $v !== [] && $v !== 0);
+
+        $result = null;
+        $error = null;
+        try {
+            $scored = $scoring->score($questionnaire, $answers);
+            $band = $scored['score_band'];
+            $result = [
+                'total_score' => $scored['total_score'],
+                'result_scale' => $questionnaire->resultScale(),
+                'percentage' => $scored['overall']['percentage'] ?? null,
+                'band' => $band,
+                'breakdown' => $scored['breakdown'],
+                'recommendations' => $recommendations->forBand($band),
+            ];
+        } catch (ValidationException $e) {
+            $error = collect($e->errors())->flatten()->first();
+        }
+
+        return view('admin.questionnaires.preview', $this->previewData($questionnaire) + [
+            'previewResult' => $result,
+            'previewError' => $error,
+            'previewAnswers' => $answers,
+        ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function previewData(Questionnaire $questionnaire): array
     {
         $questionnaire->load([
             'sections' => fn ($q) => $q->where('is_active', true)->orderBy('position')->orderBy('id'),
@@ -368,58 +537,119 @@ class AdminQuestionnaireController extends Controller
                 ->with(['options' => fn ($o) => $o->where('is_active', true)->orderBy('position')]),
         ]);
 
-        return view('admin.questionnaires.preview', [
+        return [
             'questionnaire' => $questionnaire,
             'questionsBySection' => $questionnaire->questions->groupBy(fn ($q) => $q->pivot->questionnaire_section_id),
-        ]);
+        ];
     }
 
     /**
-     * One-click publish. Makes this version live and turns every other
-     * version back to a draft. If the questionnaire is not ready, redirects
-     * back with the blocking reason instead of erroring.
-     */
-    /**
-     * Step 1 — Details: name, description, go-live, the client's result
-     * scale, and the result ranges with the support recommended for each.
+     * Step 1 — Basic info: name, description, type, estimated time, go-live.
      */
     public function details(Questionnaire $questionnaire, QuestionnaireReview $reviewer): View
     {
-        $questionnaire->load(['scoreBands' => fn ($q) => $q->orderBy('scope')->orderBy('position')]);
-
-        $rawSpan = $reviewer->rawSpan($questionnaire);
-        $resultScale = $questionnaire->resultScale();
-        $scoreSpan = $resultScale ?? $rawSpan;
-        $overallBands = $questionnaire->scoreBands
-            ->where('scope', StressScoreBand::SCOPE_OVERALL)
-            ->where('is_active', true)
-            ->sortBy('min_score')
-            ->values();
-        $questionCount = $questionnaire->questions()->count();
-
         return view('admin.questionnaires.details', [
             'questionnaire' => $questionnaire,
             'review' => $reviewer->run($questionnaire->fresh()),
-            'questionCount' => $questionCount,
-            'rawSpan' => $rawSpan,
-            'resultScale' => $resultScale,
-            'scoreSpan' => $scoreSpan,
-            'overallBands' => $questionnaire->scoreBands->where('scope', StressScoreBand::SCOPE_OVERALL)->values(),
-            'rangeProblems' => $reviewer->rangeProblems($overallBands, $scoreSpan, $resultScale !== null),
-            'interventions' => Intervention::query()->where('is_active', true)->orderBy('content_type')->orderBy('title')->get(['id', 'title', 'content_type']),
-            'primaryInterventionByBand' => $reviewer->primaryInterventionByBand($questionnaire),
+            'questionCount' => $questionnaire->questions()->count(),
+            'resultScale' => $questionnaire->resultScale(),
+            'hasOtherRegistration' => Questionnaire::query()->notInTrash()->registration()->whereKeyNot($questionnaire->id)->exists(),
+            'canChangePurpose' => $questionnaire->status === 'draft' && ! $questionnaire->assessments()->exists(),
         ]);
     }
 
     /**
-     * Review & Publish: the whole questionnaire checked in one place, with
-     * every issue pointing at where to fix it, and the only Publish button.
+     * Step 3 — Scoring: the scoring method, section weights and result
+     * scale, with every derived figure worked out for the admin.
      */
-    public function review(Questionnaire $questionnaire, QuestionnaireReview $reviewer): View
+    public function scoring(Questionnaire $questionnaire, QuestionnaireActivationService $activation, QuestionnaireReview $reviewer, AssessmentScoringService $scoring): View
+    {
+        $questionnaire->load([
+            'sections' => fn ($query) => $query->withCount('questions')->orderBy('position')->orderBy('id'),
+            'scoreBands' => fn ($query) => $query->orderBy('scope')->orderBy('position'),
+        ]);
+
+        $overview = $scoring->overview($questionnaire);
+        $activeQuestions = $questionnaire->questions()->where('stress_questions.is_active', true)->with('options')->get();
+
+        $validationError = null;
+        try {
+            $activation->preflight($questionnaire);
+        } catch (ValidationException $e) {
+            $validationError = collect($e->errors())->flatten()->first();
+        }
+
+        // A per-question view of the points at stake, so an uneven weight or
+        // a reversed scale is visible without opening each question.
+        $questionRows = $activeQuestions->map(fn (StressQuestion $q) => [
+            'id' => $q->id,
+            'section_id' => $q->pivot->questionnaire_section_id,
+            'text' => $q->question_text,
+            'type' => $q->question_type,
+            'answer_mode' => $q->answerMode(),
+            'scoring_method' => $q->scoringMethod(),
+            'weight' => (float) $q->wellbeing_weight,
+            'reversed' => (bool) $q->is_reverse_scored,
+            'min' => $q->resolvedMinScore(),
+            'max' => $q->resolvedMaxScore(),
+        ])->groupBy('section_id');
+
+        return view('admin.questionnaires.scoring', [
+            'questionnaire' => $questionnaire,
+            'review' => $reviewer->run($questionnaire->fresh()),
+            'overview' => $overview,
+            'questionRows' => $questionRows,
+            'rawSpan' => AssessmentScoringService::possibleTotalRange($activeQuestions),
+            'scoreSpan' => $overview['result_span'],
+            'resultScale' => $questionnaire->resultScale(),
+            'overallBands' => $questionnaire->scoreBands->where('scope', StressScoreBand::SCOPE_OVERALL)->values(),
+            'stressBands' => $questionnaire->scoreBands->where('scope', StressScoreBand::SCOPE_STRESS)->values(),
+            'validationError' => $validationError,
+        ]);
+    }
+
+    /**
+     * Step 4 — Result levels & recommendations: the ranges the result is
+     * matched against and the support recommended for each.
+     */
+    public function resultLevels(Questionnaire $questionnaire, QuestionnaireReview $reviewer, AssessmentScoringService $scoring): View
+    {
+        $questionnaire->load(['scoreBands' => fn ($q) => $q->orderBy('scope')->orderBy('position')]);
+
+        $overview = $scoring->overview($questionnaire);
+        $scoreSpan = $overview['result_span'];
+        $resultScale = $questionnaire->resultScale();
+        $activeOverallBands = $questionnaire->scoreBands
+            ->where('scope', StressScoreBand::SCOPE_OVERALL)->where('is_active', true)->sortBy('min_score')->values();
+
+        return view('admin.questionnaires.result-levels', [
+            'questionnaire' => $questionnaire,
+            'review' => $reviewer->run($questionnaire->fresh()),
+            'overview' => $overview,
+            'questionCount' => $overview['question_count'],
+            'rawSpan' => $overview['total_span'],
+            'resultScale' => $resultScale,
+            'scoreSpan' => $scoreSpan,
+            'overallBands' => $questionnaire->scoreBands->where('scope', StressScoreBand::SCOPE_OVERALL)->values(),
+            'stressBands' => $questionnaire->scoreBands->where('scope', StressScoreBand::SCOPE_STRESS)->values(),
+            'rangeProblems' => $reviewer->rangeProblems($activeOverallBands, $scoreSpan, $resultScale !== null),
+            'interventions' => Intervention::query()->where('is_active', true)->orderBy('content_type')->orderBy('title')->get(['id', 'title', 'content_type']),
+            'primaryInterventionByBand' => $reviewer->primaryInterventionByBand($questionnaire),
+            'interventionsByBand' => $this->interventionsByBand($questionnaire),
+        ]);
+    }
+
+    /**
+     * Step 5 — Review & Publish: the whole questionnaire checked in one
+     * place, with every issue pointing at where to fix it, and the only
+     * Publish button.
+     */
+    public function review(Questionnaire $questionnaire, QuestionnaireReview $reviewer, AssessmentScoringService $scoring): View
     {
         return view('admin.questionnaires.review', [
             'questionnaire' => $questionnaire,
             'review' => $reviewer->run($questionnaire),
+            'overview' => $scoring->overview($questionnaire->fresh()),
         ]);
     }
 
@@ -526,50 +756,6 @@ class AdminQuestionnaireController extends Controller
         return redirect()->route('admin.questionnaires.trash')->with('status', "\"{$title}\" was permanently deleted.");
     }
 
-    public function scoring(Questionnaire $questionnaire, QuestionnaireActivationService $activation, QuestionnaireReview $reviewer): View
-    {
-        $questionnaire->load([
-            'sections' => fn ($query) => $query->withCount('questions'),
-            'scoreBands' => fn ($query) => $query->orderBy('scope')->orderBy('position'),
-        ]);
-
-        $sumWeights = (float) $questionnaire->sections->where('is_active', true)->sum('category_weight');
-        $activeQuestions = $questionnaire->questions()->where('stress_questions.is_active', true)->with('options')->get();
-        $rawSpan = AssessmentScoringService::possibleTotalRange($activeQuestions);
-        $scoreSpan = AssessmentScoringService::resultSpan($questionnaire, $activeQuestions);
-
-        $validationError = null;
-        try {
-            $activation->preflight($questionnaire);
-        } catch (ValidationException $e) {
-            $validationError = collect($e->errors())->flatten()->first();
-        }
-
-        $viewData = [
-            'questionnaire' => $questionnaire,
-            'sumWeights' => $sumWeights,
-            'scoreSpan' => $scoreSpan,
-            'rawSpan' => $rawSpan,
-            'resultScale' => $questionnaire->resultScale(),
-            'overallBands' => $questionnaire->scoreBands->where('scope', StressScoreBand::SCOPE_OVERALL)->values(),
-            'stressBands' => $questionnaire->scoreBands->where('scope', StressScoreBand::SCOPE_STRESS)->values(),
-            'validationError' => $validationError,
-        ];
-
-        if ((int) session('admin_questionnaire_creation_id') === $questionnaire->id && $questionnaire->status === 'draft') {
-            $activeOverallBands = $questionnaire->scoreBands
-                ->where('scope', StressScoreBand::SCOPE_OVERALL)->where('is_active', true)->values();
-            $viewData += [
-                'questionCount' => $questionnaire->questions()->count(),
-                'rangeProblems' => $reviewer->rangeProblems($activeOverallBands, $scoreSpan, $questionnaire->resultScale() !== null),
-                'interventions' => Intervention::query()->where('is_active', true)->orderBy('content_type')->orderBy('title')->get(['id', 'title', 'content_type']),
-                'primaryInterventionByBand' => $reviewer->primaryInterventionByBand($questionnaire),
-            ];
-        }
-
-        return view('admin.questionnaires.scoring', $viewData);
-    }
-
     private function form(Questionnaire $questionnaire): View
     {
         return view('admin.questionnaires.form', [
@@ -586,7 +772,10 @@ class AdminQuestionnaireController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'type' => ['required', Rule::in(['stress'])],
+            // The version-family key. Any slug is valid — each questionnaire
+            // has its own family so it versions and publishes independently.
+            'type' => ['required', 'string', 'max:50', 'regex:/^[a-z0-9_]+$/'],
+            'purpose' => ['nullable', Rule::in(Questionnaire::purposes())],
             'version' => ['required', 'integer', 'min:1', Rule::unique('questionnaires')->where(fn ($query) => $query->where('type', $request->input('type')))->ignore($questionnaire)],
             'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
             'is_active' => ['nullable', 'boolean'],
@@ -610,7 +799,7 @@ class AdminQuestionnaireController extends Controller
             'bands.*.is_active' => ['nullable', 'boolean'],
         ]);
 
-        $data['questionnaire'] = collect($data)->only(['title', 'description', 'type', 'version', 'status', 'published_at'])->all() + [
+        $data['questionnaire'] = collect($data)->only(['title', 'description', 'type', 'purpose', 'version', 'status', 'published_at'])->all() + [
             'is_active' => $request->boolean('is_active'),
         ];
 
@@ -652,14 +841,21 @@ class AdminQuestionnaireController extends Controller
         $retained = [];
         foreach ($bands as $item) {
             $band = isset($item['id']) ? $questionnaire->scoreBands()->whereKey($item['id'])->firstOrFail() : null;
-            $interventionId = array_key_exists('intervention_id', $item) ? $item['intervention_id'] : false;
-            unset($item['id'], $item['intervention_id']);
+            // `false` = the field was not in the form at all, so it stays as
+            // it is; null / [] = the admin cleared it.
+            $primaryId = array_key_exists('intervention_id', $item)
+                ? ($item['intervention_id'] === null ? null : (int) $item['intervention_id'])
+                : false;
+            $additionalIds = array_key_exists('intervention_ids', $item)
+                ? array_values(array_map('intval', array_filter((array) $item['intervention_ids'], fn ($v) => $v !== null && $v !== '')))
+                : null;
+            unset($item['id'], $item['intervention_id'], $item['intervention_ids']);
             $band ??= $questionnaire->scoreBands()->make();
             $band->fill($item + ['created_by_user_id' => $questionnaire->created_by_user_id])->save();
             $retained[] = $band->id;
 
-            if ($interventionId !== false) {
-                $this->setPrimaryRecommendation($band, $interventionId === null ? null : (int) $interventionId);
+            if ($primaryId !== false || $additionalIds !== null) {
+                $this->setRecommendations($band, $primaryId, $additionalIds);
             }
         }
         $questionnaire->scoreBands()->whereNotIn('id', $retained)->update(['is_active' => false]);
@@ -696,28 +892,64 @@ class AdminQuestionnaireController extends Controller
     }
 
     /**
-     * Make `$interventionId` the support item recommended first for this
-     * range. Other items linked to the range keep their link but sort after
-     * it; passing null drops the current first item.
+     * The support recommended for a result level: `$primaryId` is shown
+     * first, `$additionalIds` follow in the order given. Passing null for
+     * either leaves that part as it is; an empty list clears it. Links are
+     * deactivated rather than deleted so history keeps its references.
+     *
+     * @param  array<int, int>|null  $additionalIds
      */
-    private function setPrimaryRecommendation(StressScoreBand $band, ?int $interventionId): void
+    private function setRecommendations(StressScoreBand $band, int|null|false $primaryId, ?array $additionalIds): void
     {
-        $current = $band->recommendations()
+        $current = $band->recommendations()->where('is_active', true)->orderBy('priority')->orderBy('id')->get();
+        $currentPrimary = $current->first()?->intervention_id !== null ? (int) $current->first()->intervention_id : null;
+        $currentOthers = $current->skip(1)->pluck('intervention_id')->map(fn ($id) => (int) $id)->all();
+
+        // What was not submitted stays as it is; what was submitted replaces
+        // its part of the list. The primary always sorts first. Naming a new
+        // first item keeps the old one linked, just no longer first;
+        // clearing the first item drops it.
+        $primary = $primaryId === false ? $currentPrimary : $primaryId;
+        $others = $additionalIds ?? $currentOthers;
+        if ($additionalIds === null && $primaryId !== false && $primaryId !== null && $currentPrimary !== null && $currentPrimary !== $primaryId) {
+            array_unshift($others, $currentPrimary);
+        }
+
+        $desired = array_values(array_unique(array_filter(
+            array_merge($primary !== null ? [$primary] : [], $others),
+            fn ($id) => $id !== null && $id > 0,
+        )));
+
+        foreach ($desired as $priority => $interventionId) {
+            $band->recommendations()->updateOrCreate(
+                ['intervention_id' => $interventionId],
+                ['is_active' => true, 'priority' => $priority],
+            );
+        }
+        // Dropped links are switched off, never deleted, so history keeps them.
+        $band->recommendations()
+            ->when($desired !== [], fn ($q) => $q->whereNotIn('intervention_id', $desired))
+            ->update(['is_active' => false]);
+    }
+
+    /**
+     * Every support item linked to each level (primary first), keyed by band id.
+     *
+     * @return array<int, array<int, int>>
+     */
+    private function interventionsByBand(Questionnaire $questionnaire): array
+    {
+        $out = [];
+        $rows = InterventionRecommendation::query()
+            ->whereIn('stress_score_band_id', $questionnaire->scoreBands()->pluck('id'))
             ->where('is_active', true)
             ->orderBy('priority')
             ->orderBy('id')
-            ->first();
-
-        if ($interventionId === null) {
-            $current?->update(['is_active' => false]);
-
-            return;
+            ->get(['stress_score_band_id', 'intervention_id']);
+        foreach ($rows as $row) {
+            $out[(int) $row->stress_score_band_id][] = (int) $row->intervention_id;
         }
 
-        $band->recommendations()->where('is_active', true)->where('priority', 0)->update(['priority' => 1]);
-        $band->recommendations()->updateOrCreate(
-            ['intervention_id' => $interventionId],
-            ['is_active' => true, 'priority' => 0],
-        );
+        return $out;
     }
 }

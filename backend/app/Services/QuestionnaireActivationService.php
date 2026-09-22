@@ -80,10 +80,13 @@ class QuestionnaireActivationService
         foreach ($questionnaire->questions as $question) {
             $options = $question->options;
             if ($options->count() < 2) {
-                $this->fail('questions', 'Every active scale question must have at least two active options.');
+                $this->fail('questions', 'Every active question must have at least two active options.');
             }
             if ($options->contains(fn ($option) => $option->score === null)) {
                 $this->fail('questions', 'Every active option must have a score before activation.');
+            }
+            if ($question->allowsMultipleAnswers() && $question->max_selections !== null && (int) $question->max_selections > $options->count()) {
+                $this->fail('questions', "\"{$question->question_text}\" lets students pick more answers than it has options.");
             }
         }
 
@@ -149,13 +152,15 @@ class QuestionnaireActivationService
             if ($count === 0) {
                 $this->fail('sections', "Section \"{$section->title}\" has no active questions. Add a question or archive the section.");
             }
-            if ((float) $section->category_weight <= 0) {
-                $this->fail('sections', "Section \"{$section->title}\" needs a category weight greater than 0.");
+            // With equal weighting the engine derives the weights itself, so
+            // whatever is stored on the section is irrelevant.
+            if (! $questionnaire->usesEqualSectionWeights() && (float) $section->category_weight <= 0) {
+                $this->fail('sections', "Section \"{$section->title}\" needs a weight greater than 0.");
             }
         }
 
-        // The ranges live on the client's result scale (the raw total is
-        // normalised into it), so they must cover that scale end to end.
+        // The ranges live on the result scale (the total is normalised onto
+        // it), so they must cover that scale end to end.
         $scale = $questionnaire->resultScale();
         if ($scale !== null && $scale[1] <= $scale[0]) {
             $this->fail('result_scale', 'The result scale maximum must be higher than its minimum.');
@@ -164,6 +169,9 @@ class QuestionnaireActivationService
         if ($scale !== null && $rawMax <= $rawMin) {
             $this->fail('questions', 'The questions need answer points that can differ, so a result can be placed on the scale.');
         }
+        // The span the levels must cover follows the scoring method: the sum
+        // of section weights for weighted sections, the points span otherwise.
+        [$rawMin, $rawMax] = AssessmentScoringService::totalSpan($questionnaire, $questionnaire->questions);
         [$lowest, $highest] = $scale ?? [$rawMin, $rawMax];
         $overallBands = $questionnaire->scoreBands->where('scope', StressScoreBand::SCOPE_OVERALL)->values();
         if ($overallBands->isEmpty()) {

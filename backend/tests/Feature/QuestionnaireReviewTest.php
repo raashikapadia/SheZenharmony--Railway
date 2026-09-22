@@ -31,6 +31,7 @@ class QuestionnaireReviewTest extends TestCase
     {
         $questionnaire = Questionnaire::query()->create([
             'title' => 'Stress & Wellbeing Check', 'type' => 'stress', 'version' => 1,
+            'purpose' => Questionnaire::PURPOSE_REGISTRATION,
             'result_scale_min' => 0, 'result_scale_max' => 40,
         ]);
         foreach (['Emotional Wellbeing', 'Stress & Coping'] as $i => $title) {

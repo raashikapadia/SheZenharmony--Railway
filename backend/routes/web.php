@@ -48,9 +48,14 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::patch('questionnaires/{questionnaire}/details', [AdminQuestionnaireController::class, 'updateDetails'])->name('questionnaires.details');
     Route::patch('questionnaires/{questionnaire}/ranges', [AdminQuestionnaireController::class, 'updateRanges'])->name('questionnaires.ranges');
     Route::post('questionnaires/{questionnaire}/new-version', [AdminQuestionnaireController::class, 'createVersion'])->name('questionnaires.new-version');
+    Route::post('questionnaires/{questionnaire}/duplicate', [AdminQuestionnaireController::class, 'duplicate'])->name('questionnaires.duplicate');
+    // Preview as a student, and a dry run of the answers through the scoring engine.
     Route::get('questionnaires/{questionnaire}/preview', [AdminQuestionnaireController::class, 'preview'])->name('questionnaires.preview');
-    // The three screens: Details → Sections & questions → Review & publish.
+    Route::post('questionnaires/{questionnaire}/preview', [AdminQuestionnaireController::class, 'previewSubmit'])->name('questionnaires.preview.submit');
+    // The five screens: Basic info → Sections & questions → Scoring → Result levels → Review & publish.
     Route::get('questionnaires/{questionnaire}/details', [AdminQuestionnaireController::class, 'details'])->name('questionnaires.show-details');
+    Route::patch('questionnaires/{questionnaire}/scoring', [AdminQuestionnaireController::class, 'updateScoring'])->name('questionnaires.scoring.update');
+    Route::get('questionnaires/{questionnaire}/result-levels', [AdminQuestionnaireController::class, 'resultLevels'])->name('questionnaires.result-levels');
     // Review & Publish: the one gate every publish goes through.
     Route::get('questionnaires/{questionnaire}/review', [AdminQuestionnaireController::class, 'review'])->name('questionnaires.review');
     Route::patch('questionnaires/{questionnaire}/publish', [AdminQuestionnaireController::class, 'publish'])->name('questionnaires.publish');
@@ -60,6 +65,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('questionnaires/{questionnaire}/scoring', [AdminQuestionnaireController::class, 'scoring'])->name('questionnaires.scoring');
     Route::resource('questionnaires.sections', AdminSectionController::class)->except(['show']);
     Route::patch('questionnaires/{questionnaire}/sections/{section}/move', [AdminSectionController::class, 'moveSection'])->name('questionnaires.sections.move');
+    Route::post('questionnaires/{questionnaire}/sections/{section}/duplicate', [AdminSectionController::class, 'duplicate'])->name('questionnaires.sections.duplicate');
     Route::prefix('questionnaires/{questionnaire}/sections/{section}/questions')
         ->name('questionnaires.sections.questions.')
         ->group(function (): void {

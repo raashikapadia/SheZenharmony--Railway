@@ -111,7 +111,7 @@ void main() {
       find.text('24 questions across 3 sections, in 3 short pages'),
       findsOneWidget,
     );
-    await tester.tap(find.text('Begin stress check'));
+    await tester.tap(find.text('Begin'));
     await tester.pumpAndSettle();
 
     expect(find.text('SECTION 1 OF 3'), findsOneWidget);
@@ -129,7 +129,7 @@ void main() {
     tester,
   ) async {
     await pumpQuestionnaire(tester);
-    await tester.tap(find.text('Begin stress check'));
+    await tester.tap(find.text('Begin'));
     await tester.pumpAndSettle();
 
     await answerVisible(tester, [1, 2, 3]);
@@ -149,7 +149,7 @@ void main() {
     tester,
   ) async {
     await pumpQuestionnaire(tester);
-    await tester.tap(find.text('Begin stress check'));
+    await tester.tap(find.text('Begin'));
     await tester.pumpAndSettle();
 
     await answerVisible(tester, List.generate(9, (i) => i + 1));
@@ -187,7 +187,7 @@ void main() {
     tester,
   ) async {
     final api = await pumpQuestionnaire(tester);
-    await tester.tap(find.text('Begin stress check'));
+    await tester.tap(find.text('Begin'));
     await tester.pumpAndSettle();
 
     for (final page in const [(1, 9), (10, 18), (19, 24)]) {
@@ -206,12 +206,12 @@ void main() {
     }
 
     expect(api.submittedAnswers, hasLength(24));
-    expect(api.submittedAnswers?.values.toSet(), {4});
+    expect(api.submittedAnswers?.values.expand((ids) => ids).toSet(), {4});
   });
 }
 
 class _QuestionnaireApi extends ApiService {
-  Map<int, int>? submittedAnswers;
+  Map<int, List<int>>? submittedAnswers;
 
   @override
   Future<AssessmentQuestionnaire> activeQuestionnaire() async =>
@@ -221,7 +221,7 @@ class _QuestionnaireApi extends ApiService {
   Future<AssessmentResult> submitAssessment(
     String token,
     int questionnaireId,
-    Map<int, int> answers,
+    Map<int, List<int>> answers,
   ) async {
     submittedAnswers = answers;
     return const AssessmentResult(

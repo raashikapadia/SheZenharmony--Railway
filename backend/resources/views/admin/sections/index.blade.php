@@ -5,9 +5,9 @@
 @php($typeLabels = collect(\App\Enums\QuestionType::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()]))
 @php($orderedSections = $questionnaire->sections->sortBy([['position', 'asc'], ['id', 'asc']])->values())
 @php($unsectioned = ($questionsBySection[null] ?? ($questionsBySection[''] ?? collect())))
-@php($creationFlow = (int) session('admin_questionnaire_creation_id') === $questionnaire->id && $questionnaire->status === 'draft')
 @php($openSectionModal = $errors->has('title') || $errors->has('description') || $errors->has('category_weight'))
-<main class="content stack{{ $creationFlow ? ' questionnaire-creation-step' : '' }}">
+@php($fmt = fn ($n) => rtrim(rtrim(number_format((float) $n, 2), '0'), '.'))
+<main class="content stack questionnaire-creation-step">
     <a class="backlink" href="{{ route('admin.questionnaires.index') }}">← Questionnaire Management</a>
 
     @if(session('status'))<div class="status">{{ session('status') }}</div>@endif
@@ -17,7 +17,7 @@
     <section class="panel">
         <div class="split" style="align-items:flex-start">
             <div style="min-width:0">
-                <div class="eyebrow">Step 2 of {{ $creationFlow ? 4 : 3 }} · Sections &amp; questions</div>
+                <div class="eyebrow">Step 2 of 5 · Sections &amp; questions</div>
                 <h1 style="margin:2px 0 4px;overflow-wrap:anywhere">{{ $questionnaire->title }}
                     <span class="badge {{ $questionnaire->is_active && ! $questionnaire->isScheduled() ? 'active' : '' }}" style="vertical-align:middle;font-family:system-ui,sans-serif">{{ $questionnaire->publishState() }}</span>
                 </h1>
@@ -26,9 +26,10 @@
                 @else
                     <p class="lede muted">No description yet — students see it on the intro screen.</p>
                 @endif
-                <p class="muted" style="margin:8px 0 0;font-size:.88rem">{{ $sectionCount }} {{ \Illuminate\Support\Str::plural('section', $sectionCount) }} · {{ $questionCount }} {{ \Illuminate\Support\Str::plural('question', $questionCount) }}</p>
+                <p class="muted" style="margin:8px 0 0;font-size:.88rem">{{ $sectionCount }} {{ \Illuminate\Support\Str::plural('section', $sectionCount) }} · {{ $questionCount }} {{ \Illuminate\Support\Str::plural('question', $questionCount) }} · {{ $questionnaire->scoringMethodLabel() }}, {{ $questionnaire->usesEqualSectionWeights() ? 'equal section weights' : 'custom section weights' }}</p>
             </div>
             <div class="actions">
+                <a class="button button-secondary" href="{{ route('admin.questionnaires.preview', $questionnaire) }}">Preview</a>
                 <a class="button button-secondary" href="{{ route('admin.questionnaires.details', $questionnaire) }}">Edit details</a>
                 @if($orderedSections->isNotEmpty())
                     <button class="button" type="button" data-open-section-modal><span>＋</span>Add section</button>
@@ -38,11 +39,9 @@
 
     </section>
 
-    @if($creationFlow)
-        @include('admin.questionnaires._creation_progress', ['questionnaire' => $questionnaire, 'step' => 2])
-    @else
-        @include('admin.questionnaires._wizard', ['questionnaire' => $questionnaire, 'review' => $review, 'step' => 2])
-    @endif
+    @include('admin.questionnaires._creation_progress', ['questionnaire' => $questionnaire, 'review' => $review, 'step' => 2])
+
+    <p class="lede" style="margin:0">A questionnaire is made of <strong>sections</strong>, and each section holds its <strong>questions</strong>. Sections can differ in length and in the kinds of questions they hold. Collapse a section to see the whole structure at a glance.</p>
 
     {{-- ============ SECTIONS ============ --}}
     @if($orderedSections->isEmpty())
@@ -64,17 +63,24 @@
                         <form method="POST" action="{{ route('admin.questionnaires.sections.move', [$questionnaire, $section]) }}">@csrf @method('PATCH')<input type="hidden" name="direction" value="down"><button type="submit" class="arrow" title="Move section down" aria-label="Move section down" @disabled($sectionIndex === $orderedSections->count() - 1)>▼</button></form>
                     </div>
                     <div style="min-width:0">
-                        <div class="eyebrow">Section {{ $sectionIndex + 1 }} @unless($section->is_active)<span class="badge" style="margin-left:6px">hidden from students</span>@endunless</div>
+                        <div class="eyebrow">Section {{ $sectionIndex + 1 }} @unless($section->is_active)<span class="badge" style="margin-left:6px">hidden from students</span>@endunless
+                            @if($section->is_active && isset($effectiveWeights[$section->id]))
+                                <span class="badge" style="margin-left:6px" title="How much this section contributes to the overall result">weight {{ $fmt($effectiveWeights[$section->id]) }}{{ $weightTotal > 0 ? ' · '.round($effectiveWeights[$section->id] / $weightTotal * 100).'%' : '' }}</span>
+                            @endif
+                        </div>
                         <h2 style="margin:2px 0 0;overflow-wrap:anywhere">{{ $section->title }}</h2>
                         @if($section->description)<p class="lede" style="margin-top:4px">{{ $section->description }}</p>@endif
                     </div>
                 </div>
                 <div class="actions">
-                    <a class="button button-secondary" href="{{ route('admin.questionnaires.sections.edit', [$questionnaire, $section]) }}">Edit section</a>
+                    <button class="button button-link section-toggle" type="button" data-collapse="section-body-{{ $section->id }}" aria-expanded="true">Collapse</button>
+                    <a class="button button-secondary" href="{{ route('admin.questionnaires.sections.edit', [$questionnaire, $section]) }}">Edit</a>
+                    <form method="POST" action="{{ route('admin.questionnaires.sections.duplicate', [$questionnaire, $section]) }}">@csrf<button class="button button-secondary" type="submit" title="Copy this section and its questions">Duplicate</button></form>
                     <form method="POST" action="{{ route('admin.questionnaires.sections.destroy', [$questionnaire, $section]) }}" data-confirm="Delete this section?&#10;&#10;“{{ $section->title }}”{{ $count ? ' and the '.$count.' '.\Illuminate\Support\Str::plural('question', $count).' inside it' : '' }} will be removed from the questionnaire. This cannot be undone.">@csrf @method('DELETE')<button class="button button-danger" type="submit">Delete</button></form>
                 </div>
             </div>
 
+            <div id="section-body-{{ $section->id }}">
             <div class="questions-label">Questions <span class="muted">({{ $count }})</span></div>
 
             @if($questions->isEmpty())
@@ -96,6 +102,9 @@
                             <div class="item-title question-text">{{ $i + 1 }}. {{ $question->question_text }}</div>
                             <div class="question-meta">
                                 {{ $typeLabels[$question->question_type] ?? ucfirst($question->question_type) }}
+                                @if($question->allowsMultipleAnswers()) · choose several{{ $question->max_selections ? ' (up to '.$question->max_selections.')' : '' }} · {{ match ($question->scoringMethod()) { 'count_selected' => '1 point per tick', 'max_selected' => 'highest ticked answer counts', default => 'ticked points add up' } }}@endif
+                                @if($question->is_reverse_scored) · higher answer = lower score @endif
+                                @if((float) $question->wellbeing_weight !== 1.0) · weight {{ $fmt($question->wellbeing_weight) }} @endif
                                 @unless($question->pivot->is_required) · optional @endunless
                                 @unless($question->is_active) · <span class="badge">inactive</span> @endunless
                             </div>
@@ -137,6 +146,7 @@
                     </div>
                 </div>
             </form>
+            </div>
         </section>
     @endforeach
 
@@ -152,8 +162,8 @@
     @endif
 
     <div class="split" style="align-items:center">
-        <a class="button button-secondary" href="{{ route('admin.questionnaires.details', $questionnaire) }}">← Details</a>
-        <a class="button" href="{{ $creationFlow ? route('admin.questionnaires.scoring', $questionnaire) : route('admin.questionnaires.review', $questionnaire) }}">{{ $creationFlow ? 'Continue to Scoring' : 'Review & publish' }} →</a>
+        <a class="button button-secondary" href="{{ route('admin.questionnaires.details', $questionnaire) }}">← Basic info</a>
+        <a class="button" href="{{ route('admin.questionnaires.scoring', $questionnaire) }}">Continue to Scoring →</a>
     </div>
 </main>
 
@@ -238,6 +248,18 @@
     document.querySelectorAll('form[data-confirm]').forEach(function (form) {
         form.addEventListener('submit', function (event) {
             if (!confirm(form.getAttribute('data-confirm'))) event.preventDefault();
+        });
+    });
+
+    // Collapse / expand a section so the whole structure fits on one screen.
+    document.querySelectorAll('[data-collapse]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var body = document.getElementById(button.getAttribute('data-collapse'));
+            if (!body) return;
+            var open = body.hidden;
+            body.hidden = !open;
+            button.setAttribute('aria-expanded', String(open));
+            button.textContent = open ? 'Collapse' : 'Expand';
         });
     });
 

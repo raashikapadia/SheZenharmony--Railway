@@ -10,14 +10,20 @@ import '../application/questionnaire_pager.dart';
 import '../data/assessment_questionnaire.dart';
 import 'assessment_result_screen.dart';
 
+/// Takes one questionnaire: the registration baseline when [questionnaireId]
+/// is null (the mandatory first check-in and its optional repeat), or the
+/// library questionnaire with that id. Everything shown — title, sections,
+/// questions, answer controls — comes from the loaded configuration.
 class QuestionnaireScreen extends StatelessWidget {
   const QuestionnaireScreen({
     super.key,
     required this.mandatory,
+    this.questionnaireId,
     ApiService? apiService,
   }) : _injectedApiService = apiService;
 
   final bool mandatory;
+  final int? questionnaireId;
   final ApiService? _injectedApiService;
 
   @override
@@ -32,6 +38,7 @@ class QuestionnaireScreen extends StatelessWidget {
       create: (_) => AssessmentProvider(
         apiService: _injectedApiService ?? ApiService(),
         token: token,
+        questionnaireId: questionnaireId,
         closeApiServiceOnDispose: _injectedApiService == null,
         pager: QuestionnairePager(targetCost: budget),
       )..load(),
@@ -132,8 +139,13 @@ class _QuestionnaireViewState extends State<_QuestionnaireView> {
       },
       child: Scaffold(
         appBar: AppBar(
+          // The questionnaire's own title once it has loaded; a neutral
+          // fallback until then.
           title: Text(
-            widget.mandatory ? 'Your first stress check' : 'Stress check',
+            context.select<AssessmentProvider, String?>(
+                  (provider) => provider.questionnaire?.title,
+                ) ??
+                (widget.mandatory ? 'Your first check-in' : 'Check-in'),
           ),
           automaticallyImplyLeading: !widget.mandatory,
         ),
@@ -177,16 +189,21 @@ class _AssessmentIntro extends StatelessWidget {
   final bool mandatory;
   final VoidCallback onStart;
 
-  /// "74 questions across 8 sections, in 9 short pages" — so the user knows
-  /// the shape of what is coming before a wall of questions can ever appear.
+  /// "74 questions across 8 sections, in 9 short pages · about 10 minutes" —
+  /// so the user knows the shape of what is coming before a wall of
+  /// questions can ever appear.
   static String _lengthSummary(AssessmentProvider provider) {
     final questions = provider.questionCount;
     final sections = provider.renderedSectionCount;
     final pages = provider.pageCount;
+    final minutes = provider.questionnaire?.estimatedMinutes;
     var summary = '$questions ${questions == 1 ? 'question' : 'questions'}';
     if (sections > 1) summary += ' across $sections sections';
-    if (pages <= 1) return '$summary from the active SheZen questionnaire';
-    return '$summary, in $pages short pages';
+    if (pages > 1) summary += ', in $pages short pages';
+    if (minutes != null && minutes > 0) {
+      summary += ' · about $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
+    }
+    return summary;
   }
 
   @override
@@ -214,9 +231,11 @@ class _AssessmentIntro extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  mandatory
-                      ? 'Let\'s begin with a stress check'
-                      : 'Take a moment to check in',
+                  questionnaire?.title.isNotEmpty == true
+                      ? questionnaire!.title
+                      : (mandatory
+                            ? 'Let\'s begin with a check-in'
+                            : 'Take a moment to check in'),
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
@@ -268,7 +287,7 @@ class _AssessmentIntro extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: provider.questionCount == 0 ? null : onStart,
                   icon: const Icon(Icons.arrow_forward_rounded),
-                  label: const Text('Begin stress check'),
+                  label: const Text('Begin'),
                 ),
               ],
             ),
@@ -661,7 +680,7 @@ class _PageBody extends StatelessWidget {
                 _QuestionCard(
                   key: keyFor(item.question.id),
                   item: item,
-                  selectedOptionId: provider.selectedOptionFor(
+                  selectedOptionIds: provider.selectedOptionsFor(
                     item.question.id,
                   ),
                   missing:
@@ -670,8 +689,22 @@ class _PageBody extends StatelessWidget {
                       !provider.isAnswered(item.question.id),
                   onSelect: provider.isSubmitting
                       ? null
-                      : (optionId) =>
-                            provider.selectAnswer(item.question.id, optionId),
+                      : (optionId) {
+                          final question = item.question;
+                          if (!question.allowsMultiple) {
+                            provider.selectAnswer(question.id, optionId);
+                            return;
+                          }
+                          if (!provider.toggleAnswer(question.id, optionId)) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'You can choose up to ${question.maxSelections} for this question.',
+                                ),
+                              ),
+                            );
+                          }
+                        },
                 ),
               ],
               if (provider.submitError != null) ...[
@@ -828,21 +861,33 @@ class _QuestionCard extends StatelessWidget {
   const _QuestionCard({
     super.key,
     required this.item,
-    required this.selectedOptionId,
+    required this.selectedOptionIds,
     required this.missing,
     required this.onSelect,
   });
 
   final PagedQuestion item;
-  final int? selectedOptionId;
+  final List<int> selectedOptionIds;
   final bool missing;
   final ValueChanged<int>? onSelect;
+
+  /// "Choose all that apply" / "Choose up to 3" — from the question's own
+  /// configured limit, never assumed.
+  static String _multiHint(AssessmentQuestion question) {
+    final limit = question.maxSelections;
+    return limit >= question.options.length
+        ? 'Choose all that apply'
+        : 'Choose up to $limit';
+  }
 
   @override
   Widget build(BuildContext context) {
     final question = item.question;
-    final answered = selectedOptionId != null;
-    final asChips = QuestionnairePager.rendersAsChips(question);
+    final answered = selectedOptionIds.isNotEmpty;
+    // Multi-select questions always list their options in full so the
+    // checkbox affordance is unmistakable.
+    final asChips =
+        !question.allowsMultiple && QuestionnairePager.rendersAsChips(question);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -887,6 +932,21 @@ class _QuestionCard extends StatelessWidget {
               ),
             ],
           ),
+          if (question.helpText?.isNotEmpty == true ||
+              question.allowsMultiple) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Padding(
+              padding: const EdgeInsets.only(left: 40),
+              child: Text(
+                [
+                  if (question.helpText?.isNotEmpty == true)
+                    question.helpText!,
+                  if (question.allowsMultiple) _multiHint(question),
+                ].join(' · '),
+                style: const TextStyle(color: AppColors.muted, fontSize: 13),
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           if (asChips)
             Wrap(
@@ -896,7 +956,7 @@ class _QuestionCard extends StatelessWidget {
                 for (final option in question.options)
                   _AnswerChip(
                     label: option.label,
-                    selected: selectedOptionId == option.id,
+                    selected: selectedOptionIds.contains(option.id),
                     onTap: onSelect == null ? null : () => onSelect!(option.id),
                   ),
               ],
@@ -907,7 +967,8 @@ class _QuestionCard extends StatelessWidget {
                 padding: EdgeInsets.only(top: index == 0 ? 0 : AppSpacing.sm),
                 child: _AnswerTile(
                   label: option.label,
-                  selected: selectedOptionId == option.id,
+                  selected: selectedOptionIds.contains(option.id),
+                  multiple: question.allowsMultiple,
                   onTap: onSelect == null ? null : () => onSelect!(option.id),
                 ),
               ),
@@ -1028,17 +1089,23 @@ class _AnswerTile extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.multiple = false,
   });
   final String label;
   final bool selected;
   final VoidCallback? onTap;
+
+  /// Renders a checkbox rather than a radio, for questions that allow
+  /// several answers.
+  final bool multiple;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Semantics(
       selected: selected,
-      button: true,
+      checked: multiple ? selected : null,
+      button: !multiple,
       child: Material(
         color: selected ? colors.primaryContainer : colors.surface,
         shape: RoundedRectangleBorder(
@@ -1056,9 +1123,13 @@ class _AnswerTile extends StatelessWidget {
             child: Row(
               children: [
                 Icon(
-                  selected
-                      ? Icons.check_circle_rounded
-                      : Icons.radio_button_unchecked_rounded,
+                  multiple
+                      ? (selected
+                            ? Icons.check_box_rounded
+                            : Icons.check_box_outline_blank_rounded)
+                      : (selected
+                            ? Icons.check_circle_rounded
+                            : Icons.radio_button_unchecked_rounded),
                   color: selected ? colors.primary : colors.outline,
                 ),
                 const SizedBox(width: 12),

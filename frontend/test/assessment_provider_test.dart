@@ -37,7 +37,10 @@ void main() {
       expect(provider.allRequiredAnswered, isTrue);
       expect(await provider.submit(), isTrue);
       expect(api.submittedQuestionnaireId, 7);
-      expect(api.submittedAnswers, {11: 101, 12: 202});
+      expect(api.submittedAnswers, {
+        11: [101],
+        12: [202],
+      });
       expect(provider.result?.bandLabel, 'Supportive demo tier');
     },
   );
@@ -45,7 +48,7 @@ void main() {
 
 class _AssessmentApiService extends ApiService {
   int? submittedQuestionnaireId;
-  Map<int, int>? submittedAnswers;
+  Map<int, List<int>>? submittedAnswers;
 
   @override
   Future<AssessmentQuestionnaire> activeQuestionnaire() async =>
@@ -74,7 +77,7 @@ class _AssessmentApiService extends ApiService {
   Future<AssessmentResult> submitAssessment(
     String token,
     int questionnaireId,
-    Map<int, int> answers,
+    Map<int, List<int>> answers,
   ) async {
     expect(token, 'student-token');
     submittedQuestionnaireId = questionnaireId;

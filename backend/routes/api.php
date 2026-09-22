@@ -22,15 +22,19 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health', HealthController::class);
 
 Route::prefix('v1')->group(function (): void {
-    Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
-    Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
-    Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:10,1');
-    Route::post('/auth/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:3,10');
-    Route::post('/auth/forgot-password', [StudentPasswordResetController::class, 'requestCode'])->middleware('throttle:3,10');
-    Route::post('/auth/verify-reset-code', [StudentPasswordResetController::class, 'verifyCode'])->middleware('throttle:10,1');
-    Route::post('/auth/reset-password', [StudentPasswordResetController::class, 'reset'])->middleware('throttle:10,1');
+    Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1,register');
+    Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1,login');
+    Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:10,1,verify-otp');
+    Route::post('/auth/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:3,10,resend-otp');
+    Route::post('/auth/forgot-password', [StudentPasswordResetController::class, 'requestCode'])->middleware('throttle:3,10,forgot-password');
+    Route::post('/auth/verify-reset-code', [StudentPasswordResetController::class, 'verifyCode'])->middleware('throttle:10,1,verify-reset-code');
+    Route::post('/auth/reset-password', [StudentPasswordResetController::class, 'reset'])->middleware('throttle:10,1,reset-password');
     Route::get('/questions', [QuestionController::class, 'index']);
+    // The mandatory baseline is its own endpoint, kept apart from the list
+    // of questionnaires a student chooses to sit. `/active` is the old name
+    // for the baseline and stays so older app builds keep working.
     Route::get('/questionnaires/active', [QuestionnaireController::class, 'active']);
+    Route::get('/questionnaires/registration', [QuestionnaireController::class, 'registration']);
     Route::get('/interventions', [InterventionController::class, 'index']);
     Route::get('/wellbeing-activities', [WellbeingActivityController::class, 'index']);
     // Admin-published helplines for the student Resource tab.
@@ -45,6 +49,10 @@ Route::prefix('v1')->group(function (): void {
     });
 
     Route::middleware(['auth:sanctum', 'student.active'])->group(function (): void {
+        // Signed in, so the list can carry this student's own attempt
+        // history and the detail endpoint can be scoped to what is live.
+        Route::get('/questionnaires/available', [QuestionnaireController::class, 'available']);
+        Route::get('/questionnaires/{questionnaire}', [QuestionnaireController::class, 'show']);
         Route::get('/assessments', [AssessmentController::class, 'index']);
         Route::post('/assessments', [AssessmentController::class, 'store']);
         Route::get('/assessments/{assessment}', [AssessmentController::class, 'show']);

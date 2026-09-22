@@ -229,12 +229,44 @@ class QuestionnaireWorkspaceTest extends TestCase
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $questionnaire = $this->questionnaire();
 
+        // Nothing about the preview is specific to one instrument: the
+        // title, the section pages and the answer controls all come from
+        // the questionnaire's own configuration.
         $this->actingAs($admin)->get(route('admin.questionnaires.preview', $questionnaire))
             ->assertOk()
-            ->assertSee('Begin stress check', false)
+            ->assertSee($questionnaire->title)
+            ->assertSee('Begin', false)
+            ->assertDontSee('Begin stress check', false)
             ->assertSee('I feel calm.')
-            ->assertSee('1 of 1')
+            ->assertSee('Section 1 of 1')
+            ->assertSee('See my result')
             ->assertSee('no result is saved');
+    }
+
+    public function test_preview_answers_can_be_dry_run_through_the_scoring_engine_without_saving(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $questionnaire = $this->questionnaire();
+        $question = $questionnaire->questions()->with('options')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->post(route('admin.questionnaires.preview.submit', $questionnaire), [
+                'answers' => [$question->id => $question->options->firstWhere('score', 5)->id],
+            ])
+            ->assertOk()
+            ->assertSee('Example result')
+            ->assertSee('OK');
+
+        $this->assertSame(0, StressAssessment::query()->count());
+
+        // A configuration problem is reported in plain words, not a 500.
+        $questionnaire->scoreBands()->update(['is_active' => false]);
+        $this->actingAs($admin)
+            ->post(route('admin.questionnaires.preview.submit', $questionnaire), [
+                'answers' => [$question->id => $question->options->firstWhere('score', 5)->id],
+            ])
+            ->assertOk()
+            ->assertSee('could not produce a result');
     }
 
     public function test_students_cannot_open_the_workspace_or_preview(): void

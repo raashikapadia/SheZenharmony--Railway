@@ -36,6 +36,9 @@ class ResultScaleTest extends TestCase
         $this->actingAs($admin)->get(route('admin.questionnaires.scoring', $questionnaire))
             ->assertOk()
             ->assertSee('10–50')
+            ->assertSee('10–50');
+        $this->actingAs($admin)->get(route('admin.questionnaires.result-levels', $questionnaire))
+            ->assertOk()
             ->assertSee('No result ranges yet — add ranges that together cover 10–50.');
 
         // A backwards scale is refused up front.
@@ -104,7 +107,7 @@ class ResultScaleTest extends TestCase
         $save([$band(0, 20, 'Low'), $band(15, 30, 'Mid')])->assertSessionHasErrors('bands');
         $this->assertSame(0, $questionnaire->scoreBands()->count());
 
-        $save([$band(0, 20, 'Low'), $band(21, 40, 'High')])->assertRedirect(route('admin.questionnaires.details', $questionnaire));
+        $save([$band(0, 20, 'Low'), $band(21, 40, 'High')])->assertRedirect(route('admin.questionnaires.result-levels', $questionnaire));
         $this->assertSame(2, $questionnaire->scoreBands()->count());
     }
 

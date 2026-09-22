@@ -127,12 +127,18 @@ class QuestionnaireSectionTest extends TestCase
             ->assertSee(route('admin.questionnaires.review', $questionnaire), false)
             ->assertSee('Emotional');
 
-        // Details and result ranges have their own screen.
+        // Result levels have their own screen (step 4); Basic info only
+        // carries the labelling.
+        $this->actingAs($admin)
+            ->get(route('admin.questionnaires.result-levels', $questionnaire))
+            ->assertOk()
+            ->assertSee('What each result means')
+            ->assertSee(route('admin.questionnaires.ranges', $questionnaire), false);
         $this->actingAs($admin)
             ->get(route('admin.questionnaires.details', $questionnaire))
             ->assertOk()
-            ->assertSee('Result scale, ranges')
-            ->assertSee(route('admin.questionnaires.ranges', $questionnaire), false);
+            ->assertSee('Basic information')
+            ->assertDontSee(route('admin.questionnaires.ranges', $questionnaire), false);
     }
 
     public function test_details_form_updates_labelling_and_status_without_touching_questions_or_ranges(): void
@@ -177,7 +183,7 @@ class QuestionnaireSectionTest extends TestCase
                     ['scope' => 'overall', 'code' => 'hi', 'label' => 'High', 'min_score' => 3, 'max_score' => 5, 'position' => 2, 'is_active' => '1'],
                 ],
             ])
-            ->assertRedirect(route('admin.questionnaires.details', $questionnaire));
+            ->assertRedirect(route('admin.questionnaires.result-levels', $questionnaire));
 
         $this->assertSame(2, $questionnaire->scoreBands()->where('is_active', true)->count());
         $this->assertSame(1, $questionnaire->questions()->count());

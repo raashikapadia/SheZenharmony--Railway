@@ -62,7 +62,7 @@ class QuestionnaireBuilderTest extends TestCase
         $questionnaire->scoreBands()->create(['code' => 'high', 'label' => 'High', 'min_score' => 13, 'max_score' => 19, 'scope' => 'overall', 'is_active' => true]);
 
         $this->actingAs($admin)
-            ->get(route('admin.questionnaires.details', $questionnaire))
+            ->get(route('admin.questionnaires.result-levels', $questionnaire))
             ->assertOk()
             ->assertSee('between <strong>4</strong> and <strong>20</strong>', false)
             ->assertSee('Scores 10–12 are not covered by any range.')
@@ -72,23 +72,23 @@ class QuestionnaireBuilderTest extends TestCase
         $questionnaire->scoreBands()->where('code', 'high')->update(['max_score' => 20]);
 
         $this->actingAs($admin)
-            ->get(route('admin.questionnaires.details', $questionnaire))
+            ->get(route('admin.questionnaires.result-levels', $questionnaire))
             ->assertOk()
             ->assertSee('&quot;Low&quot; (4–9) and &quot;Mid&quot; (9–12) overlap.', false);
 
         $questionnaire->scoreBands()->where('code', 'mid')->update(['min_score' => 10]);
 
         $this->actingAs($admin)
-            ->get(route('admin.questionnaires.details', $questionnaire))
+            ->get(route('admin.questionnaires.result-levels', $questionnaire))
             ->assertOk()
-            ->assertSee('Every score from 4 to 20 has a range.');
+            ->assertSee('Every score from 4 to 20 has a level.');
 
         // Adding a question widens the span, and the panel says so at once.
         $this->actingAs($admin)->post(route('admin.questionnaires.sections.questions.bulk', [$questionnaire, $section]), [
             'questions_text' => 'Two C', 'scale' => 'agree5',
         ]);
         $this->actingAs($admin)
-            ->get(route('admin.questionnaires.details', $questionnaire))
+            ->get(route('admin.questionnaires.result-levels', $questionnaire))
             ->assertOk()
             ->assertSee('between <strong>5</strong> and <strong>25</strong>', false)
             ->assertSee('Scores 21–25 are not covered by any range.');
@@ -110,7 +110,7 @@ class QuestionnaireBuilderTest extends TestCase
                 'min_score' => 0, 'max_score' => 10, 'position' => 1, 'is_active' => '1',
                 'intervention_id' => $interventionId,
             ]],
-        ])->assertRedirect(route('admin.questionnaires.details', $questionnaire));
+        ])->assertRedirect(route('admin.questionnaires.result-levels', $questionnaire));
 
         $save($breathing->id);
         $first = $band->recommendations()->where('is_active', true)->orderBy('priority')->orderBy('id')->first();
@@ -120,7 +120,7 @@ class QuestionnaireBuilderTest extends TestCase
         $this->assertSame('Low stress', $band->fresh()->label);
 
         $this->actingAs($admin)
-            ->get(route('admin.questionnaires.details', $questionnaire))
+            ->get(route('admin.questionnaires.result-levels', $questionnaire))
             ->assertOk()
             ->assertSee('<option value="'.$breathing->id.'" selected', false);
 
@@ -173,7 +173,7 @@ class QuestionnaireBuilderTest extends TestCase
             $questionnaire->scoreBands()->create(['code' => $code, 'label' => ucfirst($code), 'min_score' => $min, 'max_score' => $max, 'scope' => 'overall', 'is_active' => true]);
         }
 
-        $editor = fn () => $this->actingAs($admin)->get(route('admin.questionnaires.details', $questionnaire))->assertOk();
+        $editor = fn () => $this->actingAs($admin)->get(route('admin.questionnaires.result-levels', $questionnaire))->assertOk();
         $submit = function (int $points) use ($student, $questionnaire) {
             \Laravel\Sanctum\Sanctum::actingAs($student, ['student']);
             $answers = $questionnaire->questions()->with('options')->get()->map(fn ($q) => [
@@ -188,7 +188,7 @@ class QuestionnaireBuilderTest extends TestCase
         $this->actingAs($admin)->post(route('admin.questionnaires.sections.questions.bulk', [$questionnaire, $section]), [
             'questions_text' => implode("\n", array_map(fn ($i) => "Q{$i}", range(1, 10))), 'scale' => 'agree5',
         ]);
-        $editor()->assertSee('10–50')->assertSee('0–40')->assertSee('Every score from 0 to 40 has a range.');
+        $editor()->assertSee('10–50')->assertSee('0–40')->assertSee('Every score from 0 to 40 has a level.');
         $submit(4)->assertJsonPath('result.breakdown.overall.raw_score', 40)
             ->assertJsonPath('result.total_score', 30)
             ->assertJsonPath('result.band.code', 'moderate');
@@ -198,7 +198,7 @@ class QuestionnaireBuilderTest extends TestCase
         $this->actingAs($admin)->post(route('admin.questionnaires.sections.questions.bulk', [$questionnaire, $section]), [
             'questions_text' => implode("\n", array_map(fn ($i) => "Q{$i}", range(11, 20))), 'scale' => 'agree5',
         ]);
-        $editor()->assertSee('20–100')->assertSee('0–40')->assertSee('Every score from 0 to 40 has a range.');
+        $editor()->assertSee('20–100')->assertSee('0–40')->assertSee('Every score from 0 to 40 has a level.');
         $submit(4)->assertJsonPath('result.breakdown.overall.raw_score', 80)
             ->assertJsonPath('result.total_score', 30)
             ->assertJsonPath('result.band.code', 'moderate');
@@ -218,10 +218,10 @@ class QuestionnaireBuilderTest extends TestCase
         $this->actingAs($admin)->patch(route('admin.questionnaires.ranges', $questionnaire), [
             'result_scale_min' => 0, 'result_scale_max' => 100,
             'bands' => [['id' => $band->id, 'scope' => 'overall', 'code' => 'all', 'label' => 'All', 'min_score' => 0, 'max_score' => 40, 'position' => 1, 'is_active' => '1']],
-        ])->assertRedirect(route('admin.questionnaires.details', $questionnaire));
+        ])->assertRedirect(route('admin.questionnaires.result-levels', $questionnaire));
 
         $this->assertSame([0, 100], $questionnaire->fresh()->resultScale());
-        $this->actingAs($admin)->get(route('admin.questionnaires.details', $questionnaire))
+        $this->actingAs($admin)->get(route('admin.questionnaires.result-levels', $questionnaire))
             ->assertOk()
             ->assertSee('Scores 41–100 are not covered by any range.');
 

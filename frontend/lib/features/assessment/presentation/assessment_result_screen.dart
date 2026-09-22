@@ -6,6 +6,7 @@ import '../../activities/presentation/wellbeing_activities_screen.dart';
 import '../../auth/application/auth_provider.dart';
 import '../data/assessment_result.dart';
 import 'widgets/recommended_support.dart';
+import 'widgets/section_breakdown.dart';
 
 class AssessmentResultScreen extends StatelessWidget {
   const AssessmentResultScreen({
@@ -69,7 +70,7 @@ class AssessmentResultScreen extends StatelessWidget {
                         child: Column(
                           children: [
                             Text(
-                              'Your Stress Score',
+                              'Your Result',
                               style: Theme.of(context).textTheme.titleSmall
                                   ?.copyWith(color: colors.onPrimaryContainer),
                             ),
@@ -83,9 +84,21 @@ class AssessmentResultScreen extends StatelessWidget {
                                     color: colors.primary,
                                   ),
                             ),
+                            // The percentage is only meaningful when the
+                            // result is not already reported out of 100.
+                            if (result.percentage != null &&
+                                result.scoreOutOf != 100) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                '${formatPercentage(result.percentage!)} of the maximum',
+                                style: TextStyle(
+                                  color: colors.onPrimaryContainer,
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 18),
                             Text(
-                              'Stress Level',
+                              'Result Level',
                               style: Theme.of(context).textTheme.titleSmall
                                   ?.copyWith(color: colors.onPrimaryContainer),
                             ),
@@ -99,6 +112,16 @@ class AssessmentResultScreen extends StatelessWidget {
                                     color: colors.primary,
                                   ),
                             ),
+                            if (result.bandDescription?.isNotEmpty == true) ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                result.bandDescription!,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: colors.onPrimaryContainer,
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 14),
                             Text(
                               'Assessment Date',
@@ -134,13 +157,17 @@ class AssessmentResultScreen extends StatelessWidget {
                           const SizedBox(width: AppSpacing.md),
                           Expanded(
                             child: Text(
-                              _supportiveMessage(result.bandCode),
+                              _supportiveMessage(result),
                               style: Theme.of(context).textTheme.bodyLarge,
                             ),
                           ),
                         ],
                       ),
                     ),
+                    if (result.sections.isNotEmpty) ...[
+                      const SizedBox(height: 22),
+                      SectionBreakdown(sections: result.sections),
+                    ],
                     if (result.recommendedInterventions.isNotEmpty) ...[
                       const SizedBox(height: 22),
                       RecommendedSupportSection(
@@ -200,14 +227,11 @@ class AssessmentResultScreen extends StatelessWidget {
     );
   }
 
-  String _supportiveMessage(String code) {
-    final normalized = code.toLowerCase();
-    if (normalized.contains('high') || normalized.contains('severe')) {
-      return 'It may help to slow down, choose one gentle activity, and connect with a trusted person or appropriate university support if you need it.';
-    }
-    if (normalized.contains('moderate') || normalized.contains('medium')) {
-      return 'Consider making space for a short reset today and checking in again when it feels useful.';
-    }
+  /// The message the admin wrote for the matched level. Nothing here guesses
+  /// from the level's name — a questionnaire may call its levels anything.
+  String _supportiveMessage(AssessmentResult result) {
+    final message = result.bandMessage?.trim();
+    if (message != null && message.isNotEmpty) return message;
     return 'Keep noticing what supports your wellbeing. Small, regular moments of rest can help you stay connected to how you feel.';
   }
 }

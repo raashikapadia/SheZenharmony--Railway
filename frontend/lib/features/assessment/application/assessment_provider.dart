@@ -7,12 +7,12 @@ import 'questionnaire_pager.dart';
 
 enum AssessmentLoadState { loading, loaded, error }
 
-/// Drives the questionnaire-taking flow: loads whichever questionnaire the
-/// backend currently has active, tracks the user's in-progress answers and
-/// position, and submits for server-side scoring. Every question, option,
-/// and score comes from the API response — nothing here is hardcoded, so
-/// the flow adapts automatically if the admin changes the question count,
-/// text, or answer scores.
+/// Drives the questionnaire-taking flow: loads the registration baseline, or
+/// the library questionnaire named by [questionnaireId], tracks the user's
+/// in-progress answers and position, and submits for server-side scoring.
+/// Every question, option, answer mode and score comes from the API
+/// response — nothing here is hardcoded, so the flow adapts automatically
+/// if the admin changes the question count, text, answer modes or points.
 ///
 /// Questions are shown a page at a time. The pages come from
 /// [QuestionnairePager], which sizes them from the questions themselves, so
@@ -22,12 +22,16 @@ class AssessmentProvider extends ChangeNotifier {
   AssessmentProvider({
     required this._apiService,
     required this._token,
+    this.questionnaireId,
     this.closeApiServiceOnDispose = false,
     this._pager = const QuestionnairePager(),
   });
 
   final ApiService _apiService;
   final String _token;
+
+  /// A library questionnaire to load; null means the registration baseline.
+  final int? questionnaireId;
   final bool closeApiServiceOnDispose;
 
   QuestionnairePager _pager;
@@ -36,7 +40,11 @@ class AssessmentProvider extends ChangeNotifier {
   List<QuestionnairePage> _pages = const [];
   String? _errorMessage;
   int _pageIndex = 0;
-  final Map<int, int> _answers = {};
+
+  /// question id → the chosen option ids, in the order they were chosen. A
+  /// single-answer question holds exactly one; a multi-select one holds up
+  /// to its configured limit.
+  final Map<int, List<int>> _answers = {};
   bool _isSubmitting = false;
   String? _submitError;
   AssessmentResult? _result;
@@ -60,8 +68,19 @@ class AssessmentProvider extends ChangeNotifier {
             ? _pages.last.sectionIndex
             : _pages.last.sectionIndex + 1);
 
-  int? selectedOptionFor(int questionId) => _answers[questionId];
-  bool isAnswered(int questionId) => _answers.containsKey(questionId);
+  /// The single chosen option, or the first of several — kept for
+  /// single-answer widgets and tests; multi-select widgets use
+  /// [selectedOptionsFor].
+  int? selectedOptionFor(int questionId) => _answers[questionId]?.firstOrNull;
+
+  /// Every option ticked for [questionId], in the order they were chosen.
+  List<int> selectedOptionsFor(int questionId) =>
+      List.unmodifiable(_answers[questionId] ?? const <int>[]);
+
+  bool isSelected(int questionId, int optionId) =>
+      _answers[questionId]?.contains(optionId) ?? false;
+
+  bool isAnswered(int questionId) => _answers[questionId]?.isNotEmpty ?? false;
 
   /// How many questions have an answer, across the whole questionnaire.
   int get answeredCount => _answers.length;
@@ -72,9 +91,7 @@ class AssessmentProvider extends ChangeNotifier {
 
   bool get allRequiredAnswered {
     final questions = _questionnaire?.questions ?? const [];
-    return questions
-        .where((q) => q.required)
-        .every((q) => _answers.containsKey(q.id));
+    return questions.where((q) => q.required).every((q) => isAnswered(q.id));
   }
 
   // ---- Pages -------------------------------------------------------------
@@ -90,8 +107,7 @@ class AssessmentProvider extends ChangeNotifier {
   /// Required questions on the current page still waiting for an answer.
   List<PagedQuestion> get unansweredOnCurrentPage => [
     for (final item in currentPage?.questions ?? const <PagedQuestion>[])
-      if (item.question.required && !_answers.containsKey(item.question.id))
-        item,
+      if (item.question.required && !isAnswered(item.question.id)) item,
   ];
 
   bool get canGoNext => !isLastPage && unansweredOnCurrentPage.isEmpty;
@@ -127,7 +143,10 @@ class AssessmentProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final questionnaire = await _apiService.activeQuestionnaire();
+      final id = questionnaireId;
+      final questionnaire = id == null
+          ? await _apiService.activeQuestionnaire()
+          : await _apiService.questionnaire(_token, id);
       _questionnaire = questionnaire;
       _pages = _pager.paginate(questionnaire);
       _pageIndex = 0;
@@ -140,9 +159,55 @@ class AssessmentProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Choose the one answer to a single-answer question (replacing any
+  /// earlier choice). For a multi-select question this ticks the option,
+  /// the same as [toggleAnswer].
   void selectAnswer(int questionId, int optionId) {
-    _answers[questionId] = optionId;
+    final question = _question(questionId);
+    if (question?.allowsMultiple == true) {
+      toggleAnswer(questionId, optionId);
+      return;
+    }
+    _answers[questionId] = [optionId];
     notifyListeners();
+  }
+
+  /// Tick or untick one option of a multi-select question. Returns false,
+  /// and changes nothing, when ticking would exceed the question's limit —
+  /// the screen then says so.
+  bool toggleAnswer(int questionId, int optionId) {
+    final question = _question(questionId);
+    final chosen = List<int>.of(_answers[questionId] ?? const <int>[]);
+    if (chosen.contains(optionId)) {
+      chosen.remove(optionId);
+    } else {
+      final limit = question?.allowsMultiple == true
+          ? question!.maxSelections
+          : 1;
+      if (limit == 1) {
+        chosen
+          ..clear()
+          ..add(optionId);
+      } else if (chosen.length >= limit) {
+        return false;
+      } else {
+        chosen.add(optionId);
+      }
+    }
+    if (chosen.isEmpty) {
+      _answers.remove(questionId);
+    } else {
+      _answers[questionId] = chosen;
+    }
+    notifyListeners();
+    return true;
+  }
+
+  AssessmentQuestion? _question(int questionId) {
+    for (final question in _questionnaire?.questions ?? const []) {
+      if (question.id == questionId) return question;
+    }
+    return null;
   }
 
   /// Advances a page. Returns false, and stays put, when a required question
@@ -169,11 +234,10 @@ class AssessmentProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _result = await _apiService.submitAssessment(
-        _token,
-        questionnaire.id,
-        Map.of(_answers),
-      );
+      _result = await _apiService.submitAssessment(_token, questionnaire.id, {
+        for (final entry in _answers.entries)
+          entry.key: List<int>.of(entry.value),
+      });
       return true;
     } on ApiException catch (e) {
       _submitError = e.message;
