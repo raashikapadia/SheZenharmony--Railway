@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Intervention;
+use App\Models\InterventionUsage;
 use App\Models\StressScoreBand;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,14 +16,44 @@ class AdminInterventionController extends Controller
     public function index(): View
     {
         $configuration = $this->configuration();
+        $isGamesSection = $configuration['route'] === 'admin.positive-engagement.games';
+        $query = Intervention::query()
+            ->whereIn('content_type', array_keys($configuration['contentTypes']))
+            ->with(['recommendations' => fn ($query) => $query->where('is_active', true), 'recommendations.scoreBand'])
+            ->when($isGamesSection, function ($query): void {
+                $query->with(['usages' => fn ($usageQuery) => $usageQuery
+                    ->whereNotNull('student_identity_id')
+                    ->with('studentIdentity')
+                    ->latest('started_at')]);
+                $query->withCount('usages')->withCount([
+                    'usages as students_played_count' => fn ($usageQuery) => $usageQuery
+                        ->whereNotNull('student_identity_id')
+                        ->select(DB::raw('count(distinct student_identity_id)')),
+                ]);
+            })
+            ->orderBy('title');
+
+        $stats = $isGamesSection ? [
+            'totalGames' => Intervention::query()
+                ->where('content_type', 'positive_engagement')
+                ->count(),
+            'totalStudentsPlayed' => InterventionUsage::query()
+                ->whereNotNull('student_identity_id')
+                ->whereHas('intervention', fn ($interventionQuery) => $interventionQuery->where('content_type', 'positive_engagement'))
+                ->distinct('student_identity_id')
+                ->count('student_identity_id'),
+        ] : [];
 
         return view('admin.interventions.index', [
-            'interventions' => Intervention::query()
-                ->whereIn('content_type', array_keys($configuration['contentTypes']))
-                ->with(['recommendations' => fn ($query) => $query->where('is_active', true), 'recommendations.scoreBand'])
-                ->orderBy('title')
-                ->paginate(20),
+            'interventions' => $query->paginate(20),
             'configuration' => $configuration,
+            'stats' => $stats,
+            'builtInGames' => $isGamesSection ? [
+                'Breathing Challenge',
+                'Gratitude Jar',
+                'Memory Spark',
+                'Mindful Memory',
+            ] : [],
         ]);
     }
 

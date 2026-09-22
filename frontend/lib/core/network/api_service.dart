@@ -484,6 +484,17 @@ class ApiService {
     return games;
   }
 
+  Future<void> recordGamePlay(String token, int gameId) async {
+    await _sendJson(
+      'POST',
+      Uri.parse(
+        '${ApiConfig.baseUrl}/v1/positive-engagement/games/$gameId/play',
+      ),
+      token,
+      const {},
+    );
+  }
+
   Future<List<ManagedQuiz>> managedQuizzes() async {
     final body = await _getPublicJson(
       Uri.parse('${ApiConfig.baseUrl}/v1/positive-engagement/quizzes'),
@@ -506,6 +517,23 @@ class ApiService {
       ),
       token,
       {'answers': answers.map((key, value) => MapEntry(key.toString(), value))},
+    );
+    return body['data'] as Map<String, dynamic>? ?? const {};
+  }
+
+  Future<Map<String, dynamic>> answerManagedQuizQuestion(
+    String token,
+    int quizId,
+    int questionId,
+    String answer,
+  ) async {
+    final body = await _sendJson(
+      'POST',
+      Uri.parse(
+        '${ApiConfig.baseUrl}/v1/positive-engagement/quizzes/$quizId/answer',
+      ),
+      token,
+      {'question_id': questionId, 'answer': answer},
     );
     return body['data'] as Map<String, dynamic>? ?? const {};
   }

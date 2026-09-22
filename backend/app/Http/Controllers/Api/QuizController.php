@@ -57,8 +57,35 @@ class QuizController extends Controller
                 'attempt_id' => $attempt->id,
                 'score' => $score,
                 'total_questions' => $quiz->questions->count(),
+                'incorrect_questions' => $quiz->questions
+                    ->filter(fn ($question): bool => ($validated['answers'][$question->id] ?? null) !== $question->correct_option)
+                    ->map(fn ($question): array => [
+                        'question_text' => $question->question_text,
+                        'correct_answer' => $question->{'option_'.$question->correct_option},
+                        'explanation' => $question->explanation,
+                    ])
+                    ->values()
+                    ->all(),
             ],
         ], 201);
+    }
+
+    public function answer(Request $request, Quiz $quiz): JsonResponse
+    {
+        abort_unless($quiz->status === 'active', 404);
+        $validated = $request->validate([
+            'question_id' => ['required', 'integer'],
+            'answer' => ['required', 'in:a,b,c,d'],
+        ]);
+        $question = $quiz->questions()->findOrFail($validated['question_id']);
+
+        return response()->json([
+            'data' => [
+                'is_correct' => $validated['answer'] === $question->correct_option,
+                'correct_answer' => $question->{'option_'.$question->correct_option},
+                'explanation' => $question->explanation,
+            ],
+        ]);
     }
 
     private function quizPayload(Quiz $quiz): array

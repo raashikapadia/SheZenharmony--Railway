@@ -98,6 +98,7 @@ class WellbeingActivity {
 
 class PositiveContent {
   const PositiveContent({
+    this.id,
     required this.title,
     required this.description,
     required this.contentType,
@@ -105,6 +106,7 @@ class PositiveContent {
     required this.externalUrl,
   });
 
+  final int? id;
   final String title;
   final String description;
   final String contentType;
@@ -113,6 +115,7 @@ class PositiveContent {
 
   factory PositiveContent.fromJson(Map<String, dynamic> json) =>
       PositiveContent(
+        id: (json['id'] as num?)?.toInt(),
         title: json['title'] as String? ?? 'Positive activity',
         description: json['description'] as String? ?? '',
         contentType: json['content_type'] as String? ?? 'activity',
