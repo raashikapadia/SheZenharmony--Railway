@@ -66,7 +66,7 @@ class ShezenChatService
         if ($match === null) {
             return ['available' => true, 'message' => $release->fallback_message, 'is_safety' => false, 'is_fallback' => true, 'links' => [], 'follow_up_prompts' => array_values($release->suggested_topics ?? [])];
         }
-        return ['available' => true, 'message' => $match->is_safety && $release->safety_message ? $release->safety_message : $match->reply, 'is_safety' => (bool) $match->is_safety, 'is_fallback' => false, 'links' => $match->links->filter(fn (ChatBuddyTopicLink $link) => $this->linkAvailable($link))->map(fn ($link) => ['label' => $link->label, 'type' => $link->link_type, 'url' => $link->url])->values()->all(), 'follow_up_prompts' => $match->followUpPrompts->pluck('prompt')->values()->all()];
+        return ['available' => true, 'message' => $match->is_safety && $release->safety_message ? $release->safety_message : $match->reply, 'is_safety' => (bool) $match->is_safety, 'is_fallback' => false, 'links' => $match->links->filter(fn (ChatBuddyTopicLink $link) => $this->linkAvailable($link))->map(fn ($link) => ['label' => $link->label, 'type' => $link->link_type, 'url' => $link->url ?: 'app://'.$this->appTarget($link->link_type)])->values()->all(), 'follow_up_prompts' => $match->followUpPrompts->pluck('prompt')->values()->all()];
     }
 
     private function contentRelations(): array { return ['topics.phrases', 'topics.followUpPrompts', 'topics.links']; }
@@ -89,6 +89,7 @@ class ShezenChatService
             default => false,
         };
     }
+    private function appTarget(string $type): string { return match ($type) { 'wellbeing_activity' => 'wellbeing-activities', 'personal_guidance' => 'personal-guidance', 'resource' => 'resources', default => 'chat-buddy' }; }
     /**
      * Resolve a reply for a free-text message.
      *

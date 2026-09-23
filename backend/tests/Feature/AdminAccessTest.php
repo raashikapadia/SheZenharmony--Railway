@@ -119,16 +119,13 @@ class AdminAccessTest extends TestCase
                 false,
             );
 
-        // Shezen is now a managed content section rather than a placeholder:
-        // the student experience is still "Coming Soon", but administrators can
-        // write its rule-based conversation here already.
-        $this->actingAs($admin)->get(route('admin.chatbuddy.index'))
+        // Shezen's rule-based conversation is managed through the release manager.
+        $this->actingAs($admin)->get(route('admin.chatbuddy.releases.index'))
             ->assertOk()
-            ->assertSee('Shezen Chat Buddy')
-            ->assertSee('Coming Soon')
-            ->assertSee('Add category')
+            ->assertSee('Chat Buddy Manager')
+            ->assertSee('Publish draft')
             ->assertSee(
-                'class="side-link active" href="'.route('admin.chatbuddy.index').'"',
+                'class="side-link active" href="'.route('admin.chatbuddy.releases.index').'"',
                 false,
             );
     }

@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Web\AdminAuthController;
-use App\Http\Controllers\Web\AdminChatBuddyController;
 use App\Http\Controllers\Web\AdminChatBuddyReleaseController;
 use App\Http\Controllers\Web\AdminDashboardController;
 use App\Http\Controllers\Web\AdminGamesController;
@@ -98,10 +97,13 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('positive-engagement', AdminPositiveEngagementController::class)
         ->except(['show'])
         ->parameters(['positive-engagement' => 'intervention']);
-    // Shezen, the rule-based chat buddy. The student experience ships as
-    // "Coming Soon"; the conversation content is managed here in the meantime.
-    Route::resource('chatbuddy', AdminChatBuddyController::class)->except(['show']);
+    // Shezen's rule-based Chat Buddy content is managed as draft/published releases.
     Route::get('chatbuddy-manager', [AdminChatBuddyReleaseController::class, 'index'])->name('chatbuddy.releases.index');
+    Route::get('chatbuddy-manager/history', [AdminChatBuddyReleaseController::class, 'history'])->name('chatbuddy.releases.history');
+    Route::post('chatbuddy-manager/preview', [AdminChatBuddyReleaseController::class, 'preview'])->name('chatbuddy.releases.preview');
+    Route::get('chatbuddy-manager/preview', [AdminChatBuddyReleaseController::class, 'previewForm'])->name('chatbuddy.releases.preview-form');
+    Route::patch('chatbuddy-manager/settings', [AdminChatBuddyReleaseController::class, 'updateSettings'])->name('chatbuddy.releases.settings');
+    Route::patch('chatbuddy-manager/{release}/approve-safety', [AdminChatBuddyReleaseController::class, 'approveSafety'])->name('chatbuddy.releases.approve-safety');
     Route::patch('chatbuddy-manager/{release}/publish', [AdminChatBuddyReleaseController::class, 'publish'])->name('chatbuddy.releases.publish');
     Route::delete('chatbuddy-manager/topics/{topic}', [AdminChatBuddyReleaseController::class, 'destroy'])->name('chatbuddy.releases.topics.destroy');
     Route::post('chatbuddy-manager/topics', [AdminChatBuddyReleaseController::class, 'store'])->name('chatbuddy.releases.topics.store');
