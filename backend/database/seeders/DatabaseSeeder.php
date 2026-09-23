@@ -84,5 +84,6 @@ class DatabaseSeeder extends Seeder
         // Starter helplines for the student Resource tab. No-ops once any
         // helpline row exists. Numbers are unverified placeholders.
         $this->call(HelplineResourceSeeder::class);
+        $this->call(ChatBuddySampleSeeder::class);
     }
 }

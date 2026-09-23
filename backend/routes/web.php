@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Web\AdminAuthController;
 use App\Http\Controllers\Web\AdminChatBuddyController;
+use App\Http\Controllers\Web\AdminChatBuddyReleaseController;
 use App\Http\Controllers\Web\AdminDashboardController;
 use App\Http\Controllers\Web\AdminGamesController;
 use App\Http\Controllers\Web\AdminHelplineResourceController;
@@ -100,5 +101,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Shezen, the rule-based chat buddy. The student experience ships as
     // "Coming Soon"; the conversation content is managed here in the meantime.
     Route::resource('chatbuddy', AdminChatBuddyController::class)->except(['show']);
+    Route::get('chatbuddy-manager', [AdminChatBuddyReleaseController::class, 'index'])->name('chatbuddy.releases.index');
+    Route::patch('chatbuddy-manager/{release}/publish', [AdminChatBuddyReleaseController::class, 'publish'])->name('chatbuddy.releases.publish');
+    Route::delete('chatbuddy-manager/topics/{topic}', [AdminChatBuddyReleaseController::class, 'destroy'])->name('chatbuddy.releases.topics.destroy');
+    Route::post('chatbuddy-manager/topics', [AdminChatBuddyReleaseController::class, 'store'])->name('chatbuddy.releases.topics.store');
+    Route::put('chatbuddy-manager/topics/{topic}', [AdminChatBuddyReleaseController::class, 'update'])->name('chatbuddy.releases.topics.update');
     Route::post('/logout', [AdminAuthController::class, 'destroy'])->name('logout');
 });

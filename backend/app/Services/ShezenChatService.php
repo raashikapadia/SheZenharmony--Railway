@@ -5,6 +5,10 @@ namespace App\Services;
 use App\Models\ChatIntent;
 use App\Models\ChatQuickReply;
 use App\Models\ChatResponse;
+use App\Models\ChatBuddyRelease;
+use App\Models\ChatBuddyTopic;
+use App\Models\ChatBuddyTopicLink;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 
 /**
@@ -26,6 +30,65 @@ use Illuminate\Support\Collection;
  */
 class ShezenChatService
 {
+    public function publishedPayload(): array
+    {
+        $release = ChatBuddyRelease::query()->published()->with($this->contentRelations())->first();
+        if ($release === null) {
+            return ['available' => false, 'welcome_message' => null, 'suggested_topics' => []];
+        }
+        return $this->payloadForRelease($release);
+    }
+
+    public function payloadForRelease(ChatBuddyRelease $release): array
+    {
+        return [
+            'available' => true,
+            'welcome_message' => $release->welcome_message,
+            'suggested_topics' => array_values($release->suggested_topics ?? []),
+        ];
+    }
+
+    public function replyForPublished(string $message): array
+    {
+        $release = ChatBuddyRelease::query()->published()->with($this->contentRelations())->first();
+        return $release === null ? ['available' => false, 'message' => null, 'is_safety' => false, 'is_fallback' => true, 'links' => [], 'follow_up_prompts' => []] : $this->replyForRelease($release, $message);
+    }
+
+    public function replyForRelease(ChatBuddyRelease $release, string $message): array
+    {
+        $message = trim(mb_strtolower($message));
+        if ($message === '') {
+            throw new \InvalidArgumentException('Message is required.');
+        }
+        $topics = $release->relationLoaded('topics') ? $release->topics : $release->topics()->with(['phrases', 'followUpPrompts', 'links'])->get();
+        $match = $topics->filter(fn (ChatBuddyTopic $topic) => $topic->is_safety)->sortBy(fn ($t) => [$t->priority, $t->id])->first(fn ($t) => $this->topicMatches($t, $message));
+        $match ??= $topics->reject(fn (ChatBuddyTopic $topic) => $topic->is_safety)->sortBy(fn ($t) => [$t->priority, $t->id])->first(fn ($t) => $this->topicMatches($t, $message));
+        if ($match === null) {
+            return ['available' => true, 'message' => $release->fallback_message, 'is_safety' => false, 'is_fallback' => true, 'links' => [], 'follow_up_prompts' => array_values($release->suggested_topics ?? [])];
+        }
+        return ['available' => true, 'message' => $match->is_safety && $release->safety_message ? $release->safety_message : $match->reply, 'is_safety' => (bool) $match->is_safety, 'is_fallback' => false, 'links' => $match->links->filter(fn (ChatBuddyTopicLink $link) => $this->linkAvailable($link))->map(fn ($link) => ['label' => $link->label, 'type' => $link->link_type, 'url' => $link->url])->values()->all(), 'follow_up_prompts' => $match->followUpPrompts->pluck('prompt')->values()->all()];
+    }
+
+    private function contentRelations(): array { return ['topics.phrases', 'topics.followUpPrompts', 'topics.links']; }
+    private function topicMatches(ChatBuddyTopic $topic, string $message): bool
+    {
+        foreach ($topic->phrases as $phrase) {
+            $needle = trim(mb_strtolower($phrase->phrase));
+            if ($needle !== '' && preg_match('/(?<![\pL\pN])'.preg_quote($needle, '/').'(?![\pL\pN])/u', $message)) return true;
+        }
+        return false;
+    }
+    private function linkAvailable(ChatBuddyTopicLink $link): bool
+    {
+        if ($link->link_type === 'external') return filled($link->url);
+        if (! $link->target_id) return false;
+        return match ($link->link_type) {
+            'wellbeing_activity' => DB::table('wellbeing_activities')->where('id', $link->target_id)->where('is_active', true)->exists(),
+            'personal_guidance' => DB::table('personal_guidance')->where('id', $link->target_id)->where('status', 'published')->exists(),
+            'resource' => DB::table('helpline_resources')->where('id', $link->target_id)->where('is_active', true)->exists(),
+            default => false,
+        };
+    }
     /**
      * Resolve a reply for a free-text message.
      *

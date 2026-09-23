@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\QuestionnaireController;
 use App\Http\Controllers\Api\QuizController;
 use App\Http\Controllers\Api\WellbeingActivityController;
+use App\Http\Controllers\Api\ChatBuddyController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', HealthController::class);
@@ -79,6 +80,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/personal-guidance/favourites', [PersonalGuidanceController::class, 'favourites']);
         Route::post('/personal-guidance/{guidance}/favourite', [PersonalGuidanceController::class, 'favourite']);
         Route::delete('/personal-guidance/{guidance}/favourite', [PersonalGuidanceController::class, 'unfavourite']);
+        Route::get('/chat-buddy', [ChatBuddyController::class, 'index']);
+        Route::post('/chat-buddy/messages', [ChatBuddyController::class, 'message']);
     });
 
     Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->name('api.admin.')->group(function (): void {
