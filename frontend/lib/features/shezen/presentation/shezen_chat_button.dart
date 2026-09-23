@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_ui.dart';
-import 'shezen_intro_screen.dart';
+import 'shezen_chat_screen.dart';
 
 /// Shezen as a floating companion above the bottom bar, next to Profile.
 ///
@@ -26,7 +26,7 @@ class ShezenChatButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.pill),
         onTap: () => Navigator.of(
           context,
-        ).push(MaterialPageRoute(builder: (_) => const ShezenIntroScreen())),
+        ).push(MaterialPageRoute(builder: (_) => const ShezenChatScreen())),
         child: Ink(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadii.pill),

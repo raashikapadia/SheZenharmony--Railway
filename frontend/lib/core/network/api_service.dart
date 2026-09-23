@@ -12,6 +12,7 @@ import '../../features/activities/data/managed_quiz.dart';
 import '../../features/activities/data/gratitude_entry.dart';
 import '../../features/auth/data/auth_session.dart';
 import '../../features/auth/data/auth_challenge.dart';
+import '../../features/shezen/data/chat_buddy_models.dart';
 import '../config/api_config.dart';
 
 class ApiService {
@@ -213,6 +214,16 @@ class ApiService {
       token,
     );
     return body['data'] as Map<String, dynamic>? ?? const {};
+  }
+
+  Future<ChatBuddyContent> getChatBuddyContent(String token) async {
+    final body = await _getJson(Uri.parse('${ApiConfig.baseUrl}/v1/chat-buddy'), token);
+    return ChatBuddyContent.fromJson(body);
+  }
+
+  Future<ChatBuddyReply> sendChatBuddyMessage(String token, String message) async {
+    final body = await _sendJson('POST', Uri.parse('${ApiConfig.baseUrl}/v1/chat-buddy/messages'), token, {'message': message});
+    return ChatBuddyReply.fromJson(body);
   }
 
   /// [updates] should only contain fields the student is permitted to
