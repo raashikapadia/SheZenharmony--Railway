@@ -99,6 +99,7 @@ class WellbeingActivity {
 class PositiveContent {
   const PositiveContent({
     this.id,
+    this.slug = '',
     required this.title,
     required this.description,
     required this.contentType,
@@ -107,6 +108,11 @@ class PositiveContent {
   });
 
   final int? id;
+
+  /// Stable identifier set by the backend. Games are dispatched on this
+  /// rather than on [title], so an admin can rename a game without changing
+  /// which screen it opens.
+  final String slug;
   final String title;
   final String description;
   final String contentType;
@@ -116,6 +122,7 @@ class PositiveContent {
   factory PositiveContent.fromJson(Map<String, dynamic> json) =>
       PositiveContent(
         id: (json['id'] as num?)?.toInt(),
+        slug: json['slug'] as String? ?? '',
         title: json['title'] as String? ?? 'Positive activity',
         description: json['description'] as String? ?? '',
         contentType: json['content_type'] as String? ?? 'activity',

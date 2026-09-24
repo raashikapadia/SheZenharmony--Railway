@@ -151,10 +151,10 @@ class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
                       children: [
                         for (final game in snapshot.data!) ...[
                           _GameCard(
-                            icon: _gameIcon(game.title),
+                            icon: _gameIcon(game),
                             title: game.title,
                             description: game.description,
-                            color: _gameColor(game.title),
+                            color: _gameColor(game),
                             onTap: () => _openGame(game),
                           ),
                           const SizedBox(height: 20),
@@ -235,31 +235,57 @@ class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
     );
   }
 
-  IconData _gameIcon(String title) => switch (title) {
+  /// Each game is a screen in this app, keyed by the backend slug so that
+  /// renaming a game in the admin does not change what it opens. Titles are
+  /// only consulted for rows saved before slugs were published.
+  static const _gameKeys = {
+    'breathing-challenge': 'Breathing Challenge',
+    'gratitude-jar': 'Gratitude Jar',
+    'memory-spark': 'Memory Spark',
+    'mindful-memory': 'Mindful Memory',
+  };
+
+  String? _gameKey(PositiveContent game) =>
+      _gameKeys[game.slug] ??
+      (_gameKeys.containsValue(game.title) ? game.title : null);
+
+  IconData _gameIcon(PositiveContent game) => switch (_gameKey(game)) {
     'Breathing Challenge' => Icons.air_rounded,
     'Gratitude Jar' => Icons.favorite_rounded,
     'Memory Spark' => Icons.auto_awesome_rounded,
     _ => Icons.psychology_outlined,
   };
 
-  Color _gameColor(String title) => switch (title) {
+  Color _gameColor(PositiveContent game) => switch (_gameKey(game)) {
     'Gratitude Jar' => AppColors.softBlush,
     'Memory Spark' => AppColors.softLavender,
     _ => AppColors.softSage,
   };
 
   void _openGame(PositiveContent game) {
-    final token = context.read<AuthProvider>().session?.token;
-    if (token != null && game.id != null) {
-      _api.recordGamePlay(token, game.id!).catchError((_) {});
-    }
-    final Widget screen = switch (game.title) {
+    final Widget? screen = switch (_gameKey(game)) {
       'Breathing Challenge' => const BreathingGameScreen(),
       'Gratitude Jar' => const GratitudeJarScreen(),
       'Memory Spark' => const MindfulSparkScreen(),
       'Mindful Memory' => const MindfulMemoryScreen(),
-      _ => const MindfulMemoryScreen(),
+      _ => null,
     };
+
+    // An unrecognised game has no screen in this build. Saying so beats
+    // quietly opening a different game than the one that was tapped.
+    if (screen == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${game.title} needs a newer version of the app.'),
+        ),
+      );
+      return;
+    }
+
+    final token = context.read<AuthProvider>().session?.token;
+    if (token != null && game.id != null) {
+      _api.recordGamePlay(token, game.id!).catchError((_) {});
+    }
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 }

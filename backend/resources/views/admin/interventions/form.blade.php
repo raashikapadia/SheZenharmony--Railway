@@ -33,7 +33,7 @@
         <label for="external_url">Related URL (optional)</label>
         <input id="external_url" name="external_url" type="url" value="{{ old('external_url', $intervention->external_url) }}">
         @else
-            <input type="hidden" name="content_type" value="positive_engagement">
+            <input type="hidden" name="content_type" value="{{ array_key_first($configuration['contentTypes']) }}">
         @endif
 
         @if($configuration['route'] !== 'admin.positive-engagement.games')

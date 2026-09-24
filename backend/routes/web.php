@@ -90,8 +90,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         ->except(['show'])
         ->parameters(['games-quizzes' => 'quiz'])
         ->names('positive-engagement.games-quizzes');
+    // Games ship as screens in the student app, so admins govern the existing
+    // catalogue rather than adding to it: create and store are not exposed.
+    Route::patch('positive-engagement/games/{intervention}/visibility', [AdminGamesController::class, 'visibility'])
+        ->name('positive-engagement.games.visibility');
     Route::resource('positive-engagement/games', AdminGamesController::class)
-        ->except(['show'])
+        ->except(['show', 'create', 'store'])
         ->parameters(['games' => 'intervention'])
         ->names('positive-engagement.games');
     Route::resource('positive-engagement', AdminPositiveEngagementController::class)

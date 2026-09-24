@@ -20,26 +20,34 @@ class AdminInterventionController extends Controller
         $query = Intervention::query()
             ->whereIn('content_type', array_keys($configuration['contentTypes']))
             ->with(['recommendations' => fn ($query) => $query->where('is_active', true), 'recommendations.scoreBand'])
-            ->when($isGamesSection, function ($query): void {
-                $query->with(['usages' => fn ($usageQuery) => $usageQuery
-                    ->whereNotNull('student_identity_id')
-                    ->with('studentIdentity')
-                    ->latest('started_at')]);
-                $query->withCount('usages')->withCount([
+            // Per-game usage is summarised rather than listed: the play log
+            // grows without bound, and the library table only needs counts.
+            ->when($isGamesSection, fn ($query) => $query
+                ->withCount([
+                    'usages as plays_count',
                     'usages as students_played_count' => fn ($usageQuery) => $usageQuery
                         ->whereNotNull('student_identity_id')
                         ->select(DB::raw('count(distinct student_identity_id)')),
-                ]);
-            })
+                ])
+                ->withMax('usages', 'started_at'))
             ->orderBy('title');
+
+        $gameTypes = array_keys($configuration['contentTypes']);
 
         $stats = $isGamesSection ? [
             'totalGames' => Intervention::query()
-                ->where('content_type', 'positive_engagement')
+                ->whereIn('content_type', $gameTypes)
+                ->count(),
+            'publishedGames' => Intervention::query()
+                ->whereIn('content_type', $gameTypes)
+                ->where('is_active', true)
+                ->count(),
+            'totalPlays' => InterventionUsage::query()
+                ->whereHas('intervention', fn ($interventionQuery) => $interventionQuery->whereIn('content_type', $gameTypes))
                 ->count(),
             'totalStudentsPlayed' => InterventionUsage::query()
                 ->whereNotNull('student_identity_id')
-                ->whereHas('intervention', fn ($interventionQuery) => $interventionQuery->where('content_type', 'positive_engagement'))
+                ->whereHas('intervention', fn ($interventionQuery) => $interventionQuery->whereIn('content_type', $gameTypes))
                 ->distinct('student_identity_id')
                 ->count('student_identity_id'),
         ] : [];
@@ -48,12 +56,6 @@ class AdminInterventionController extends Controller
             'interventions' => $query->paginate(20),
             'configuration' => $configuration,
             'stats' => $stats,
-            'builtInGames' => $isGamesSection ? [
-                'Breathing Challenge',
-                'Gratitude Jar',
-                'Memory Spark',
-                'Mindful Memory',
-            ] : [],
         ]);
     }
 
@@ -161,7 +163,7 @@ class AdminInterventionController extends Controller
         ];
     }
 
-    private function ensureManaged(Intervention $intervention): void
+    protected function ensureManaged(Intervention $intervention): void
     {
         abort_unless(array_key_exists($intervention->content_type, $this->configuration()['contentTypes']), 404);
     }

@@ -38,6 +38,9 @@ class InterventionController extends Controller
         return response()->json([
             'data' => $query->get()->map(fn (Intervention $intervention): array => [
                 'id' => $intervention->id,
+                // Stable identifier the student app dispatches games on, so a
+                // renamed game still opens the screen it belongs to.
+                'slug' => $intervention->slug,
                 'title' => $intervention->title,
                 'description' => $intervention->description,
                 'content_type' => $intervention->content_type,
@@ -50,7 +53,7 @@ class InterventionController extends Controller
 
     public function play(Request $request, Intervention $intervention): JsonResponse
     {
-        abort_unless($intervention->is_active && $intervention->content_type === 'positive_engagement', 404);
+        abort_unless($intervention->is_active && $intervention->content_type === 'game', 404);
 
         $identity = $request->user()->studentIdentity()->firstOrCreate([], [
             'pseudonymous_uuid' => $request->user()->pseudonymous_uuid,
