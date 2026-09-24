@@ -453,62 +453,107 @@ class ApiService {
         .toList();
   }
 
+  /// The games an admin has published, in the order the backend returns them.
+  ///
+  /// The response is authoritative: a game the admin has hidden must not
+  /// appear, so nothing is merged into it. [offlineGames] stands in only when
+  /// the backend cannot be reached at all — the games themselves run on the
+  /// device, so an outage should not empty the list. Those stand-ins carry no
+  /// `id`, which is what stops a play being recorded against nothing.
   Future<List<PositiveContent>> games() async {
-    const builtInGames = [
-      PositiveContent(
-        title: 'Breathing Challenge',
-        description: 'Follow a simple breathing rhythm and take a calm moment.',
-        contentType: 'positive_engagement',
-        instructions: '',
-        externalUrl: '',
-      ),
-      PositiveContent(
-        title: 'Gratitude Jar',
-        description:
-            'Write down something positive and add it to your gratitude jar.',
-        contentType: 'positive_engagement',
-        instructions: '',
-        externalUrl: '',
-      ),
-      PositiveContent(
-        title: 'Memory Spark',
-        description:
-            'Gently tap the sparks as they appear and practise noticing the moment.',
-        contentType: 'positive_engagement',
-        instructions: '',
-        externalUrl: '',
-      ),
-      PositiveContent(
-        title: 'Mindful Memory',
-        description:
-            'Match peaceful symbols and practise your memory mindfully.',
-        contentType: 'positive_engagement',
-        instructions: '',
-        externalUrl: '',
-      ),
-    ];
-
     final uri = Uri.parse(
       '${ApiConfig.baseUrl}/v1/interventions',
-    ).replace(queryParameters: {'content_type': 'positive_engagement'});
-    final List<PositiveContent> games;
+    ).replace(queryParameters: {'content_type': 'game'});
     try {
       final body = await _getPublicJson(uri);
-      games = (body['data'] as List<dynamic>? ?? const [])
+      return (body['data'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map(PositiveContent.fromJson)
           .toList();
     } on ApiException {
-      return [...builtInGames];
+      return [...offlineGames];
     }
-    final existingTitles = games.map((game) => game.title).toSet();
-
-    for (final game in builtInGames) {
-      if (!existingTitles.contains(game.title)) games.add(game);
-    }
-
-    return games;
   }
+
+  /// The games bundled with the app, shown only when the backend is
+  /// unreachable. Slugs match the backend catalogue so the same dispatch
+  /// applies either way.
+  static const offlineGames = [
+    PositiveContent(
+      slug: 'breathing-challenge',
+      title: 'Breathing Challenge',
+      description: 'Follow a simple breathing rhythm and take a calm moment.',
+      contentType: 'game',
+      instructions: '',
+      externalUrl: '',
+    ),
+    PositiveContent(
+      slug: 'gratitude-jar',
+      title: 'Gratitude Jar',
+      description:
+          'Write down something positive and add it to your gratitude jar.',
+      contentType: 'game',
+      instructions: '',
+      externalUrl: '',
+    ),
+    PositiveContent(
+      slug: 'memory-spark',
+      title: 'Memory Spark',
+      description:
+          'Gently tap the sparks as they appear and practise noticing the moment.',
+      contentType: 'game',
+      instructions: '',
+      externalUrl: '',
+    ),
+    PositiveContent(
+      slug: 'mindful-memory',
+      title: 'Mindful Memory',
+      description: 'Match peaceful symbols and practise your memory mindfully.',
+      contentType: 'game',
+      instructions: '',
+      externalUrl: '',
+    ),
+    PositiveContent(
+      slug: 'coping-match',
+      title: 'Coping Match',
+      description:
+          'Meet a stressful moment and choose the coping strategy that fits '
+          'it best.',
+      contentType: 'game',
+      instructions: '',
+      externalUrl: '',
+    ),
+    PositiveContent(
+      slug: 'myth-or-fact',
+      title: 'Myth or Fact',
+      description:
+          'Decide whether what people say about stress and mental health is '
+          'true.',
+      contentType: 'game',
+      instructions: '',
+      externalUrl: '',
+    ),
+    PositiveContent(
+      slug: 'body-signals',
+      title: 'Body Signals',
+      description:
+          'Learn where stress shows up in your body and what each signal is '
+          'telling you.',
+      contentType: 'game',
+      instructions: '',
+      externalUrl: '',
+    ),
+    PositiveContent(
+      slug: 'wellbeing-wordsearch',
+      title: 'Wellbeing Word Search',
+      description:
+          'Find the coping words hidden in the grid and learn what each one '
+          'means.',
+      contentType: 'game',
+      instructions: '',
+      externalUrl: '',
+    ),
+  ];
 
   Future<void> recordGamePlay(String token, int gameId) async {
     await _sendJson(

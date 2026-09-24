@@ -256,7 +256,11 @@ class QuestionnaireReview
 
         // ---- Interventions -------------------------------------------------
         $interventionsOk = true;
+        // Mirrors RecommendedInterventionService: games are never recommended
+        // against a band, so counting them here would tell an admin a result
+        // range is covered when nothing would actually be shown.
         $allLevels = Intervention::query()->where('is_active', true)
+            ->where('content_type', '!=', 'game')
             ->whereDoesntHave('recommendations', fn ($r) => $r->where('is_active', true))
             ->count();
         $linkedIds = collect();

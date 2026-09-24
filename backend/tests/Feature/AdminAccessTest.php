@@ -356,9 +356,12 @@ class AdminAccessTest extends TestCase
     public function test_student_cannot_manage_admin_content(): void
     {
         $student = User::factory()->create(['role' => User::ROLE_STUDENT]);
+        // The game catalogue ships with the schema, so what matters is that
+        // the rejected request added nothing, not that the table is empty.
+        $before = Intervention::query()->count();
 
         $this->actingAs($student)->get('/admin/questions')->assertForbidden();
         $this->actingAs($student)->post('/admin/interventions', [])->assertForbidden();
-        $this->assertDatabaseCount((new Intervention)->getTable(), 0);
+        $this->assertSame($before, Intervention::query()->count());
     }
 }

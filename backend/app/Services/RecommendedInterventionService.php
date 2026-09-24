@@ -20,6 +20,11 @@ class RecommendedInterventionService
     {
         return Intervention::query()
             ->where('is_active', true)
+            // Games are interactive screens students open from Positive
+            // Engagement, and the games admin deliberately offers no band
+            // targeting. Without this they would match the "all levels" case
+            // below and be recommended after every assessment.
+            ->where('content_type', '!=', 'game')
             ->where(function ($query) use ($band): void {
                 $query
                     ->whereHas('recommendations', fn ($recommendation) => $recommendation
