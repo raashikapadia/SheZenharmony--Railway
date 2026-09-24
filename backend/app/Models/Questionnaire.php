@@ -14,25 +14,6 @@ class Questionnaire extends Model
     public const TRASH_RETENTION_DAYS = 7;
 
     /**
-     * The mandatory baseline a student completes straight after signing up.
-     * Exactly one family carries this purpose, and it is never listed among
-     * the questionnaires a student chooses to sit.
-     */
-    public const PURPOSE_REGISTRATION = 'registration';
-
-    /**
-     * An independently created questionnaire a student may choose to sit.
-     * Many of these can be live at once — one live version per family.
-     */
-    public const PURPOSE_LIBRARY = 'library';
-
-    /** @return array<int, string> */
-    public static function purposes(): array
-    {
-        return [self::PURPOSE_REGISTRATION, self::PURPOSE_LIBRARY];
-    }
-
-    /**
      * Overall result = the points total of every answer (reverse scoring and
      * question weights applied), normalised onto the result scale. Section
      * weights only shape the per-section breakdown. The historical default.
@@ -65,7 +46,7 @@ class Questionnaire extends Model
     }
 
     protected $fillable = [
-        'title', 'description', 'period', 'result_scale_min', 'result_scale_max', 'type', 'purpose',
+        'title', 'description', 'period', 'result_scale_min', 'result_scale_max', 'type',
         'scoring_method', 'section_weighting', 'estimated_minutes',
         'version', 'status', 'is_active', 'created_by_user_id', 'published_at', 'trashed_at', 'purge_after',
     ];
@@ -92,11 +73,6 @@ class Questionnaire extends Model
             self::SCORING_WEIGHTED_SECTIONS => 'Weighted sections',
             default => 'Points total',
         };
-    }
-
-    public function isRegistration(): bool
-    {
-        return $this->purpose === self::PURPOSE_REGISTRATION;
     }
 
     /**
@@ -190,16 +166,6 @@ class Questionnaire extends Model
     public function scopeInTrash(Builder $query): Builder
     {
         return $query->whereNotNull('trashed_at');
-    }
-
-    public function scopeRegistration(Builder $query): Builder
-    {
-        return $query->where('purpose', self::PURPOSE_REGISTRATION);
-    }
-
-    public function scopeLibrary(Builder $query): Builder
-    {
-        return $query->where('purpose', self::PURPOSE_LIBRARY);
     }
 
     /** Published, active and past its go-live time — see {@see isAvailable()}. */

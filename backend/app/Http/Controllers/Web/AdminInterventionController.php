@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Enums\AppScreen;
 use App\Http\Controllers\Controller;
 use App\Models\Intervention;
 use App\Models\InterventionUsage;
@@ -9,6 +10,7 @@ use App\Models\StressScoreBand;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class AdminInterventionController extends Controller
@@ -135,6 +137,8 @@ class AdminInterventionController extends Controller
             'content_type' => ['required', 'in:'.implode(',', array_keys($this->configuration()['contentTypes']))],
             'stress_level' => ['nullable', 'string', 'max:100'],
             'external_url' => ['nullable', 'url', 'max:2000'],
+            // Which existing app screen this support opens, if any.
+            'app_screen' => ['nullable', Rule::in(AppScreen::values())],
             'instructions' => ['nullable', 'string', 'max:10000'],
             'is_active' => ['nullable', 'boolean'],
             'all_levels' => ['nullable', 'boolean'],

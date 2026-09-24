@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../data/assessment_result.dart';
+import 'intervention_destination.dart';
 
 const _months = [
   'January',
@@ -118,6 +119,21 @@ void _showDetails(BuildContext context, RecommendedIntervention item) {
   );
 }
 
+/// What tapping a support item does, in the order the admin configured it:
+/// open the SheZen Harmony screen they pointed it at, else its link, else
+/// its details. Nothing here is per-item — the destination comes from the API.
+void _openSupport(BuildContext context, RecommendedIntervention item) {
+  if (openInterventionScreen(context, item)) return;
+
+  final url = item.externalUrl;
+  if (url != null && url.isNotEmpty) {
+    openSupportLink(context, url);
+    return;
+  }
+
+  _showDetails(context, item);
+}
+
 /// The one the admin linked to this range: the personalised recommendation,
 /// with its action right there rather than behind a tap.
 class _FeaturedSupportCard extends StatelessWidget {
@@ -129,6 +145,7 @@ class _FeaturedSupportCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final url = item.externalUrl;
     final hasLink = url != null && url.isNotEmpty;
+    final inApp = opensInApp(item);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -181,11 +198,9 @@ class _FeaturedSupportCard extends StatelessWidget {
             children: [
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () => hasLink
-                      ? openSupportLink(context, url)
-                      : _showDetails(context, item),
+                  onPressed: () => _openSupport(context, item),
                   icon: Icon(
-                    hasLink
+                    hasLink && !inApp
                         ? Icons.open_in_new_rounded
                         : Icons.arrow_forward_rounded,
                     size: 18,
@@ -193,7 +208,7 @@ class _FeaturedSupportCard extends StatelessWidget {
                   label: Text(ctaLabelFor(item)),
                 ),
               ),
-              if (hasLink) ...[
+              if (hasLink || inApp) ...[
                 const SizedBox(width: AppSpacing.sm),
                 TextButton(
                   onPressed: () => _showDetails(context, item),
@@ -231,7 +246,9 @@ class _SupportCard extends StatelessWidget {
               )
             : null,
         trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () => _showDetails(context, item),
+        onTap: () => opensInApp(item)
+            ? _openSupport(context, item)
+            : _showDetails(context, item),
       ),
     );
   }
@@ -245,6 +262,8 @@ class _SupportDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = item.externalUrl;
+    final inApp = opensInApp(item);
+    final hasLink = url != null && url.isNotEmpty;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
@@ -282,13 +301,31 @@ class _SupportDetailSheet extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
             ],
-            if (url != null && url.isNotEmpty) ...[
+            if (inApp || hasLink) ...[
               const SizedBox(height: AppSpacing.xl),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => openSupportLink(context, url),
-                  icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                  // Close the sheet before navigating, so coming back from the
+                  // screen lands on the result rather than behind the sheet.
+                  onPressed: () {
+                    if (!inApp) {
+                      openSupportLink(context, url!);
+                      return;
+                    }
+                    final navigator = Navigator.of(context);
+                    final screen = interventionDestination(item);
+                    navigator.pop();
+                    if (screen != null) {
+                      navigator.push(MaterialPageRoute(builder: (_) => screen));
+                    }
+                  },
+                  icon: Icon(
+                    inApp
+                        ? Icons.arrow_forward_rounded
+                        : Icons.open_in_new_rounded,
+                    size: 18,
+                  ),
                   label: Text(ctaLabelFor(item)),
                 ),
               ),

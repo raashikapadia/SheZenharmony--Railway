@@ -10,20 +10,17 @@ import '../application/questionnaire_pager.dart';
 import '../data/assessment_questionnaire.dart';
 import 'assessment_result_screen.dart';
 
-/// Takes one questionnaire: the registration baseline when [questionnaireId]
-/// is null (the mandatory first check-in and its optional repeat), or the
-/// library questionnaire with that id. Everything shown — title, sections,
+/// Takes the live questionnaire — the mandatory first check-in and its
+/// optional repeats from Stress Level. Everything shown — title, sections,
 /// questions, answer controls — comes from the loaded configuration.
 class QuestionnaireScreen extends StatelessWidget {
   const QuestionnaireScreen({
     super.key,
     required this.mandatory,
-    this.questionnaireId,
     ApiService? apiService,
   }) : _injectedApiService = apiService;
 
   final bool mandatory;
-  final int? questionnaireId;
   final ApiService? _injectedApiService;
 
   @override
@@ -38,7 +35,6 @@ class QuestionnaireScreen extends StatelessWidget {
       create: (_) => AssessmentProvider(
         apiService: _injectedApiService ?? ApiService(),
         token: token,
-        questionnaireId: questionnaireId,
         closeApiServiceOnDispose: _injectedApiService == null,
         pager: QuestionnairePager(targetCost: budget),
       )..load(),
@@ -939,8 +935,7 @@ class _QuestionCard extends StatelessWidget {
               padding: const EdgeInsets.only(left: 40),
               child: Text(
                 [
-                  if (question.helpText?.isNotEmpty == true)
-                    question.helpText!,
+                  if (question.helpText?.isNotEmpty == true) question.helpText!,
                   if (question.allowsMultiple) _multiHint(question),
                 ].join(' · '),
                 style: const TextStyle(color: AppColors.muted, fontSize: 13),

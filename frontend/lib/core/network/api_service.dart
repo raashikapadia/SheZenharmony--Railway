@@ -217,12 +217,23 @@ class ApiService {
   }
 
   Future<ChatBuddyContent> getChatBuddyContent(String token) async {
-    final body = await _getJson(Uri.parse('${ApiConfig.baseUrl}/v1/chat-buddy'), token);
+    final body = await _getJson(
+      Uri.parse('${ApiConfig.baseUrl}/v1/chat-buddy'),
+      token,
+    );
     return ChatBuddyContent.fromJson(body);
   }
 
-  Future<ChatBuddyReply> sendChatBuddyMessage(String token, String message) async {
-    final body = await _sendJson('POST', Uri.parse('${ApiConfig.baseUrl}/v1/chat-buddy/messages'), token, {'message': message});
+  Future<ChatBuddyReply> sendChatBuddyMessage(
+    String token,
+    String message,
+  ) async {
+    final body = await _sendJson(
+      'POST',
+      Uri.parse('${ApiConfig.baseUrl}/v1/chat-buddy/messages'),
+      token,
+      {'message': message},
+    );
     return ChatBuddyReply.fromJson(body);
   }
 
@@ -323,13 +334,10 @@ class ApiService {
   }
 
   // ---------------------------------------------------------------------
-  // Assessments (student-facing). The registration baseline and the
-  // library of questionnaires a student chooses from are separate
-  // endpoints; both render through the same questionnaire shape.
+  // Assessments (student-facing).
   // ---------------------------------------------------------------------
 
-  /// The mandatory post-registration baseline. `/active` is the long-standing
-  /// alias for it, so older server builds keep working.
+  /// The one live questionnaire, as the Stress Level section asks for it.
   Future<AssessmentQuestionnaire> activeQuestionnaire() async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/v1/questionnaires/active');
     final http.Response response;
@@ -347,34 +355,6 @@ class ApiService {
       );
     }
     final body = _handleResponse(response);
-    return AssessmentQuestionnaire.fromJson(
-      body['data'] as Map<String, dynamic>,
-    );
-  }
-
-  /// Every live library questionnaire the signed-in student may take, with
-  /// their own attempt count and last completion folded in. The
-  /// registration baseline is never in this list.
-  Future<List<AvailableQuestionnaire>> availableQuestionnaires(
-    String token,
-  ) async {
-    final body = await _getJson(
-      Uri.parse('${ApiConfig.baseUrl}/v1/questionnaires/available'),
-      token,
-    );
-    return (body['data'] as List<dynamic>? ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(AvailableQuestionnaire.fromJson)
-        .toList();
-  }
-
-  /// One questionnaire, ready to answer. The backend only serves what is
-  /// genuinely open to students, so a draft or scheduled id is a 404.
-  Future<AssessmentQuestionnaire> questionnaire(String token, int id) async {
-    final body = await _getJson(
-      Uri.parse('${ApiConfig.baseUrl}/v1/questionnaires/$id'),
-      token,
-    );
     return AssessmentQuestionnaire.fromJson(
       body['data'] as Map<String, dynamic>,
     );
@@ -407,17 +387,10 @@ class ApiService {
     return AssessmentResult.fromJson(body);
   }
 
-  /// The student's completed attempts, newest first. [purpose] narrows the
-  /// list to `registration` (the baseline) or `library` (chosen
-  /// questionnaires) so the two never mix in a history view.
-  Future<List<AssessmentSummary>> myAssessments(
-    String token, {
-    String? purpose,
-  }) async {
+  /// The student's completed attempts, newest first.
+  Future<List<AssessmentSummary>> myAssessments(String token) async {
     final body = await _getJson(
-      Uri.parse('${ApiConfig.baseUrl}/v1/assessments').replace(
-        queryParameters: purpose == null ? null : {'purpose': purpose},
-      ),
+      Uri.parse('${ApiConfig.baseUrl}/v1/assessments'),
       token,
     );
     return (body['data'] as List<dynamic>? ?? const [])

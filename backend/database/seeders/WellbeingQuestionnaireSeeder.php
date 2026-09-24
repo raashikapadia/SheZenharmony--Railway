@@ -184,7 +184,6 @@ class WellbeingQuestionnaireSeeder extends Seeder
                 'result_scale_min' => self::RESULT_SCALE['min'],
                 'result_scale_max' => self::RESULT_SCALE['max'],
                 'type' => 'stress',
-                'purpose' => Questionnaire::PURPOSE_REGISTRATION,
                 'version' => (int) Questionnaire::query()->where('type', 'stress')->max('version') + 1,
                 'status' => 'draft',
                 'is_active' => false,

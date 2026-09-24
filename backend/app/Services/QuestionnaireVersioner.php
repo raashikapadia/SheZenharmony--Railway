@@ -45,13 +45,9 @@ class QuestionnaireVersioner
             if ($sameFamily) {
                 $type = $source->type;
                 $title = $source->title;
-                $purpose = $source->purpose ?? Questionnaire::PURPOSE_LIBRARY;
             } else {
                 $title = $source->title.' (copy)';
                 $type = Questionnaire::deriveType($title);
-                // A copy is always a library questionnaire: there is only ever
-                // one registration baseline family.
-                $purpose = Questionnaire::PURPOSE_LIBRARY;
             }
             $nextVersion = (int) Questionnaire::query()->where('type', $type)->max('version') + 1;
 
@@ -60,7 +56,6 @@ class QuestionnaireVersioner
                 'description' => $source->description,
                 'period' => $source->period,
                 'type' => $type,
-                'purpose' => $purpose,
                 'version' => $nextVersion,
                 'result_scale_min' => $source->result_scale_min,
                 'result_scale_max' => $source->result_scale_max,

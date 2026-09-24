@@ -17,6 +17,7 @@ class Intervention extends Model
         'content_type',
         'stress_level',
         'external_url',
+        'app_screen',
         'instructions',
         'is_active',
         'created_by_user_id',

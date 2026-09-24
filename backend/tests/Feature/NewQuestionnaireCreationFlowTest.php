@@ -50,7 +50,6 @@ class NewQuestionnaireCreationFlowTest extends TestCase
             ->assertOk()
             ->assertSee('name="title"', false)
             ->assertSee('name="description"', false)
-            ->assertSee('name="purpose"', false)
             ->assertSee('name="estimated_minutes"', false)
             ->assertSee('name="result_basis"', false)
             ->assertSee('name="published_at"', false)
@@ -67,7 +66,6 @@ class NewQuestionnaireCreationFlowTest extends TestCase
         $created = Questionnaire::query()->where('title', 'New wellbeing check')->firstOrFail();
         $this->assertSame('draft', $created->status);
         $this->assertFalse((bool) $created->is_active);
-        $this->assertSame(Questionnaire::PURPOSE_LIBRARY, $created->purpose);
         $this->assertSame(8, $created->estimated_minutes);
         $this->assertSame([0, 100], $created->resultScale());
         $this->assertSame(Questionnaire::SCORING_WEIGHTED_SECTIONS, $created->scoringMethod());

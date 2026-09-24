@@ -42,7 +42,7 @@ the descriptions won't. For the schema itself see
 
 | Table | Rows | Contains |
 | --- | ---: | --- |
-| `interventions` | 10 | Activities and messages offered after an assessment: breathing exercises, journaling prompts, "talk to someone", motivation lines. Has a content type, instructions, optional external link. |
+| `interventions` | 10 | Activities and messages offered after an assessment: breathing exercises, journaling prompts, "talk to someone", motivation lines. Has a content type, instructions, an optional in-app destination (`app_screen`, e.g. `journaling`) and an optional external link. |
 | `intervention_recommendations` | 0 | Rules mapping a score band / section / result level to an intervention. |
 | `intervention_usages` | 0 | When a student does an intervention, with mood before / after. Not populated yet. |
 | `progress_entries` | 0 | Generic progress metrics over time per student. Not populated yet. |

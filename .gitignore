@@ -41,3 +41,4 @@ frontend/.env.*
 Thumbs.db
 .idea/
 *.iml
+.claude/

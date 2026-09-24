@@ -30,7 +30,6 @@
     <section class="panel">
         <div class="panel-head"><h2 style="margin:0">Assessment overview</h2></div>
         <div class="meta-grid">
-            <div class="tile"><span class="k">Type</span><span class="v" style="font-size:1rem">{{ $questionnaire->isRegistration() ? 'Registration baseline' : 'Library assessment' }}</span></div>
             <div class="tile"><span class="k">Sections</span><span class="v">{{ $overview['section_count'] }}</span></div>
             <div class="tile"><span class="k">Questions</span><span class="v">{{ $overview['question_count'] }}</span></div>
             <div class="tile"><span class="k">Scoring</span><span class="v" style="font-size:1rem">{{ $questionnaire->scoringMethodLabel() }}</span><span class="muted" style="font-size:.8rem">{{ $questionnaire->usesEqualSectionWeights() ? 'equal section weights' : 'custom section weights' }}</span></div>

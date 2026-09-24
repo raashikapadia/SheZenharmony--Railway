@@ -40,7 +40,7 @@ class AdminQuestionnaireController extends Controller
 {
     public function __construct(private readonly QuestionnaireAuditLogger $audit) {}
 
-    /** Overview: every questionnaire, grouped by purpose, drafts first, newest version first. */
+    /** Overview: every questionnaire, drafts first, newest version first. */
     public function index(): View
     {
         session()->forget('admin_questionnaire_creation_id');
@@ -56,8 +56,6 @@ class AdminQuestionnaireController extends Controller
 
         return view('admin.questionnaires.index', [
             'versions' => $versions,
-            'registrationVersions' => $versions->filter(fn ($q) => $q->isRegistration())->values(),
-            'libraryVersions' => $versions->reject(fn ($q) => $q->isRegistration())->values(),
             'trashCount' => Questionnaire::query()->inTrash()->count(),
         ]);
     }
@@ -97,9 +95,7 @@ class AdminQuestionnaireController extends Controller
     /** Open the focused form that starts a new draft questionnaire. */
     public function create(): View
     {
-        return view('admin.questionnaires.create', [
-            'hasRegistration' => Questionnaire::query()->notInTrash()->registration()->exists(),
-        ]);
+        return view('admin.questionnaires.create');
     }
 
     /**
@@ -112,7 +108,6 @@ class AdminQuestionnaireController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
             'published_at' => ['nullable', 'date'],
-            'purpose' => ['nullable', Rule::in(Questionnaire::purposes())],
             'estimated_minutes' => ['nullable', 'integer', 'min:1', 'max:600'],
             // Results are reported either as a percentage (a 0–100 scale the
             // engine fills in) or on a scale the admin types in.
@@ -124,11 +119,7 @@ class AdminQuestionnaireController extends Controller
         ]);
 
         $questionnaire = DB::transaction(function () use ($request, $data): Questionnaire {
-            // A new questionnaire defaults to the library: the registration
-            // baseline already exists, and creating a second one by accident
-            // would change what every new student is made to complete.
-            $purpose = $data['purpose'] ?? Questionnaire::PURPOSE_LIBRARY;
-            [$type, $version] = $this->familyFor($purpose, $data['title']);
+            [$type, $version] = $this->familyFor($data['title']);
 
             $percentage = ($data['result_basis'] ?? null) === 'percentage';
 
@@ -140,7 +131,6 @@ class AdminQuestionnaireController extends Controller
                 'title' => $data['title'],
                 'description' => $data['description'] ?? null,
                 'type' => $type,
-                'purpose' => $purpose,
                 'version' => $version,
                 'estimated_minutes' => $data['estimated_minutes'] ?? null,
                 'result_scale_min' => $percentage ? 0 : $data['result_scale_min'],
@@ -166,19 +156,15 @@ class AdminQuestionnaireController extends Controller
     }
 
     /**
-     * The version family and next version number a questionnaire of the
-     * given purpose belongs to. Registration keeps versioning within the one
-     * baseline family; a library questionnaire starts its own family, so it
-     * versions and publishes without touching anything else.
+     * The version family and next version number a questionnaire belongs to.
+     * Each questionnaire gets its own family, derived from its title, so it
+     * versions independently of every other one.
      *
      * @return array{0: string, 1: int}
      */
-    private function familyFor(string $purpose, string $title, ?int $ignoreId = null): array
+    private function familyFor(string $title, ?int $ignoreId = null): array
     {
-        $existingType = $purpose === Questionnaire::PURPOSE_REGISTRATION
-            ? Questionnaire::query()->registration()->when($ignoreId, fn ($q) => $q->whereKeyNot($ignoreId))->value('type')
-            : null;
-        $type = $existingType ?? Questionnaire::deriveType($title, $ignoreId);
+        $type = Questionnaire::deriveType($title, $ignoreId);
         $version = (int) Questionnaire::query()->where('type', $type)->when($ignoreId, fn ($q) => $q->whereKeyNot($ignoreId))->max('version') + 1;
 
         return [$type, $version];
@@ -218,7 +204,6 @@ class AdminQuestionnaireController extends Controller
             'description' => ['nullable', 'string', 'max:5000'],
             'period' => ['nullable', 'string', 'max:100'],
             'estimated_minutes' => ['nullable', 'integer', 'min:1', 'max:600'],
-            'purpose' => ['nullable', Rule::in(Questionnaire::purposes())],
             'version' => ['required', 'integer', 'min:1', Rule::unique('questionnaires')->where(fn ($query) => $query->where('type', $questionnaire->type))->ignore($questionnaire)],
             'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
             'is_active' => ['nullable', 'boolean'],
@@ -234,16 +219,6 @@ class AdminQuestionnaireController extends Controller
                 'version' => $data['version'],
                 'published_at' => $data['published_at'] ?? $questionnaire->published_at,
             ];
-
-            // Purpose can only move while the questionnaire is still a draft
-            // with no history: it decides which version family it belongs to.
-            $purpose = $data['purpose'] ?? null;
-            if ($purpose !== null && $purpose !== $questionnaire->purpose
-                && $questionnaire->status === 'draft' && ! $questionnaire->assessments()->exists()) {
-                [$type, $version] = $this->familyFor($purpose, $data['title'], $questionnaire->id);
-                $values += ['purpose' => $purpose, 'type' => $type];
-                $values['version'] = $version;
-            }
 
             $questionnaire->update($values);
 
@@ -434,7 +409,7 @@ class AdminQuestionnaireController extends Controller
     {
         return StressAssessment::query()
             ->where('assessment_status', 'completed')
-            ->with(['studentIdentity', 'questionnaire:id,title,version,purpose', 'wellbeingBand', 'stressBand', 'scoreBand'])
+            ->with(['studentIdentity', 'questionnaire:id,title,version', 'wellbeingBand', 'stressBand', 'scoreBand'])
             ->orderByDesc('completed_at')
             ->paginate(25);
     }
@@ -553,8 +528,6 @@ class AdminQuestionnaireController extends Controller
             'review' => $reviewer->run($questionnaire->fresh()),
             'questionCount' => $questionnaire->questions()->count(),
             'resultScale' => $questionnaire->resultScale(),
-            'hasOtherRegistration' => Questionnaire::query()->notInTrash()->registration()->whereKeyNot($questionnaire->id)->exists(),
-            'canChangePurpose' => $questionnaire->status === 'draft' && ! $questionnaire->assessments()->exists(),
         ]);
     }
 
@@ -775,7 +748,6 @@ class AdminQuestionnaireController extends Controller
             // The version-family key. Any slug is valid — each questionnaire
             // has its own family so it versions and publishes independently.
             'type' => ['required', 'string', 'max:50', 'regex:/^[a-z0-9_]+$/'],
-            'purpose' => ['nullable', Rule::in(Questionnaire::purposes())],
             'version' => ['required', 'integer', 'min:1', Rule::unique('questionnaires')->where(fn ($query) => $query->where('type', $request->input('type')))->ignore($questionnaire)],
             'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
             'is_active' => ['nullable', 'boolean'],
@@ -799,7 +771,7 @@ class AdminQuestionnaireController extends Controller
             'bands.*.is_active' => ['nullable', 'boolean'],
         ]);
 
-        $data['questionnaire'] = collect($data)->only(['title', 'description', 'type', 'purpose', 'version', 'status', 'published_at'])->all() + [
+        $data['questionnaire'] = collect($data)->only(['title', 'description', 'type', 'version', 'status', 'published_at'])->all() + [
             'is_active' => $request->boolean('is_active'),
         ];
 

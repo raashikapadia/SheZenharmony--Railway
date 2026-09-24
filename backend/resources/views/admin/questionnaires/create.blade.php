@@ -31,15 +31,6 @@
                     </div>
                     <div class="create-scale-fields" style="max-width:610px">
                         <div class="create-field">
-                            <label for="purpose">Questionnaire type <span class="required-mark">*</span></label>
-                            <select id="purpose" name="purpose">
-                                <option value="{{ \App\Models\Questionnaire::PURPOSE_LIBRARY }}" @selected(old('purpose', 'library') === 'library')>Library assessment — students choose to take it</option>
-                                <option value="{{ \App\Models\Questionnaire::PURPOSE_REGISTRATION }}" @selected(old('purpose') === 'registration')>Registration baseline — {{ $hasRegistration ? 'a new version of the mandatory first check-in' : 'the mandatory first check-in after sign-up' }}</option>
-                            </select>
-                            <small>{{ $hasRegistration ? 'A registration baseline already exists; choosing it here starts a new version of it.' : 'The registration baseline is separate from the assessments students pick from.' }}</small>
-                        </div>
-                        <span class="create-scale-to"></span>
-                        <div class="create-field">
                             <label for="estimated_minutes">Estimated completion time <span class="muted">(minutes, optional)</span></label>
                             <input id="estimated_minutes" name="estimated_minutes" type="number" min="1" max="600" value="{{ old('estimated_minutes') }}" placeholder="e.g. 10">
                             <small>Shown to students before they begin.</small>

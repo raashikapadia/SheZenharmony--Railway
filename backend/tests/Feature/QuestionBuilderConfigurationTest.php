@@ -89,7 +89,6 @@ class QuestionBuilderConfigurationTest extends TestCase
         // The student-facing JSON carries the answer mode and the limit.
         $questionnaire->update(['status' => 'published', 'is_active' => true, 'published_at' => now()]);
         $questionnaire->scoreBands()->create(['code' => 'any', 'label' => 'Any', 'min_score' => 0, 'max_score' => 100, 'scope' => 'overall', 'is_active' => true]);
-        $this->getJson('/api/v1/questionnaires/active'); // registration only — not this one
         $this->assertSame(
             ['multiple', 3],
             [app(QuestionnairePresenter::class)->forTaking($questionnaire->load(['sections', 'questions.options']))['questions'][0]['answer_mode'],
@@ -203,7 +202,7 @@ class QuestionBuilderConfigurationTest extends TestCase
         }
         $this->assertSame([$questionnaire->type, 2], [$v2->type, $v2->version]);
         $this->assertNotSame($questionnaire->type, $copy->type);
-        $this->assertSame(['Builder (copy)', 1, Questionnaire::PURPOSE_LIBRARY], [$copy->title, $copy->version, $copy->purpose]);
+        $this->assertSame(['Builder (copy)', 1], [$copy->title, $copy->version]);
 
         // Duplicating a section copies its questions as fresh rows.
         $this->actingAs($admin)->post(route('admin.questionnaires.sections.duplicate', [$questionnaire, $section]))->assertRedirect();

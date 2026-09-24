@@ -9,12 +9,20 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Publishing a questionnaire: validate its configuration, then make it the
+ * one live questionnaire.
+ *
+ * The app has a single questionnaire workflow, so exactly one questionnaire
+ * is live app-wide at any time and that is the one the Stress Level section
+ * serves. Publishing is therefore a global switch, not a per-family one.
+ */
 class QuestionnaireActivationService
 {
     public function activate(Questionnaire $questionnaire): Questionnaire
     {
         return DB::transaction(function () use ($questionnaire): Questionnaire {
-            Questionnaire::query()->where('type', $questionnaire->type)->lockForUpdate()->get();
+            Questionnaire::query()->lockForUpdate()->get();
 
             $questionnaire->refresh()->load([
                 'sections' => fn ($query) => $query->where('is_active', true)->orderBy('position'),
@@ -26,10 +34,11 @@ class QuestionnaireActivationService
 
             $this->validateConfiguration($questionnaire);
 
-            // Only one questionnaire of a type is ever live. Publishing this
-            // one turns every other (non-trashed) version back to a draft.
+            // Exactly one questionnaire is live at a time, app-wide: it is the
+            // one the Stress Level section serves. Publishing this one turns
+            // every other (non-trashed) questionnaire back to a draft,
+            // whichever version family it belongs to.
             Questionnaire::query()
-                ->where('type', $questionnaire->type)
                 ->whereKeyNot($questionnaire->getKey())
                 ->whereNull('trashed_at')
                 ->update(['is_active' => false, 'status' => 'draft']);

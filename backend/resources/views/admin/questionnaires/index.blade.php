@@ -53,16 +53,14 @@
                     <button type="button" role="tab" aria-selected="false" data-status-tab="draft">Drafts ({{ $draftCount }})</button>
                     <button type="button" role="tab" aria-selected="false" data-status-tab="live">Live ({{ $liveCount }})</button>
                     <button type="button" role="tab" aria-selected="false" data-status-tab="archived">Archived ({{ $archivedCount }})</button>
-                    <button type="button" role="tab" aria-selected="false" data-status-tab="registration">Registration ({{ $registrationVersions->count() }})</button>
-                    <button type="button" role="tab" aria-selected="false" data-status-tab="library">Library ({{ $libraryVersions->count() }})</button>
                 </div>
                 <div class="questionnaire-table" data-questionnaire-list>
                     <div class="questionnaire-table-head" aria-hidden="true"><span>Version</span><span>Title</span><span>Content Summary</span><span>Status</span><span>Last Updated</span><span>Actions</span></div>
                     @forelse($versions as $item)
                         @php($idot = $item->is_active ? 'dot-live' : ($item->status === 'draft' ? 'dot-draft' : 'dot-archived'))
-                        <div class="questionnaire-row" data-questionnaire-row data-status="{{ $item->is_active ? 'live' : $item->status }}" data-purpose="{{ $item->purpose }}" data-search="{{ strtolower($item->title . ' ' . $item->status . ' ' . $item->purpose . ' v' . $item->version) }}">
+                        <div class="questionnaire-row" data-questionnaire-row data-status="{{ $item->is_active ? 'live' : $item->status }}" data-search="{{ strtolower($item->title . ' ' . $item->status . ' v' . $item->version) }}">
                             <span class="questionnaire-row-icon {{ $item->is_active ? 'live' : '' }}"><i data-lucide="{{ $item->is_active ? 'activity' : 'pencil-line' }}"></i></span>
-                            <div class="questionnaire-title-cell"><span class="item-title">{{ $item->title }}</span><small><span class="purpose-tag {{ $item->isRegistration() ? 'registration' : '' }}">{{ $item->isRegistration() ? 'Registration baseline' : 'Library assessment' }}</span> &nbsp;•&nbsp; Version {{ $item->version }} &nbsp;•&nbsp; {{ $item->sections_count }} sections &nbsp;•&nbsp; {{ $item->questions_count }} questions &nbsp;•&nbsp; {{ $item->scoringMethodLabel() }}</small></div>
+                            <div class="questionnaire-title-cell"><span class="item-title">{{ $item->title }}</span><small>Version {{ $item->version }} &nbsp;•&nbsp; {{ $item->sections_count }} sections &nbsp;•&nbsp; {{ $item->questions_count }} questions &nbsp;•&nbsp; {{ $item->scoringMethodLabel() }}</small></div>
                             <span><span class="badge {{ $item->is_active && ! $item->isScheduled() ? 'active' : '' }}"><span class="status-dot {{ $idot }}"></span>{{ $item->publishState() }}</span></span>
                             <div class="questionnaire-updated"><small>Last updated</small><strong>{{ $item->updated_at?->diffForHumans() }}</strong><small>by {{ auth()->user()->name }}</small></div>
                             <div class="actions questionnaire-row-actions">
@@ -150,9 +148,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const query = (search?.value || '').trim().toLowerCase();
         let visible = 0;
         rows.forEach(function (row) {
-            const byPurpose = selectedStatus === 'registration' || selectedStatus === 'library';
-            const matchesTab = selectedStatus === 'all'
-                || (byPurpose ? row.dataset.purpose === selectedStatus : row.dataset.status === selectedStatus);
+            const matchesTab = selectedStatus === 'all' || row.dataset.status === selectedStatus;
             const visibleRow = (!query || row.dataset.search.includes(query)) && matchesTab;
             row.hidden = !visibleRow;
             if (visibleRow) visible++;
@@ -174,7 +170,6 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 <style>
     .questionnaire-home .questionnaire-table-head{font-size:.72rem}
-    .purpose-tag{display:inline-block;padding:1px 7px;border-radius:9px;background:#eef1f7;color:#4a5d78;font-weight:700}.purpose-tag.registration{background:#fff1e3;color:#9a5a12}
     .questionnaire-home .questionnaire-title-cell small,.questionnaire-home .questionnaire-updated small{font-size:.75rem}
     .questionnaire-home .questionnaire-summary-cell{font-size:.8rem}
     .questionnaire-home .questionnaire-updated{font-size:.82rem}

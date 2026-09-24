@@ -232,12 +232,10 @@ class AuthController extends Controller
         return [
             'role' => User::ROLE_STUDENT,
             'shezen_id' => $identity->displayId(),
-            // Only the registration baseline clears onboarding. A library
-            // questionnaire a student chose to sit must never stand in for
-            // the check-in they are required to complete first.
+            // There is one questionnaire workflow, so any completed check-in
+            // is the required one.
             'has_completed_required_assessment' => $identity->assessments()
                 ->where('assessment_status', 'completed')
-                ->whereHas('questionnaire', fn ($query) => $query->registration())
                 ->exists(),
             // Same idea as above: derived from the consent rows, keyed on the
             // wording currently in force, so a wording change re-asks everyone.

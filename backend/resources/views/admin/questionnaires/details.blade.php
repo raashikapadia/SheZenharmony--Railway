@@ -33,19 +33,6 @@
             <div><label for="q-title">Title</label><input id="q-title" name="title" value="{{ old('title', $questionnaire->title) }}" required></div>
             <div><label for="q-description">Description / instructions <span class="muted">(optional — shown to students on the intro screen)</span></label><textarea id="q-description" name="description" rows="3">{{ old('description', $questionnaire->description) }}</textarea></div>
             <div class="field-row">
-                <div style="max-width:360px"><label for="q-purpose">Questionnaire type</label>
-                    @if($canChangePurpose)
-                        <select id="q-purpose" name="purpose">
-                            <option value="{{ \App\Models\Questionnaire::PURPOSE_LIBRARY }}" @selected(old('purpose', $questionnaire->purpose) === 'library')>Library assessment — students choose to take it</option>
-                            <option value="{{ \App\Models\Questionnaire::PURPOSE_REGISTRATION }}" @selected(old('purpose', $questionnaire->purpose) === 'registration')>Registration baseline — the mandatory first check-in</option>
-                        </select>
-                        @if($hasOtherRegistration && $questionnaire->purpose !== 'registration')<small class="muted">A registration baseline already exists; choosing it here makes this a new version of it.</small>@endif
-                    @else
-                        <input type="hidden" name="purpose" value="{{ $questionnaire->purpose }}">
-                        <input value="{{ $questionnaire->isRegistration() ? 'Registration baseline' : 'Library assessment' }}" disabled>
-                        <small class="muted">Fixed once a questionnaire is published or has results.</small>
-                    @endif
-                </div>
                 <div style="max-width:220px"><label for="q-minutes">Estimated time <span class="muted">(minutes)</span></label><input id="q-minutes" name="estimated_minutes" type="number" min="1" max="600" value="{{ old('estimated_minutes', $questionnaire->estimated_minutes) }}" placeholder="e.g. 10"></div>
             </div>
             <div><label for="published_at">Go live at <span class="muted">(optional — leave blank to go live as soon as you publish)</span></label>
@@ -58,7 +45,6 @@
         <h2><i data-lucide="layers"></i>Status &amp; version</h2>
         <div><span>Version</span><strong>v{{ $questionnaire->version }}</strong></div>
         <div><span>Status</span><strong class="badge">{{ $questionnaire->publishState() }}</strong></div>
-        <div><span>Type</span><strong>{{ $questionnaire->isRegistration() ? 'Registration baseline' : 'Library assessment' }}</strong></div>
         <h2><i data-lucide="chart-no-axes-combined"></i>Scoring</h2>
         <div><span>Method</span><strong>{{ $questionnaire->scoringMethodLabel() }}</strong></div>
         <div><span>Section weights</span><strong>{{ $questionnaire->usesEqualSectionWeights() ? 'Equal' : 'Custom' }}</strong></div>

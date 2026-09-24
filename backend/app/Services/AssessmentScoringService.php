@@ -708,7 +708,6 @@ class AssessmentScoringService
                 'id' => $questionnaire->id,
                 'version' => $questionnaire->version,
                 'title' => $questionnaire->title,
-                'purpose' => $questionnaire->purpose,
                 'scoring_method' => $questionnaire->scoringMethod(),
                 'section_weighting' => $questionnaire->usesEqualSectionWeights() ? Questionnaire::WEIGHTING_EQUAL : Questionnaire::WEIGHTING_CUSTOM,
                 'result_scale' => $questionnaire->resultScale(),

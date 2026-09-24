@@ -30,6 +30,14 @@
                 <input id="stress_level" name="stress_level" type="text" value="{{ old('stress_level', $intervention->stress_level) }}" placeholder="Superseded by Recommended stress levels below">
             </div>
         </div>
+        <label for="app_screen">Opens in the app (optional)</label>
+        <select id="app_screen" name="app_screen">
+            <option value="">— No app screen; use the related URL below —</option>
+            @foreach(\App\Enums\AppScreen::cases() as $screen)
+                <option value="{{ $screen->value }}" @selected(old('app_screen', $intervention->app_screen) === $screen->value)>{{ $screen->label() }}</option>
+            @endforeach
+        </select>
+        <small class="muted">When a student taps this recommendation on their result, the app opens this screen. Leave blank to open the related URL instead.</small>
         <label for="external_url">Related URL (optional)</label>
         <input id="external_url" name="external_url" type="url" value="{{ old('external_url', $intervention->external_url) }}">
         @else

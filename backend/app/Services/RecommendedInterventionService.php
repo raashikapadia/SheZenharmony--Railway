@@ -47,6 +47,8 @@ class RecommendedInterventionService
             'content_type' => $intervention->content_type,
             'instructions' => $intervention->instructions,
             'external_url' => $intervention->external_url,
+            // The app screen this support opens, when the admin chose one.
+            'app_screen' => $intervention->app_screen,
         ];
     }
 }

@@ -31,11 +31,8 @@ Route::prefix('v1')->group(function (): void {
     Route::post('/auth/verify-reset-code', [StudentPasswordResetController::class, 'verifyCode'])->middleware('throttle:10,1,verify-reset-code');
     Route::post('/auth/reset-password', [StudentPasswordResetController::class, 'reset'])->middleware('throttle:10,1,reset-password');
     Route::get('/questions', [QuestionController::class, 'index']);
-    // The mandatory baseline is its own endpoint, kept apart from the list
-    // of questionnaires a student chooses to sit. `/active` is the old name
-    // for the baseline and stays so older app builds keep working.
+    // The one live questionnaire, for the app Stress Level section.
     Route::get('/questionnaires/active', [QuestionnaireController::class, 'active']);
-    Route::get('/questionnaires/registration', [QuestionnaireController::class, 'registration']);
     Route::get('/interventions', [InterventionController::class, 'index']);
     Route::get('/wellbeing-activities', [WellbeingActivityController::class, 'index']);
     // Admin-published helplines for the student Resource tab.
@@ -50,10 +47,6 @@ Route::prefix('v1')->group(function (): void {
     });
 
     Route::middleware(['auth:sanctum', 'student.active'])->group(function (): void {
-        // Signed in, so the list can carry this student's own attempt
-        // history and the detail endpoint can be scoped to what is live.
-        Route::get('/questionnaires/available', [QuestionnaireController::class, 'available']);
-        Route::get('/questionnaires/{questionnaire}', [QuestionnaireController::class, 'show']);
         Route::get('/assessments', [AssessmentController::class, 'index']);
         Route::post('/assessments', [AssessmentController::class, 'store']);
         Route::get('/assessments/{assessment}', [AssessmentController::class, 'show']);

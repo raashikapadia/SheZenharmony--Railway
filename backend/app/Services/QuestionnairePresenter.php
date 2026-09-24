@@ -8,40 +8,12 @@ use App\Models\StressQuestion;
 /**
  * The single place a questionnaire is turned into student-facing JSON.
  *
- * The list, the detail endpoint and the registration endpoint all render
- * through here so the shape the app parses can never drift between them.
  * Nothing about a particular instrument is assumed: question types, option
- * sets, sections and result scale are all read from stored configuration.
+ * sets, answer modes, sections and the result scale are all read from stored
+ * configuration, so the app renders whatever the admin built.
  */
 class QuestionnairePresenter
 {
-    /**
-     * A row in the "questionnaires you can sit" list — enough to decide
-     * whether to open it, without shipping every question.
-     *
-     * @param  array{attempts: int, last_completed_at: string|null}|null  $attempt
-     * @return array<string, mixed>
-     */
-    public function summary(Questionnaire $questionnaire, ?array $attempt = null): array
-    {
-        return [
-            'id' => $questionnaire->id,
-            'title' => $questionnaire->title,
-            'description' => $questionnaire->description,
-            'period' => $questionnaire->period,
-            'type' => $questionnaire->type,
-            'purpose' => $questionnaire->purpose,
-            'version' => $questionnaire->version,
-            'estimated_minutes' => $questionnaire->estimated_minutes,
-            'question_count' => (int) ($questionnaire->questions_count ?? 0),
-            'section_count' => (int) ($questionnaire->sections_count ?? 0),
-            'attempt_count' => $attempt['attempts'] ?? 0,
-            'last_completed_at' => isset($attempt['last_completed_at'])
-                ? $this->iso($attempt['last_completed_at'])
-                : null,
-        ];
-    }
-
     /**
      * The full questionnaire, ready to answer. Sections and questions come
      * pre-filtered to the active rows by the caller's eager loads.
@@ -56,7 +28,6 @@ class QuestionnairePresenter
             'description' => $questionnaire->description,
             'period' => $questionnaire->period,
             'type' => $questionnaire->type,
-            'purpose' => $questionnaire->purpose,
             'version' => $questionnaire->version,
             'estimated_minutes' => $questionnaire->estimated_minutes,
             'sections' => $questionnaire->sections->map(fn ($section) => [
@@ -98,18 +69,5 @@ class QuestionnairePresenter
                 'value' => $option->value,
             ])->values(),
         ];
-    }
-
-    /** Accepts the raw string an aggregate query returns, or a Carbon instance. */
-    private function iso(mixed $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-        if ($value instanceof \DateTimeInterface) {
-            return $value->format(\DateTimeInterface::ATOM);
-        }
-
-        return \Illuminate\Support\Carbon::parse((string) $value)->toIso8601String();
     }
 }

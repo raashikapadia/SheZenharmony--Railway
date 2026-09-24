@@ -136,26 +136,9 @@ class AssessmentSection {
       );
 }
 
-/// Whether a questionnaire is the mandatory post-registration baseline or
-/// one of the library assessments a student chooses to take. The two are
-/// kept apart everywhere: lists, history, and the onboarding gate.
-enum QuestionnairePurpose {
-  registration('registration'),
-  library('library');
-
-  const QuestionnairePurpose(this.wire);
-
-  final String wire;
-
-  static QuestionnairePurpose parse(String? raw) => values.firstWhere(
-    (purpose) => purpose.wire == raw,
-    orElse: () => QuestionnairePurpose.library,
-  );
-}
-
-/// One questionnaire, ready to answer. The same shape serves the mandatory
-/// baseline (`GET /v1/questionnaires/registration`, alias `/active`) and any
-/// library questionnaire (`GET /v1/questionnaires/{id}`).
+/// One questionnaire, ready to answer, exactly as the admin configured it
+/// (`GET /v1/questionnaires/active`). Title, sections, questions, answer
+/// modes and options all come from the response — nothing is assumed here.
 class AssessmentQuestionnaire {
   const AssessmentQuestionnaire({
     required this.id,
@@ -163,7 +146,6 @@ class AssessmentQuestionnaire {
     this.description,
     required this.questions,
     this.sections = const [],
-    this.purpose = QuestionnairePurpose.library,
     this.version,
     this.estimatedMinutes,
   });
@@ -173,11 +155,8 @@ class AssessmentQuestionnaire {
   final String? description;
   final List<AssessmentQuestion> questions;
   final List<AssessmentSection> sections;
-  final QuestionnairePurpose purpose;
   final int? version;
   final int? estimatedMinutes;
-
-  bool get isRegistration => purpose == QuestionnairePurpose.registration;
 
   factory AssessmentQuestionnaire.fromJson(Map<String, dynamic> json) {
     final rawQuestions = json['questions'];
@@ -204,54 +183,8 @@ class AssessmentQuestionnaire {
       description: json['description'] as String?,
       questions: questions,
       sections: sections,
-      purpose: QuestionnairePurpose.parse(json['purpose'] as String?),
       version: json['version'] as int?,
       estimatedMinutes: json['estimated_minutes'] as int?,
-    );
-  }
-}
-
-/// A row in the list of questionnaires a student can choose to take
-/// (`GET /v1/questionnaires/available`), with their own attempt history
-/// folded in. The registration baseline never appears here.
-class AvailableQuestionnaire {
-  const AvailableQuestionnaire({
-    required this.id,
-    required this.title,
-    this.description,
-    this.purpose = QuestionnairePurpose.library,
-    this.version,
-    this.estimatedMinutes,
-    this.questionCount = 0,
-    this.sectionCount = 0,
-    this.attemptCount = 0,
-    this.lastCompletedAt,
-  });
-
-  final int id;
-  final String title;
-  final String? description;
-  final QuestionnairePurpose purpose;
-  final int? version;
-  final int? estimatedMinutes;
-  final int questionCount;
-  final int sectionCount;
-  final int attemptCount;
-  final DateTime? lastCompletedAt;
-
-  factory AvailableQuestionnaire.fromJson(Map<String, dynamic> json) {
-    final lastRaw = json['last_completed_at'];
-    return AvailableQuestionnaire(
-      id: json['id'] as int,
-      title: json['title'] as String? ?? '',
-      description: json['description'] as String?,
-      purpose: QuestionnairePurpose.parse(json['purpose'] as String?),
-      version: json['version'] as int?,
-      estimatedMinutes: json['estimated_minutes'] as int?,
-      questionCount: json['question_count'] as int? ?? 0,
-      sectionCount: json['section_count'] as int? ?? 0,
-      attemptCount: json['attempt_count'] as int? ?? 0,
-      lastCompletedAt: lastRaw is String ? DateTime.tryParse(lastRaw) : null,
     );
   }
 }

@@ -73,7 +73,6 @@ class StressFrameworkSeeder extends Seeder
                     'description' => 'Starter self-check. Replace with the approved assessment framework via the admin panel.',
                     'period' => 'Starter',
                     'type' => 'stress',
-                    'purpose' => Questionnaire::PURPOSE_REGISTRATION,
                     'version' => (int) Questionnaire::query()->where('type', 'stress')->max('version') + 1,
                     'status' => 'published',
                     'is_active' => true,

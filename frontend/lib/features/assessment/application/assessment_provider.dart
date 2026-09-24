@@ -7,9 +7,9 @@ import 'questionnaire_pager.dart';
 
 enum AssessmentLoadState { loading, loaded, error }
 
-/// Drives the questionnaire-taking flow: loads the registration baseline, or
-/// the library questionnaire named by [questionnaireId], tracks the user's
-/// in-progress answers and position, and submits for server-side scoring.
+/// Drives the questionnaire-taking flow: loads the live questionnaire, tracks
+/// the user's in-progress answers and position, and submits for server-side
+/// scoring.
 /// Every question, option, answer mode and score comes from the API
 /// response — nothing here is hardcoded, so the flow adapts automatically
 /// if the admin changes the question count, text, answer modes or points.
@@ -22,7 +22,6 @@ class AssessmentProvider extends ChangeNotifier {
   AssessmentProvider({
     required this._apiService,
     required this._token,
-    this.questionnaireId,
     this.closeApiServiceOnDispose = false,
     this._pager = const QuestionnairePager(),
   });
@@ -30,8 +29,6 @@ class AssessmentProvider extends ChangeNotifier {
   final ApiService _apiService;
   final String _token;
 
-  /// A library questionnaire to load; null means the registration baseline.
-  final int? questionnaireId;
   final bool closeApiServiceOnDispose;
 
   QuestionnairePager _pager;
@@ -143,10 +140,7 @@ class AssessmentProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final id = questionnaireId;
-      final questionnaire = id == null
-          ? await _apiService.activeQuestionnaire()
-          : await _apiService.questionnaire(_token, id);
+      final questionnaire = await _apiService.activeQuestionnaire();
       _questionnaire = questionnaire;
       _pages = _pager.paginate(questionnaire);
       _pageIndex = 0;

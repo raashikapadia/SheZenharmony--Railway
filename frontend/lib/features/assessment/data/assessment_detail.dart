@@ -28,7 +28,6 @@ class AssessmentDetail {
     required this.id,
     this.questionnaireTitle,
     this.questionnaireVersion,
-    this.purpose,
     required this.totalScore,
     required this.scoreOutOf,
     this.percentage,
@@ -48,7 +47,6 @@ class AssessmentDetail {
   /// The version this attempt was taken against — the stored result never
   /// moves when a later version changes the configuration.
   final int? questionnaireVersion;
-  final String? purpose;
   final int totalScore;
   final int scoreOutOf;
   final double? percentage;
@@ -74,7 +72,6 @@ class AssessmentDetail {
       id: json['id'] as int? ?? 0,
       questionnaireTitle: json['questionnaire_title'] as String?,
       questionnaireVersion: json['questionnaire_version'] as int?,
-      purpose: json['purpose'] as String?,
       totalScore: totalScore,
       scoreOutOf: json['score_out_of'] as int? ?? totalScore,
       percentage: rawPercentage is num

@@ -7,6 +7,7 @@ class RecommendedIntervention {
     this.contentType,
     this.instructions,
     this.externalUrl,
+    this.appScreen,
   });
 
   final String title;
@@ -15,6 +16,11 @@ class RecommendedIntervention {
   final String? instructions;
   final String? externalUrl;
 
+  /// The SheZen Harmony screen the admin pointed this support at, if any.
+  /// Resolved to a screen by `interventionDestination`; when null the item
+  /// falls back to [externalUrl] and then to its detail sheet.
+  final String? appScreen;
+
   factory RecommendedIntervention.fromJson(Map<String, dynamic> json) {
     return RecommendedIntervention(
       title: json['title'] as String? ?? '',
@@ -22,6 +28,7 @@ class RecommendedIntervention {
       contentType: json['content_type'] as String?,
       instructions: json['instructions'] as String?,
       externalUrl: json['external_url'] as String?,
+      appScreen: json['app_screen'] as String?,
     );
   }
 
@@ -148,7 +155,6 @@ class AssessmentSummary {
     this.questionnaireId,
     this.questionnaireTitle,
     this.questionnaireVersion,
-    this.purpose,
     required this.totalScore,
     this.scoreOutOf,
     this.percentage,
@@ -160,17 +166,11 @@ class AssessmentSummary {
   final int? questionnaireId;
   final String? questionnaireTitle;
   final int? questionnaireVersion;
-
-  /// `registration` for the onboarding baseline, `library` otherwise — so
-  /// history can keep the two apart.
-  final String? purpose;
   final int totalScore;
   final int? scoreOutOf;
   final double? percentage;
   final String? bandLabel;
   final DateTime? completedAt;
-
-  bool get isRegistration => purpose == 'registration';
 
   factory AssessmentSummary.fromJson(Map<String, dynamic> json) {
     final band = json['band'] as Map<String, dynamic>?;
@@ -181,7 +181,6 @@ class AssessmentSummary {
       questionnaireId: json['questionnaire_id'] as int?,
       questionnaireTitle: json['questionnaire_title'] as String?,
       questionnaireVersion: json['questionnaire_version'] as int?,
-      purpose: json['purpose'] as String?,
       totalScore: json['total_score'] as int? ?? 0,
       scoreOutOf: json['score_out_of'] as int?,
       percentage: _toDouble(json['percentage']),

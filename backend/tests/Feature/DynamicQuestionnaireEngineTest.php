@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AppScreen;
 use App\Models\Intervention;
 use App\Models\InterventionRecommendation;
 use App\Models\Questionnaire;
@@ -10,6 +11,7 @@ use App\Models\StressAssessment;
 use App\Models\StressQuestion;
 use App\Models\User;
 use App\Services\AssessmentScoringService;
+use App\Services\QuestionnaireActivationService;
 use App\Services\QuestionWriter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -47,14 +49,13 @@ class DynamicQuestionnaireEngineTest extends TestCase
     }
 
     /**
-     * A published library questionnaire on the recommended configuration:
-     * weighted sections, equal weights, results as a percentage.
+     * A published questionnaire on the recommended configuration: weighted
+     * sections, equal weights, results as a percentage.
      */
     private function questionnaire(array $overrides = []): Questionnaire
     {
         return Questionnaire::query()->create(array_merge([
             'title' => 'Dynamic check', 'type' => 'dynamic_check', 'version' => 1,
-            'purpose' => Questionnaire::PURPOSE_LIBRARY,
             'status' => 'published', 'is_active' => true, 'published_at' => now(),
             'result_scale_min' => 0, 'result_scale_max' => 100,
             'scoring_method' => Questionnaire::SCORING_WEIGHTED_SECTIONS,
@@ -491,48 +492,44 @@ class DynamicQuestionnaireEngineTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Registration baseline stays apart from the library
+    // One questionnaire workflow: one live questionnaire at a time
     // ------------------------------------------------------------------
 
-    public function test_registration_baseline_is_never_listed_among_library_assessments(): void
+    public function test_publishing_a_questionnaire_makes_it_the_only_live_one(): void
     {
-        $student = $this->student();
-        $baseline = $this->questionnaire(['title' => 'First check-in', 'type' => 'stress', 'purpose' => Questionnaire::PURPOSE_REGISTRATION]);
-        $library = $this->questionnaire(['title' => 'Sleep check', 'type' => 'sleep_check']);
-        foreach ([$baseline, $library] as $q) {
+        $this->student();
+        $first = $this->questionnaire(['title' => 'First check-in', 'type' => 'stress']);
+        $second = $this->questionnaire([
+            'title' => 'Sleep check', 'type' => 'sleep_check',
+            'status' => 'draft', 'is_active' => false,
+        ]);
+        foreach ([$first, $second] as $q) {
             $s = $this->section($q, 'S');
             $this->question($q, $s, 'Q', [1, 2, 3]);
             $this->levels($q, [[0, 100, 'Any']]);
         }
 
-        $this->getJson('/api/v1/questionnaires/available')->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.title', 'Sleep check')
-            ->assertJsonPath('data.0.purpose', 'library');
-        $this->getJson('/api/v1/questionnaires/registration')->assertOk()
-            ->assertJsonPath('data.title', 'First check-in')
-            ->assertJsonPath('data.purpose', 'registration');
-        $this->getJson('/api/v1/questionnaires/active')->assertOk()->assertJsonPath('data.id', $baseline->id);
+        // The live one is served, and nothing names it in code.
+        $this->getJson('/api/v1/questionnaires/active')->assertOk()
+            ->assertJsonPath('data.id', $first->id)
+            ->assertJsonPath('data.title', 'First check-in');
 
-        $take = fn (Questionnaire $q) => $this->submit($q, [[
-            'question_id' => $q->questions()->first()->id,
-            'option_id' => $q->questions()->with('options')->first()->options->first()->id,
+        // Publishing the second demotes the first, across version families.
+        app(QuestionnaireActivationService::class)->activate($second->fresh());
+        $this->assertFalse((bool) $first->fresh()->is_active);
+        $this->getJson('/api/v1/questionnaires/active')->assertOk()
+            ->assertJsonPath('data.id', $second->id);
+
+        // Any completed check-in clears onboarding.
+        $this->getJson('/api/v1/auth/me')->assertOk()
+            ->assertJsonPath('user.has_completed_required_assessment', false);
+        $this->submit($second, [[
+            'question_id' => $second->questions()->first()->id,
+            'option_id' => $second->questions()->with('options')->first()->options->first()->id,
         ]])->assertCreated();
-
-        // Completing a library questionnaire does not clear onboarding; only
-        // the baseline does.
-        $take($library);
-        $this->getJson('/api/v1/auth/me')->assertOk()->assertJsonPath('user.has_completed_required_assessment', false);
-        $take($baseline);
-        $this->getJson('/api/v1/auth/me')->assertOk()->assertJsonPath('user.has_completed_required_assessment', true);
-
-        // History can be split by purpose so the baseline never appears among
-        // the assessments a student chose to sit.
-        $this->getJson('/api/v1/assessments?purpose=library')->assertOk()
-            ->assertJsonCount(1, 'data')->assertJsonPath('data.0.questionnaire_title', 'Sleep check');
-        $this->getJson('/api/v1/assessments?purpose=registration')->assertOk()
-            ->assertJsonCount(1, 'data')->assertJsonPath('data.0.questionnaire_title', 'First check-in');
-        $this->getJson('/api/v1/assessments')->assertOk()->assertJsonCount(2, 'data');
+        $this->getJson('/api/v1/auth/me')->assertOk()
+            ->assertJsonPath('user.has_completed_required_assessment', true);
+        $this->getJson('/api/v1/assessments')->assertOk()->assertJsonCount(1, 'data');
     }
 
     // ------------------------------------------------------------------
@@ -560,5 +557,35 @@ class DynamicQuestionnaireEngineTest extends TestCase
         $this->submit($q, [['question_id' => $x->id, 'option_id' => $this->worth($x, 0)]])->assertCreated()
             ->assertJsonPath('result.band.label', 'Settled')
             ->assertJsonPath('recommended_interventions.0.title', 'Take a short walk');
+    }
+
+    public function test_a_recommendation_carries_the_app_screen_the_admin_pointed_it_at(): void
+    {
+        $this->student();
+        $q = $this->questionnaire();
+        $s = $this->section($q, 'S');
+        $x = $this->question($q, $s, 'X', [0, 1]);
+        $this->levels($q, [[0, 100, 'Any']]);
+
+        // One piece of support opens a screen in the app, the other a link.
+        $journal = Intervention::query()->create([
+            'title' => 'Write it down', 'content_type' => 'journaling', 'is_active' => true,
+            'app_screen' => AppScreen::Journaling->value,
+        ]);
+        Intervention::query()->create([
+            'title' => 'Read more', 'content_type' => 'resource', 'is_active' => true,
+            'external_url' => 'https://example.org/help',
+        ]);
+        $band = $q->scoreBands()->firstOrFail();
+        InterventionRecommendation::query()->create([
+            'stress_score_band_id' => $band->id, 'intervention_id' => $journal->id,
+            'priority' => 0, 'is_active' => true,
+        ]);
+
+        $this->submit($q, [['question_id' => $x->id, 'option_id' => $this->worth($x, 1)]])->assertCreated()
+            ->assertJsonPath('recommended_interventions.0.title', 'Write it down')
+            ->assertJsonPath('recommended_interventions.0.app_screen', 'screen.journaling')
+            ->assertJsonPath('recommended_interventions.1.title', 'Read more')
+            ->assertJsonPath('recommended_interventions.1.app_screen', null);
     }
 }

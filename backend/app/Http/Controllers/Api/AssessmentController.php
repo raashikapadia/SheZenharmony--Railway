@@ -4,34 +4,27 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SubmitAssessmentRequest;
-use App\Models\Questionnaire;
 use App\Models\StressAssessment;
 use App\Models\StressScoreBand;
 use App\Services\AssessmentSubmissionService;
 use App\Services\RecommendedInterventionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class AssessmentController extends Controller
 {
     /**
-     * The signed-in student's completed attempts, newest first. Optional
-     * `purpose` (registration | library) and `questionnaire_id` filters let
-     * the app keep the onboarding baseline apart from the questionnaires the
-     * student chose to sit.
+     * The signed-in student's completed attempts, newest first. An optional
+     * `questionnaire_id` filter narrows the list to one questionnaire.
      */
     public function index(Request $request): JsonResponse
     {
         $filters = $request->validate([
-            'purpose' => ['nullable', Rule::in(Questionnaire::purposes())],
             'questionnaire_id' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $assessments = $request->user()->studentIdentity()->firstOrFail()->assessments()
             ->where('assessment_status', 'completed')
-            ->when($filters['purpose'] ?? null, fn ($query, $purpose) => $query
-                ->whereHas('questionnaire', fn ($q) => $q->where('purpose', $purpose)))
             ->when($filters['questionnaire_id'] ?? null, fn ($query, $id) => $query->where('questionnaire_id', $id))
             ->with(['questionnaire', 'scoreBand'])
             ->orderByDesc('completed_at')
@@ -46,7 +39,6 @@ class AssessmentController extends Controller
                 'questionnaire_id' => $assessment->questionnaire_id,
                 'questionnaire_title' => $assessment->questionnaire?->title,
                 'questionnaire_version' => $assessment->questionnaire?->version,
-                'purpose' => $assessment->questionnaire?->purpose,
                 'total_score' => $assessment->total_score,
                 'score_out_of' => $scoreOutOf[$assessment->questionnaire_id] ?? null,
                 'percentage' => $assessment->overall_percentage !== null ? (float) $assessment->overall_percentage : null,
@@ -90,7 +82,6 @@ class AssessmentController extends Controller
                 'id' => $assessment->id,
                 'questionnaire_id' => $assessment->questionnaire_id,
                 'questionnaire_version' => $assessment->questionnaire?->version,
-                'purpose' => $assessment->questionnaire?->purpose,
                 'completed_at' => $assessment->completed_at?->toISOString(),
             ],
             'result' => $resultPayload,
@@ -122,7 +113,6 @@ class AssessmentController extends Controller
                 'questionnaire_id' => $assessment->questionnaire_id,
                 'questionnaire_title' => $assessment->questionnaire?->title,
                 'questionnaire_version' => $assessment->questionnaire?->version,
-                'purpose' => $assessment->questionnaire?->purpose,
                 'total_score' => $assessment->total_score,
                 'score_out_of' => $this->scoreOutOf($assessment->questionnaire_id),
                 'percentage' => $assessment->overall_percentage !== null ? (float) $assessment->overall_percentage : null,
