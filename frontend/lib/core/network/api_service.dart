@@ -529,6 +529,46 @@ class ApiService {
       instructions: '',
       externalUrl: '',
     ),
+    PositiveContent(
+      slug: 'coping-match',
+      title: 'Coping Match',
+      description:
+          'Meet a stressful moment and choose the coping strategy that fits '
+          'it best.',
+      contentType: 'game',
+      instructions: '',
+      externalUrl: '',
+    ),
+    PositiveContent(
+      slug: 'myth-or-fact',
+      title: 'Myth or Fact',
+      description:
+          'Decide whether what people say about stress and mental health is '
+          'true.',
+      contentType: 'game',
+      instructions: '',
+      externalUrl: '',
+    ),
+    PositiveContent(
+      slug: 'body-signals',
+      title: 'Body Signals',
+      description:
+          'Learn where stress shows up in your body and what each signal is '
+          'telling you.',
+      contentType: 'game',
+      instructions: '',
+      externalUrl: '',
+    ),
+    PositiveContent(
+      slug: 'wellbeing-wordsearch',
+      title: 'Wellbeing Word Search',
+      description:
+          'Find the coping words hidden in the grid and learn what each one '
+          'means.',
+      contentType: 'game',
+      instructions: '',
+      externalUrl: '',
+    ),
   ];
 
   Future<void> recordGamePlay(String token, int gameId) async {

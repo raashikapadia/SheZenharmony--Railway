@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Web\AdminGamesController;
 use App\Models\Intervention;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,10 +18,14 @@ class AdminGamesTest extends TestCase
         $catalogue = Intervention::query()->where('content_type', 'game')->pluck('title', 'slug');
 
         $this->assertSame([
+            'body-signals' => 'Body Signals',
             'breathing-challenge' => 'Breathing Challenge',
+            'coping-match' => 'Coping Match',
             'gratitude-jar' => 'Gratitude Jar',
             'memory-spark' => 'Memory Spark',
             'mindful-memory' => 'Mindful Memory',
+            'myth-or-fact' => 'Myth or Fact',
+            'wellbeing-wordsearch' => 'Wellbeing Word Search',
         ], $catalogue->sortKeys()->all());
 
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
@@ -172,6 +177,41 @@ class AdminGamesTest extends TestCase
         $this->getJson('/api/v1/interventions?content_type=game')
             ->assertOk()
             ->assertJsonFragment(['slug' => 'memory-spark', 'title' => 'Spark Moments']);
+    }
+
+    /**
+     * The student app opens a game by matching the slug the API sends against
+     * the screens it was built with. A slug listed as built in but missing
+     * from the catalogue is a game no student can ever reach, and a row the
+     * delete guard would not protect.
+     */
+    public function test_every_built_in_slug_has_a_row_in_the_catalogue(): void
+    {
+        $slugs = Intervention::query()
+            ->where('content_type', 'game')
+            ->pluck('slug')
+            ->all();
+
+        foreach (AdminGamesController::BUILT_IN_SLUGS as $slug) {
+            $this->assertContains($slug, $slugs, "No game row exists for '{$slug}'.");
+        }
+    }
+
+    public function test_an_educational_game_is_playable_and_cannot_be_deleted(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $game = Intervention::query()->where('slug', 'coping-match')->sole();
+
+        $this->actingAs($admin)
+            ->delete(route('admin.positive-engagement.games.destroy', $game))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('interventions', ['id' => $game->id, 'content_type' => 'game']);
+
+        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_STUDENT]), ['student']);
+
+        $this->postJson("/api/v1/positive-engagement/games/{$game->id}/play")->assertCreated();
+        $this->assertDatabaseCount('intervention_usages', 1);
     }
 
     public function test_game_admin_routes_remain_protected(): void

@@ -70,6 +70,10 @@ void main() {
         'gratitude-jar',
         'memory-spark',
         'mindful-memory',
+        'coping-match',
+        'myth-or-fact',
+        'body-signals',
+        'wellbeing-wordsearch',
       ]);
       // No id means no play is recorded against a game the backend never named.
       expect(games.every((game) => game.id == null), isTrue);

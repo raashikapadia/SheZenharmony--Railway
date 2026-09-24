@@ -6,9 +6,13 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../auth/application/auth_provider.dart';
 import '../../data/support_content.dart';
 import '../../data/managed_quiz.dart';
+import 'body_signals_screen.dart';
+import 'coping_match_screen.dart';
 import 'gratitude_jar_screen.dart';
 import 'mindful_spark_screen.dart';
 import 'mindful_memory_screen.dart';
+import 'myth_or_fact_screen.dart';
+import 'wellbeing_wordsearch_screen.dart';
 
 /// Which part of the screen to bring into view when it opens. Positive
 /// Engagement lists Games and Quizzes as separate areas, and both land here.
@@ -243,6 +247,10 @@ class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
     'gratitude-jar': 'Gratitude Jar',
     'memory-spark': 'Memory Spark',
     'mindful-memory': 'Mindful Memory',
+    'coping-match': 'Coping Match',
+    'myth-or-fact': 'Myth or Fact',
+    'body-signals': 'Body Signals',
+    'wellbeing-wordsearch': 'Wellbeing Word Search',
   };
 
   String? _gameKey(PositiveContent game) =>
@@ -253,12 +261,20 @@ class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
     'Breathing Challenge' => Icons.air_rounded,
     'Gratitude Jar' => Icons.favorite_rounded,
     'Memory Spark' => Icons.auto_awesome_rounded,
+    'Coping Match' => Icons.extension_rounded,
+    'Myth or Fact' => Icons.balance_rounded,
+    'Body Signals' => Icons.accessibility_new_rounded,
+    'Wellbeing Word Search' => Icons.grid_view_rounded,
     _ => Icons.psychology_outlined,
   };
 
   Color _gameColor(PositiveContent game) => switch (_gameKey(game)) {
     'Gratitude Jar' => AppColors.softBlush,
     'Memory Spark' => AppColors.softLavender,
+    'Coping Match' => AppColors.softSky,
+    'Myth or Fact' => AppColors.softLavender,
+    'Body Signals' => AppColors.softBlush,
+    'Wellbeing Word Search' => AppColors.softPeach,
     _ => AppColors.softSage,
   };
 
@@ -268,6 +284,10 @@ class _GamesQuizzesScreenState extends State<GamesQuizzesScreen> {
       'Gratitude Jar' => const GratitudeJarScreen(),
       'Memory Spark' => const MindfulSparkScreen(),
       'Mindful Memory' => const MindfulMemoryScreen(),
+      'Coping Match' => const CopingMatchScreen(),
+      'Myth or Fact' => const MythOrFactScreen(),
+      'Body Signals' => const BodySignalsScreen(),
+      'Wellbeing Word Search' => const WellbeingWordSearchScreen(),
       _ => null,
     };
 

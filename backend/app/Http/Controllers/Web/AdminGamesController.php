@@ -19,6 +19,10 @@ class AdminGamesController extends AdminInterventionController
         'gratitude-jar',
         'memory-spark',
         'mindful-memory',
+        'coping-match',
+        'myth-or-fact',
+        'body-signals',
+        'wellbeing-wordsearch',
     ];
 
     protected function configuration(): array
