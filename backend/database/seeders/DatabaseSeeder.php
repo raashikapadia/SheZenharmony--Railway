@@ -81,8 +81,8 @@ class DatabaseSeeder extends Seeder
         // Personal Guidance row exists.
         $this->call(PersonalGuidanceSeeder::class);
 
-        // Starter helplines for the student Resource tab. No-ops once any
-        // helpline row exists. Numbers are unverified placeholders.
+        // Inactive placeholder helplines for administrator review. No-ops once
+        // any helpline row exists; unverified contacts never reach students.
         $this->call(HelplineResourceSeeder::class);
         $this->call(ChatBuddySampleSeeder::class);
     }

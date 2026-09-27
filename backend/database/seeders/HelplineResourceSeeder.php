@@ -6,18 +6,15 @@ use App\Models\HelplineResource;
 use Illuminate\Database\Seeder;
 
 /**
- * A small starter set so the student Resource tab has something to show on a
- * fresh database, and so every developer on the team sees the same contacts
- * after `migrate` + `db:seed`. Guarded: does nothing once any helpline exists,
- * so it never fights admin-managed content.
+ * A small inactive starter set for administrators to review after `migrate` +
+ * `db:seed`. Guarded: does nothing once any helpline exists, so it never fights
+ * admin-managed content.
  *
  * !! DEVELOPMENT PLACEHOLDER DATA !!
  *
  * The phone numbers below have NOT been verified. They exist so the feature
- * can be reviewed end to end, not so a student can dial them. Replace every
- * `phone` value here with a confirmed number - and re-check the availability
- * hours - before this reaches real users. A wrong number on the Resource tab
- * is worse than no number at all, because a student in distress will trust it.
+ * can be reviewed end to end, not so a student can dial them. They remain
+ * inactive until an administrator verifies and deliberately publishes them.
  */
 class HelplineResourceSeeder extends Seeder
 {
@@ -53,7 +50,7 @@ class HelplineResourceSeeder extends Seeder
         ];
 
         foreach ($resources as $resource) {
-            HelplineResource::query()->create($resource + ['is_active' => true]);
+            HelplineResource::query()->create($resource + ['is_active' => false]);
         }
     }
 }
