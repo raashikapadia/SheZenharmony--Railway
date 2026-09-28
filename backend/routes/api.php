@@ -71,6 +71,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/personal-guidance/current', [PersonalGuidanceController::class, 'current']);
         Route::get('/personal-guidance/another', [PersonalGuidanceController::class, 'another']);
         Route::get('/personal-guidance/favourites', [PersonalGuidanceController::class, 'favourites']);
+        // Every published Tip or Quote, for the app's browsable tabs.
+        Route::get('/personal-guidance', [PersonalGuidanceController::class, 'index']);
+        Route::get('/personal-guidance/categories', [PersonalGuidanceController::class, 'categories']);
         Route::post('/personal-guidance/{guidance}/favourite', [PersonalGuidanceController::class, 'favourite']);
         Route::delete('/personal-guidance/{guidance}/favourite', [PersonalGuidanceController::class, 'unfavourite']);
         Route::get('/chat-buddy', [ChatBuddyController::class, 'index']);

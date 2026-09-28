@@ -2,10 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\ChatBuddyFollowUpPrompt;
 use App\Models\ChatBuddyRelease;
 use App\Models\ChatBuddySeedMarker;
-use App\Models\ChatBuddyTopic;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 

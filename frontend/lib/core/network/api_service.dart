@@ -723,6 +723,51 @@ class ApiService {
         .toList();
   }
 
+  /// Every published item of one content type — Advice & Coping, an
+  /// affirmation, a motivational quote, or a Wellbeing Tip — for the app's
+  /// browsable sections: the admin's own display order, not matched to an
+  /// assessment. Optionally narrowed to one category.
+  Future<List<PersonalGuidance>> guidanceList(
+    String token, {
+    required GuidanceType type,
+    int? categoryId,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/v1/personal-guidance').replace(
+      queryParameters: {
+        'type': _guidanceTypeParam(type),
+        if (categoryId != null) 'category_id': categoryId.toString(),
+      },
+    );
+    final body = await _getJson(uri, token);
+    return (body['data'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(PersonalGuidance.fromJson)
+        .toList();
+  }
+
+  /// The categories currently offered as filter chips for [type] — only ones
+  /// with at least one published item, so a chip is never a dead end.
+  Future<List<GuidanceCategory>> guidanceCategories(
+    String token, {
+    required GuidanceType type,
+  }) async {
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/v1/personal-guidance/categories',
+    ).replace(queryParameters: {'type': _guidanceTypeParam(type)});
+    final body = await _getJson(uri, token);
+    return (body['data'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(GuidanceCategory.fromJson)
+        .toList();
+  }
+
+  static String _guidanceTypeParam(GuidanceType type) => switch (type) {
+    GuidanceType.affirmation => 'affirmation',
+    GuidanceType.quote => 'quote',
+    GuidanceType.guidance => 'guidance',
+    GuidanceType.tip => 'tip',
+  };
+
   Future<void> setGuidanceFavourite(
     String token,
     int id, {

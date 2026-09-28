@@ -1032,21 +1032,3 @@ class _ProfilePage extends StatelessWidget {
     );
   }
 }
-
-// ============================================================
-// STRESS HISTORY
-// ============================================================
-
-/// The student's past check-ins as a standalone pushed route.
-///
-/// The same list is the "Stress level" tab; this wrapper stays so anything
-/// that wants to open the history over the top of another screen still can.
-class StressHistoryScreen extends StatelessWidget {
-  const StressHistoryScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Your check-ins')),
-    body: const SafeArea(child: _StressPage()),
-  );
-}

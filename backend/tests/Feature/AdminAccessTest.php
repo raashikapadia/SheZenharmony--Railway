@@ -93,13 +93,15 @@ class AdminAccessTest extends TestCase
                 'Registered Students',
                 'Demographic Reports',
             ])
-            ->assertSee('Assessments')
-            ->assertDontSee('Categories');
+            ->assertSee('Assessments');
 
         foreach ([
             'admin.interventions.index' => 'Support Content',
             'admin.wellbeing_activities.index' => 'Video Activities',
-            'admin.personal-guidance.index' => 'Personal Guidance',
+            'admin.guidance.index' => 'Guidance',
+            'admin.personal-guidance.index' => 'Daily Affirmations',
+            'admin.wellbeing-tips.index' => 'Wellbeing Tips',
+            'admin.personal-guidance-categories.index' => 'Categories',
         ] as $routeName => $label) {
             $this->actingAs($admin)->get(route($routeName))
                 ->assertOk()

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ContentCategory;
 use App\Models\PersonalGuidance;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,38 +25,36 @@ class AdminPersonalGuidanceTest extends TestCase
         $student = User::factory()->create(['role' => User::ROLE_STUDENT]);
         $this->actingAs($student)->get('/admin/personal-guidance')->assertForbidden();
         $this->actingAs($student)->post('/admin/personal-guidance', [
-            'type' => 'affirmation', 'content' => 'x', 'status' => 'published',
+            'type' => 'affirmation', 'content' => 'x', 'is_active' => '1',
         ])->assertForbidden();
         Auth::logout();
     }
 
-    public function test_admin_can_create_each_content_type(): void
+    public function test_admin_can_create_an_affirmation_and_a_quote(): void
     {
         $admin = $this->admin();
+        $category = ContentCategory::query()->create(['name' => 'Confidence', 'slug' => 'confidence', 'is_active' => true]);
 
         $this->actingAs($admin)->post('/admin/personal-guidance', [
             'type' => 'affirmation',
             'content' => 'I am capable of handling whatever today brings.',
-            'category' => 'Confidence',
-            'status' => 'published',
+            'content_category_id' => $category->id,
+            'is_active' => '1',
         ])->assertRedirect(route('admin.personal-guidance.index'));
 
         $this->actingAs($admin)->post('/admin/personal-guidance', [
             'type' => 'quote',
             'content' => 'It always seems impossible until it is done.',
             'author' => 'Nelson Mandela',
-            'status' => 'published',
+            'is_active' => '1',
         ])->assertRedirect(route('admin.personal-guidance.index'));
 
-        $this->actingAs($admin)->post('/admin/personal-guidance', [
-            'type' => 'guidance',
-            'content' => 'One honest step is enough for today.',
-            'status' => 'draft',
-        ])->assertRedirect(route('admin.personal-guidance.index'));
-
-        $this->assertDatabaseCount('personal_guidance', 3);
+        $this->assertDatabaseCount('personal_guidance', 2);
         $this->assertDatabaseHas('personal_guidance', [
-            'type' => 'quote', 'author' => 'Nelson Mandela', 'created_by_user_id' => $admin->id,
+            'type' => 'quote', 'author' => 'Nelson Mandela', 'created_by_user_id' => $admin->id, 'status' => 'published',
+        ]);
+        $this->assertDatabaseHas('personal_guidance', [
+            'type' => 'affirmation', 'content_category_id' => $category->id, 'status' => 'published',
         ]);
     }
 
@@ -64,24 +63,32 @@ class AdminPersonalGuidanceTest extends TestCase
         $this->actingAs($this->admin())->post('/admin/personal-guidance', [
             'type' => 'quote',
             'content' => 'A quote with no attribution.',
-            'status' => 'published',
+            'is_active' => '1',
         ])->assertSessionHasErrors('author');
 
         $this->assertDatabaseCount('personal_guidance', 0);
     }
 
-    public function test_expiry_must_be_after_publish_date(): void
+    /**
+     * Coping strategies and wellbeing tips each moved to their own screen;
+     * this one only ever manages affirmations and quotes.
+     */
+    public function test_guidance_and_tip_types_are_rejected_by_this_screen(): void
     {
         $this->actingAs($this->admin())->post('/admin/personal-guidance', [
-            'type' => 'affirmation',
-            'content' => 'Timing matters.',
-            'status' => 'published',
-            'publish_at' => '2026-09-10T09:00',
-            'expires_at' => '2026-09-01T09:00',
-        ])->assertSessionHasErrors('expires_at');
+            'type' => 'guidance',
+            'content' => 'One honest step is enough for today.',
+        ])->assertSessionHasErrors('type');
+
+        $this->actingAs($this->admin())->post('/admin/personal-guidance', [
+            'type' => 'tip',
+            'content' => 'Drink some water.',
+        ])->assertSessionHasErrors('type');
+
+        $this->assertDatabaseCount('personal_guidance', 0);
     }
 
-    public function test_admin_can_edit_attribution_publish_unpublish_and_delete(): void
+    public function test_admin_can_edit_attribution_unpublish_and_delete(): void
     {
         $admin = $this->admin();
         $item = PersonalGuidance::query()->create([
@@ -95,7 +102,7 @@ class AdminPersonalGuidanceTest extends TestCase
             'type' => 'quote',
             'content' => 'Believe you can and you are halfway there.',
             'author' => 'Theodore Roosevelt',
-            'status' => 'published',
+            'is_active' => '1',
         ])->assertRedirect(route('admin.personal-guidance.index'));
 
         $item->refresh();
@@ -106,7 +113,6 @@ class AdminPersonalGuidanceTest extends TestCase
             'type' => 'quote',
             'content' => $item->content,
             'author' => 'Theodore Roosevelt',
-            'status' => 'unpublished',
         ]);
         $this->assertSame('unpublished', $item->fresh()->status);
 

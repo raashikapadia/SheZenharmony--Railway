@@ -4,54 +4,61 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PersonalGuidanceRequest;
-use App\Models\Intervention;
+use App\Models\ContentCategory;
 use App\Models\PersonalGuidance;
-use App\Models\QuestionnaireSection;
-use App\Models\StressScoreBand;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
+/**
+ * Daily Affirmations — the two Personal Guidance content types shown
+ * together as "✨ Daily Affirmations" in the student app: affirmations and
+ * motivational quotes. Coping strategies and advice ("guidance" rows) have
+ * their own screen ({@see AdminGuidanceController}); wellbeing tips have
+ * theirs ({@see AdminTipController}).
+ */
 class AdminPersonalGuidanceController extends Controller
 {
+    /** The two types this screen manages; the others have their own screens. */
+    private const TYPES = [PersonalGuidance::TYPE_AFFIRMATION, PersonalGuidance::TYPE_QUOTE];
+
     public function index(Request $request): View
     {
         $filters = [
             'type' => $request->query('type'),
             'status' => $request->query('status'),
-            'category' => $request->query('category'),
+            'category_id' => $request->query('category_id'),
         ];
 
         $items = PersonalGuidance::query()
-            ->when(in_array($filters['type'], PersonalGuidance::TYPES, true), fn ($q) => $q->where('type', $filters['type']))
+            ->whereIn('type', self::TYPES)
+            ->when(in_array($filters['type'], self::TYPES, true), fn ($q) => $q->where('type', $filters['type']))
             ->when(in_array($filters['status'], PersonalGuidance::STATUSES, true), fn ($q) => $q->where('status', $filters['status']))
-            ->when($filters['category'], fn ($q) => $q->where('category', $filters['category']))
-            ->orderByDesc('updated_at')
+            ->when($filters['category_id'], fn ($q) => $q->where('content_category_id', (int) $filters['category_id']))
+            ->with('contentCategory')
+            ->inDisplayOrder()
             ->paginate(20)
             ->withQueryString();
 
         return view('admin.personal-guidance.index', [
             'items' => $items,
             'filters' => $filters,
-            'categories' => PersonalGuidance::query()
-                ->whereNotNull('category')->distinct()->orderBy('category')->pluck('category'),
+            'categories' => ContentCategory::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
     public function create(): View
     {
         return view('admin.personal-guidance.form', [
-            'guidance' => new PersonalGuidance(['status' => PersonalGuidance::STATUS_DRAFT]),
+            'guidance' => new PersonalGuidance(['status' => PersonalGuidance::STATUS_PUBLISHED]),
         ] + $this->matchingOptions());
     }
 
     public function store(PersonalGuidanceRequest $request): RedirectResponse
     {
-        $guidance = PersonalGuidance::query()->create($this->guidanceAttributes($request) + [
+        PersonalGuidance::query()->create($this->guidanceAttributes($request) + [
             'created_by_user_id' => $request->user()->id,
         ]);
-
-        $this->syncRecommendations($guidance, $request);
 
         return redirect()->route('admin.personal-guidance.index')->with('status', 'Guidance created.');
     }
@@ -59,7 +66,7 @@ class AdminPersonalGuidanceController extends Controller
     public function edit(PersonalGuidance $personalGuidance): View
     {
         return view('admin.personal-guidance.form', [
-            'guidance' => $personalGuidance->load('recommendations'),
+            'guidance' => $personalGuidance,
         ] + $this->matchingOptions());
     }
 
@@ -67,56 +74,26 @@ class AdminPersonalGuidanceController extends Controller
     {
         $personalGuidance->update($this->guidanceAttributes($request));
 
-        $this->syncRecommendations($personalGuidance, $request);
-
         return redirect()->route('admin.personal-guidance.index')->with('status', 'Guidance updated.');
     }
 
-    /** The guidance columns, without the matching-rule inputs. */
+    /** The guidance columns, translating the simple published/draft checkbox into a status. */
     private function guidanceAttributes(PersonalGuidanceRequest $request): array
     {
-        return collect($request->validated())->except(['band_ids', 'section_ids'])->all();
+        $data = collect($request->validated())->except('is_active')->all();
+        $data['status'] = $request->boolean('is_active') ? PersonalGuidance::STATUS_PUBLISHED : PersonalGuidance::STATUS_UNPUBLISHED;
+
+        return $data;
     }
 
-    /**
-     * Replaces this item's matching rules with the selected bands and sections.
-     * Selecting none means "applies to everyone", matching how interventions
-     * already behave.
-     */
-    private function syncRecommendations(PersonalGuidance $guidance, PersonalGuidanceRequest $request): void
-    {
-        $guidance->recommendations()->delete();
-
-        foreach ((array) $request->input('band_ids', []) as $bandId) {
-            $guidance->recommendations()->create([
-                'stress_score_band_id' => (int) $bandId,
-                'is_active' => true,
-            ]);
-        }
-
-        foreach ((array) $request->input('section_ids', []) as $sectionId) {
-            $guidance->recommendations()->create([
-                'questionnaire_section_id' => (int) $sectionId,
-                'is_active' => true,
-            ]);
-        }
-    }
-
-    /** Bands and sections an admin can match guidance against. */
+    /** Categories the form's select offers. */
     private function matchingOptions(): array
     {
         return [
-            'bands' => StressScoreBand::query()
+            'categories' => ContentCategory::query()
                 ->where('is_active', true)
-                ->orderBy('position')
-                ->get(['id', 'label', 'code']),
-            'sections' => QuestionnaireSection::query()
-                ->orderBy('title')
-                ->get(['id', 'title']),
-            'activities' => Intervention::query()
-                ->where('is_active', true)
-                ->orderBy('title')
-                ->get(['id', 'title']),
+                ->orderBy('name')
+                ->get(['id', 'name']),
         ];
     }
 
@@ -125,5 +102,13 @@ class AdminPersonalGuidanceController extends Controller
         $personalGuidance->delete();
 
         return back()->with('status', 'Guidance deleted.');
+    }
+
+    /** A rough approximation of how this item will look in the student app. */
+    public function preview(PersonalGuidance $personalGuidance): View
+    {
+        return view('admin.personal-guidance.preview', [
+            'guidance' => $personalGuidance->load('contentCategory'),
+        ]);
     }
 }

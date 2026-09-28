@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/network/api_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -7,9 +8,13 @@ import '../../../shared/widgets/app_ui.dart';
 import '../../auth/application/auth_provider.dart';
 import '../data/personal_guidance.dart';
 import 'guidance_detail_sheet.dart';
+import 'guidance_heart_button.dart';
 
-/// The student's personal wellbeing toolkit. Everything shown here is authored
-/// and matched by the admin; this screen only arranges it.
+/// The student's Personal Guidance space: three clearly separate, fully
+/// admin-managed sections — 🌿 Advice & Coping, ✨ Daily Affirmations, and
+/// ☀️ Daily Wellbeing Tips. Nothing shown here is hard-coded: each section is
+/// simply every published item of its content type, in the admin's own
+/// order, optionally narrowed to a category.
 class PersonalGuidanceScreen extends StatefulWidget {
   const PersonalGuidanceScreen({super.key, ApiService? apiService})
     : _injectedApiService = apiService;
@@ -22,25 +27,11 @@ class PersonalGuidanceScreen extends StatefulWidget {
 
 class _PersonalGuidanceScreenState extends State<PersonalGuidanceScreen> {
   late final ApiService _api;
-  late Future<GuidanceToolkit> _toolkit;
-
-  /// Which quick tip is on screen, so "Try something different" can move on
-  /// without reloading the whole toolkit.
-  int _tipIndex = 0;
-
-  /// Same idea for the affirmation on show.
-  int _affirmationIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _api = widget._injectedApiService ?? ApiService();
-    _load();
-  }
-
-  void _load() {
-    final token = context.read<AuthProvider>().session?.token ?? '';
-    _toolkit = _api.guidanceToolkit(token);
   }
 
   @override
@@ -50,223 +41,399 @@ class _PersonalGuidanceScreenState extends State<PersonalGuidanceScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    // Carries its own bar, and so its own back arrow: this is reached by being
-    // pushed from Home, not by a tab that would supply one.
-    appBar: AppBar(title: const Text('Personal guidance')),
-    body: SafeArea(
-      child: FutureBuilder<GuidanceToolkit>(
-        future: _toolkit,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const AppLoadingView(
-              message: 'Putting your toolkit together…',
-            );
-          }
-
-          if (snapshot.hasError) {
-            return AppStateView(
-              icon: Icons.cloud_off_outlined,
-              title: 'Couldn\'t load your guidance',
-              message: 'Check your connection and try again.',
-              actionLabel: 'Try again',
-              onAction: () => setState(_load),
-            );
-          }
-
-          final toolkit = snapshot.data;
-
-          if (toolkit == null || toolkit.items.isEmpty) {
-            return AppStateView(
-              icon: Icons.spa_outlined,
-              title: 'Your toolkit is being prepared',
-              message:
-                  'Guidance published by the SheZen team will appear here.',
-              actionLabel: 'Check again',
-              onAction: () => setState(_load),
-            );
-          }
-
-          return _buildToolkit(context, toolkit);
-        },
+  Widget build(BuildContext context) => DefaultTabController(
+    length: 3,
+    child: Scaffold(
+      // Carries its own bar, and so its own back arrow: this is reached by
+      // being pushed from Home, not by a tab that would supply one.
+      appBar: AppBar(
+        title: const AppScreenHeading(
+          'Personal guidance',
+          icon: Icons.eco_outlined,
+        ),
+        bottom: const TabBar(
+          indicatorColor: AppColors.primary,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.muted,
+          labelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          tabs: [
+            Tab(text: '🌿 Coping'),
+            Tab(text: '✨ Affirmations'),
+            Tab(text: '☀️ Tips'),
+          ],
+        ),
+      ),
+      body: SafeArea(
+        child: TabBarView(
+          children: [
+            _CopingTab(api: _api),
+            _AffirmationsTab(api: _api),
+            _TipsTab(api: _api),
+          ],
+        ),
       ),
     ),
   );
+}
 
-  Widget _buildToolkit(BuildContext context, GuidanceToolkit toolkit) {
-    final tips = toolkit.quickTips;
-    final strategies = toolkit.strategies;
-    final affirmations = toolkit.affirmations;
+/// 🌿 Advice & Coping — practical support for a hard moment.
+class _CopingTab extends StatelessWidget {
+  const _CopingTab({required this.api});
+
+  final ApiService api;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      const _SectionBanner(
+        icon: Icons.eco_rounded,
+        title: 'Advice & coping',
+        subtitle: 'Support for when something feels hard right now.',
+        colors: [AppColors.softSage, Colors.white],
+      ),
+      Expanded(
+        child: _BrowsableSection(
+          api: api,
+          types: const [GuidanceType.guidance],
+          emptyIcon: Icons.eco_outlined,
+          emptyTitle: 'Nothing here yet',
+          emptyMessage:
+              'Advice and coping strategies published by the SheZen team will appear here.',
+          itemBuilder: (context, item, onToggleFavourite) => _CopingCard(
+            item: item,
+            onOpen: () => showGuidanceDetail(context, item),
+            onToggleFavourite: onToggleFavourite,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+/// ✨ Daily Affirmations — affirmations and motivational quotes together.
+class _AffirmationsTab extends StatelessWidget {
+  const _AffirmationsTab({required this.api});
+
+  final ApiService api;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      const _SectionBanner(
+        icon: Icons.auto_awesome_rounded,
+        title: 'Daily affirmations',
+        subtitle: 'Positive reminders and encouraging words to carry with you.',
+        colors: [AppColors.softLavender, AppColors.softBlush],
+      ),
+      Expanded(
+        child: _BrowsableSection(
+          api: api,
+          types: const [GuidanceType.affirmation, GuidanceType.quote],
+          emptyIcon: Icons.auto_awesome_outlined,
+          emptyTitle: 'Nothing here yet',
+          emptyMessage:
+              'Affirmations and quotes published by the SheZen team will appear here.',
+          itemBuilder: (context, item, onToggleFavourite) => _AffirmationCard(
+            item: item,
+            onToggleFavourite: onToggleFavourite,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+/// ☀️ Daily Wellbeing Tips — small everyday suggestions.
+class _TipsTab extends StatelessWidget {
+  const _TipsTab({required this.api});
+
+  final ApiService api;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      const _SectionBanner(
+        icon: Icons.wb_sunny_rounded,
+        title: 'Daily wellbeing tips',
+        subtitle: 'Small things you can do for your everyday wellbeing.',
+        colors: [AppColors.softGold, Colors.white],
+      ),
+      Expanded(
+        child: _BrowsableSection(
+          api: api,
+          types: const [GuidanceType.tip],
+          emptyIcon: Icons.wb_sunny_outlined,
+          emptyTitle: 'Nothing here yet',
+          emptyMessage:
+              'Everyday wellbeing tips published by the SheZen team will appear here.',
+          itemBuilder: (context, item, onToggleFavourite) => _TipCard(
+            item: item,
+            onOpen: () => showGuidanceDetail(context, item),
+            onToggleFavourite: onToggleFavourite,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+/// The soft, colour-coded banner that keeps each section instantly
+/// identifiable even after scrolling past the tab bar.
+class _SectionBanner extends StatelessWidget {
+  const _SectionBanner({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.colors,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final List<Color> colors;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    margin: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+    padding: const EdgeInsets.all(AppSpacing.lg),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: colors,
+      ),
+      borderRadius: BorderRadius.circular(24),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.6),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: AppColors.primary),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 12.5,
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Loads every published item of [types] (merged when more than one, e.g.
+/// affirmations and quotes together), with a category filter and an
+/// optimistic-update favourite toggle. Shared by all three tabs so each one
+/// only has to describe its own card and empty state.
+class _BrowsableSection extends StatefulWidget {
+  const _BrowsableSection({
+    required this.api,
+    required this.types,
+    required this.emptyIcon,
+    required this.emptyTitle,
+    required this.emptyMessage,
+    required this.itemBuilder,
+  });
+
+  final ApiService api;
+  final List<GuidanceType> types;
+  final IconData emptyIcon;
+  final String emptyTitle;
+  final String emptyMessage;
+  final Widget Function(
+    BuildContext context,
+    PersonalGuidance item,
+    VoidCallback onToggleFavourite,
+  )
+  itemBuilder;
+
+  @override
+  State<_BrowsableSection> createState() => _BrowsableSectionState();
+}
+
+class _BrowsableSectionState extends State<_BrowsableSection> {
+  bool _loading = true;
+  String? _error;
+  List<PersonalGuidance> _items = const [];
+  List<GuidanceCategory> _categories = const [];
+  int? _categoryId;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  String get _token => context.read<AuthProvider>().session?.token ?? '';
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final token = _token;
+      final itemLists = await Future.wait(
+        widget.types.map(
+          (type) => widget.api.guidanceList(
+            token,
+            type: type,
+            categoryId: _categoryId,
+          ),
+        ),
+      );
+      final categoryLists = await Future.wait(
+        widget.types.map(
+          (type) => widget.api.guidanceCategories(token, type: type),
+        ),
+      );
+      if (!mounted) return;
+
+      final byId = <int, GuidanceCategory>{};
+      for (final list in categoryLists) {
+        for (final category in list) {
+          byId[category.id] = category;
+        }
+      }
+      final categories = byId.values.toList()
+        ..sort((a, b) => a.name.compareTo(b.name));
+
+      setState(() {
+        _items = itemLists.expand((list) => list).toList();
+        _categories = categories;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Please check your connection and try again.';
+      });
+    }
+  }
+
+  void _selectCategory(int? id) {
+    if (id == _categoryId) return;
+    setState(() => _categoryId = id);
+    _load();
+  }
+
+  Future<void> _toggleFavourite(PersonalGuidance item) async {
+    final next = !item.isFavourite;
+    setState(() => _items = _replace(item, next));
+    try {
+      await widget.api.setGuidanceFavourite(_token, item.id, favourite: next);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _items = _replace(item, !next)); // roll back
+    }
+  }
+
+  List<PersonalGuidance> _replace(PersonalGuidance item, bool isFavourite) =>
+      _items
+          .map(
+            (i) => i.id == item.id ? i.copyWith(isFavourite: isFavourite) : i,
+          )
+          .toList();
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const AppLoadingView(message: 'Just a moment…');
+    }
+
+    if (_error != null) {
+      return AppStateView(
+        icon: Icons.cloud_off_outlined,
+        title: 'Couldn\'t load this',
+        message: _error!,
+        actionLabel: 'Try again',
+        onAction: _load,
+      );
+    }
 
     return RefreshIndicator(
-      onRefresh: () async => setState(_load),
+      onRefresh: _load,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
-          _ForYouHeader(
-            headline: toolkit.headline,
-            subline: toolkit.subline,
-            bandMessage: toolkit.bandMessage,
-          ),
-
-          if (tips.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.xxl),
-            const AppSectionHeader(
-              title: 'Tips & advice',
-              subtitle: 'Nothing to do here — just something to read.',
+          if (_categories.isNotEmpty) ...[
+            _CategoryChipRow(
+              categories: _categories,
+              selectedId: _categoryId,
+              onSelect: _selectCategory,
             ),
             const SizedBox(height: AppSpacing.md),
-            _QuickTipCard(
-              tip: tips[_tipIndex % tips.length],
-              canShuffle: tips.length > 1,
-              onAnother: () => setState(() => _tipIndex = _tipIndex + 1),
-            ),
           ],
-
-          if (strategies.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.xxl),
-            const AppSectionHeader(
-              title: 'Coping strategies',
-              subtitle:
-                  'Short, practical steps. Pick one if it suits you — there is no order to follow.',
-            ),
-            const SizedBox(height: AppSpacing.md),
-            for (final strategy in strategies) ...[
-              _StrategyCard(
-                strategy: strategy,
-                onOpen: () => showGuidanceDetail(context, strategy),
-              ),
+          if (_items.isEmpty)
+            AppStateView(
+              icon: widget.emptyIcon,
+              title: widget.emptyTitle,
+              message: widget.emptyMessage,
+            )
+          else
+            for (final item in _items) ...[
+              widget.itemBuilder(context, item, () => _toggleFavourite(item)),
               const SizedBox(height: AppSpacing.md),
             ],
-          ],
-
-          if (affirmations.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.xxl),
-            const AppSectionHeader(
-              title: 'Daily affirmations',
-              subtitle: 'Words to keep with you today.',
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _AffirmationCard(
-              affirmation:
-                  affirmations[_affirmationIndex % affirmations.length],
-              canShuffle: affirmations.length > 1,
-              onAnother: () =>
-                  setState(() => _affirmationIndex = _affirmationIndex + 1),
-            ),
-          ],
         ],
       ),
     );
   }
 }
 
-/// The "For You" lead-in. Deliberately warm and non-clinical: it never names a
-/// score or a level, only that some support may help right now.
-class _ForYouHeader extends StatelessWidget {
-  const _ForYouHeader({
-    required this.headline,
-    required this.subline,
-    this.bandMessage,
+/// "All" plus one chip per category actually in use — never a dead end.
+class _CategoryChipRow extends StatelessWidget {
+  const _CategoryChipRow({
+    required this.categories,
+    required this.selectedId,
+    required this.onSelect,
   });
 
-  final String headline;
-  final String subline;
-  final String? bandMessage;
+  final List<GuidanceCategory> categories;
+  final int? selectedId;
+  final ValueChanged<int?> onSelect;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(AppSpacing.xl),
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [AppColors.softLavender, AppColors.softBlush],
-      ),
-      borderRadius: BorderRadius.circular(28),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) => SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Row(
       children: [
-        Row(
-          children: [
-            const Icon(
-              Icons.favorite_rounded,
-              color: AppColors.primary,
-              size: 22,
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                headline,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ),
-          ],
+        _FilterChip(
+          label: 'All',
+          selected: selectedId == null,
+          onTap: () => onSelect(null),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(subline, style: const TextStyle(color: AppColors.muted)),
-        if (bandMessage != null && bandMessage!.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.md),
-          Text(bandMessage!, style: Theme.of(context).textTheme.bodyMedium),
-        ],
-        const SizedBox(height: AppSpacing.md),
-        const Text(
-          'Everything here is optional. Read what helps, skip what does not.',
-          style: TextStyle(color: AppColors.muted, fontSize: 13),
-        ),
-      ],
-    ),
-  );
-}
-
-/// A single affirmation, given its own warm panel so it reads as something to
-/// hold onto rather than another instruction to follow.
-class _AffirmationCard extends StatelessWidget {
-  const _AffirmationCard({
-    required this.affirmation,
-    required this.canShuffle,
-    required this.onAnother,
-  });
-
-  final PersonalGuidance affirmation;
-  final bool canShuffle;
-  final VoidCallback onAnother;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(AppSpacing.xl),
-    decoration: BoxDecoration(
-      color: AppColors.softBlush,
-      borderRadius: BorderRadius.circular(AppRadii.card),
-      border: Border.all(color: AppColors.outline),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(
-          Icons.format_quote_rounded,
-          color: AppColors.primary,
-          size: 26,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          affirmation.lead,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(height: 1.45),
-        ),
-        if (canShuffle) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: onAnother,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Show me another'),
-            ),
+        for (final category in categories) ...[
+          const SizedBox(width: AppSpacing.sm),
+          _FilterChip(
+            label: category.name,
+            selected: selectedId == category.id,
+            onTap: () => onSelect(category.id),
           ),
         ],
       ],
@@ -274,126 +441,43 @@ class _AffirmationCard extends StatelessWidget {
   );
 }
 
-/// A short piece of advice, readable at a glance.
-class _QuickTipCard extends StatelessWidget {
-  const _QuickTipCard({
-    required this.tip,
-    required this.canShuffle,
-    required this.onAnother,
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
   });
 
-  final PersonalGuidance tip;
-  final bool canShuffle;
-  final VoidCallback onAnother;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(AppSpacing.xl),
-    decoration: BoxDecoration(
-      color: AppColors.softSage,
-      borderRadius: BorderRadius.circular(AppRadii.card),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Text(
-                tip.lead,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(height: 1.4),
-              ),
-            ),
-          ],
-        ),
-        if (canShuffle) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: onAnother,
-              icon: const Icon(Icons.refresh_rounded, size: 20),
-              label: const Text('Show me another'),
-            ),
-          ),
-        ],
-      ],
+  Widget build(BuildContext context) => ChoiceChip(
+    label: Text(label),
+    selected: selected,
+    onSelected: (_) => onTap(),
+    showCheckmark: false,
+    selectedColor: AppColors.primary,
+    backgroundColor: AppColors.softLavender,
+    side: BorderSide.none,
+    labelStyle: TextStyle(
+      color: selected ? Colors.white : AppColors.ink,
+      fontWeight: FontWeight.w600,
+      fontSize: 13,
     ),
   );
 }
 
-/// A practical strategy: what it is, how long it takes, and a way in.
-class _StrategyCard extends StatelessWidget {
-  const _StrategyCard({required this.strategy, required this.onOpen});
+/// A tag naming an item's category, in the same soft pill used elsewhere.
+class _CategoryTag extends StatelessWidget {
+  const _CategoryTag(this.label);
 
-  final PersonalGuidance strategy;
-  final VoidCallback onOpen;
+  final String label;
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: InkWell(
-      borderRadius: BorderRadius.circular(AppRadii.card),
-      onTap: onOpen,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              strategy.title ?? strategy.lead,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            if (strategy.summary != null) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                strategy.summary!,
-                style: const TextStyle(color: AppColors.muted),
-              ),
-            ],
-            const SizedBox(height: AppSpacing.md),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.xs,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                if (strategy.durationMinutes != null)
-                  _MetaChip(
-                    icon: Icons.schedule_rounded,
-                    label: 'About ${strategy.durationMinutes} min',
-                  ),
-                // Saying how many steps there are sets expectations before
-                // the student commits to opening it.
-                _MetaChip(
-                  icon: Icons.format_list_numbered_rounded,
-                  label: strategy.steps.length == 1
-                      ? '1 step'
-                      : '${strategy.steps.length} steps',
-                ),
-                if (strategy.relatedActivity != null)
-                  const _MetaChip(
-                    icon: Icons.spa_outlined,
-                    label: 'Includes an activity',
-                  ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: FilledButton.tonalIcon(
-                onPressed: onOpen,
-                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                label: const Text('Show me how'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
+  Widget build(BuildContext context) =>
+      _MetaChip(icon: Icons.sell_outlined, label: label);
 }
 
 class _MetaChip extends StatelessWidget {
@@ -421,4 +505,275 @@ class _MetaChip extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// One piece of advice in 🌿 Advice & Coping: a title, the advice itself
+/// (truncated with "Read more" when there's more to see), an optional "try
+/// this" action, and an optional external resource link.
+class _CopingCard extends StatelessWidget {
+  const _CopingCard({
+    required this.item,
+    required this.onOpen,
+    required this.onToggleFavourite,
+  });
+
+  final PersonalGuidance item;
+  final VoidCallback onOpen;
+  final VoidCallback onToggleFavourite;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasMore =
+        item.content.length > 140 ||
+        item.tryThis != null ||
+        item.resourceUrl != null;
+
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (item.category != null) ...[
+                          _CategoryTag(item.category!),
+                          const SizedBox(height: AppSpacing.xs),
+                        ],
+                        Text(
+                          item.title ?? 'Advice',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                  GuidanceHeartButton(
+                    isFavourite: item.isFavourite,
+                    onTap: onToggleFavourite,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                item.content,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AppColors.ink, height: 1.4),
+              ),
+              if (item.tryThis != null || item.resourceUrl != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    if (item.tryThis != null)
+                      const _MetaChip(
+                        icon: Icons.bolt_rounded,
+                        label: 'Try this',
+                      ),
+                    if (item.resourceUrl != null)
+                      const _MetaChip(
+                        icon: Icons.open_in_new_rounded,
+                        label: 'Resource',
+                      ),
+                  ],
+                ),
+              ],
+              if (hasMore) ...[
+                const SizedBox(height: AppSpacing.sm),
+                const Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    'Read more →',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One piece of ✨ Daily Affirmations content — an affirmation or a
+/// motivational quote, styled identically, with a share button.
+class _AffirmationCard extends StatelessWidget {
+  const _AffirmationCard({required this.item, required this.onToggleFavourite});
+
+  final PersonalGuidance item;
+  final VoidCallback onToggleFavourite;
+
+  bool get _isQuote => item.type == GuidanceType.quote;
+
+  void _share() {
+    final author = item.author;
+    final text = author == null || author.isEmpty
+        ? '"${item.content}"'
+        : '"${item.content}" — $author';
+    SharePlus.instance.share(ShareParams(text: text));
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppSpacing.xl),
+    decoration: BoxDecoration(
+      color: AppColors.softLavender,
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      border: Border.all(color: AppColors.outline),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              _isQuote
+                  ? Icons.format_quote_rounded
+                  : Icons.auto_awesome_rounded,
+              color: AppColors.primary,
+              size: 24,
+            ),
+            const Spacer(),
+            if (item.category != null) _CategoryTag(item.category!),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          '“${item.content}”',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontStyle: FontStyle.italic,
+            height: 1.4,
+          ),
+        ),
+        if (item.author != null && item.author!.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            '— ${item.author}',
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          children: [
+            GuidanceHeartButton(
+              isFavourite: item.isFavourite,
+              onTap: onToggleFavourite,
+            ),
+            const Spacer(),
+            IconButton(
+              tooltip: 'Share this',
+              icon: const Icon(Icons.share_outlined, color: AppColors.primary),
+              onPressed: _share,
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+/// One suggestion in ☀️ Daily Wellbeing Tips: a title, a short description,
+/// and an optional suggested action.
+class _TipCard extends StatelessWidget {
+  const _TipCard({
+    required this.item,
+    required this.onOpen,
+    required this.onToggleFavourite,
+  });
+
+  final PersonalGuidance item;
+  final VoidCallback onOpen;
+  final VoidCallback onToggleFavourite;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasMore = item.content.length > 140;
+
+    return Material(
+      color: AppColors.softGold,
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (item.category != null) ...[
+                          _CategoryTag(item.category!),
+                          const SizedBox(height: AppSpacing.xs),
+                        ],
+                        Text(
+                          item.title ?? 'Wellbeing tip',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                  GuidanceHeartButton(
+                    isFavourite: item.isFavourite,
+                    onTap: onToggleFavourite,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                item.content,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AppColors.ink, height: 1.4),
+              ),
+              if (item.tryThis != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                _MetaChip(
+                  icon: Icons.check_circle_outline_rounded,
+                  label: item.tryThis!,
+                ),
+              ],
+              if (hasMore) ...[
+                const SizedBox(height: AppSpacing.sm),
+                const Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    'Read more →',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

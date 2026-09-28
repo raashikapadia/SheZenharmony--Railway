@@ -76,7 +76,6 @@ abstract final class AppColors {
   // pick the new identity up on their own.
   static const softGold = softPeach;
   static const softTeal = softSage;
-  static const softPlum = softLavender;
 
   /// Far end of the stress hero's wash, which runs from [primary].
   static const heroWashEnd = primaryDeep;

@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_ui.dart';
 import '../../auth/application/auth_provider.dart';
 import '../data/personal_guidance.dart';
+import 'guidance_heart_button.dart';
 import 'saved_guidance_screen.dart';
 
 /// The signature Home Page moment: a soft, encouraging card that greets the
@@ -234,6 +235,7 @@ class _PersonalGuidanceCardState extends State<PersonalGuidanceCard> {
       GuidanceType.quote => 'TODAY\'S INSPIRATION',
       GuidanceType.affirmation => 'A LITTLE REMINDER',
       GuidanceType.guidance => 'PERSONAL GUIDANCE',
+      GuidanceType.tip => 'WELLBEING TIP',
     };
   }
 
@@ -327,13 +329,14 @@ class _GuidanceBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isQuote = guidance.type == GuidanceType.quote;
-    final wrapped = guidance.type == GuidanceType.guidance
-        ? guidance.content
-        : '“${guidance.content}”';
+    final wrapped = guidance.type == GuidanceType.affirmation || isQuote
+        ? '“${guidance.content}”'
+        : guidance.content;
     final attribution = switch (guidance.type) {
       GuidanceType.quote => guidance.author,
       GuidanceType.guidance => guidance.author ?? 'SheZen',
       GuidanceType.affirmation => null,
+      GuidanceType.tip => null,
     };
 
     return Column(
@@ -434,7 +437,7 @@ class _Actions extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     children: [
       if (showFavourite)
-        _HeartButton(
+        GuidanceHeartButton(
           isFavourite: isFavourite,
           onTap: favouriteBusy ? null : onFavourite,
         ),
@@ -462,27 +465,5 @@ class _Actions extends StatelessWidget {
         ),
       ),
     ],
-  );
-}
-
-class _HeartButton extends StatelessWidget {
-  const _HeartButton({required this.isFavourite, required this.onTap});
-
-  final bool isFavourite;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) => IconButton(
-    onPressed: onTap,
-    tooltip: isFavourite ? 'Remove from saved' : 'Save this',
-    icon: AnimatedScale(
-      scale: isFavourite ? 1.15 : 1,
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOutBack,
-      child: Icon(
-        isFavourite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-        color: AppColors.secondary,
-      ),
-    ),
   );
 }

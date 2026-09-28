@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../activities/presentation/games/games_quizzes_screen.dart';
@@ -117,6 +118,11 @@ class _GuidanceDetail extends StatelessWidget {
         ),
       ],
 
+      if (guidance.resourceUrl != null) ...[
+        const SizedBox(height: AppSpacing.lg),
+        _ResourceLinkButton(url: guidance.resourceUrl!),
+      ],
+
       if (guidance.relatedActivity != null) ...[
         const SizedBox(height: AppSpacing.lg),
         _Label(text: 'An activity that goes with this'),
@@ -202,6 +208,59 @@ class _Label extends StatelessWidget {
     style: Theme.of(
       context,
     ).textTheme.titleSmall?.copyWith(color: AppColors.primary),
+  );
+}
+
+/// A tappable card for the optional external link an admin attached to a
+/// piece of advice — a helpline page, an article, or similar.
+class _ResourceLinkButton extends StatelessWidget {
+  const _ResourceLinkButton({required this.url});
+
+  final String url;
+
+  Future<void> _open(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+
+    var opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened) {
+      opened = await launchUrl(uri, mode: LaunchMode.platformDefault);
+    }
+    if (!opened && context.mounted) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not open this resource.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: AppColors.softLavender,
+    borderRadius: BorderRadius.circular(AppRadii.card),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      onTap: () => _open(context),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Row(
+          children: [
+            const Icon(Icons.open_in_new_rounded, color: AppColors.primary),
+            const SizedBox(width: AppSpacing.md),
+            const Expanded(
+              child: Text(
+                'Visit this helpful resource',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.primary),
+          ],
+        ),
+      ),
+    ),
   );
 }
 

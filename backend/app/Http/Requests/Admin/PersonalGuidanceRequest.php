@@ -2,10 +2,17 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Http\Controllers\Web\AdminPersonalGuidanceController;
 use App\Models\PersonalGuidance;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * What an admin configures for a Daily Affirmation or a motivational quote:
+ * the text, an optional author, an optional category, and its status. No
+ * scheduling and no matching rule to configure — see
+ * {@see AdminPersonalGuidanceController}.
+ */
 class PersonalGuidanceRequest extends FormRequest
 {
     public function authorize(): bool
@@ -15,46 +22,29 @@ class PersonalGuidanceRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $optional = [
-            'author', 'category', 'publish_at', 'expires_at',
-            'title', 'summary', 'when_it_helps', 'steps',
-            'duration_minutes', 'related_intervention_id',
-        ];
-
-        foreach ($optional as $key) {
+        foreach (['author', 'category', 'content_category_id'] as $key) {
             if ($this->input($key) === '') {
                 $this->merge([$key => null]);
             }
         }
+
+        // An unchecked box is simply absent from the payload.
+        $this->merge(['is_active' => $this->boolean('is_active')]);
+
+        // Left blank on the form is "no preference" (0) rather than absent.
+        $this->merge(['position' => (int) $this->input('position', 0)]);
     }
 
     /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
-            'type' => ['required', Rule::in(PersonalGuidance::TYPES)],
+            'type' => ['required', Rule::in([PersonalGuidance::TYPE_AFFIRMATION, PersonalGuidance::TYPE_QUOTE])],
             'content' => ['required', 'string', 'max:2000'],
             'author' => ['nullable', 'string', 'max:255', Rule::requiredIf($this->input('type') === PersonalGuidance::TYPE_QUOTE)],
-            'category' => ['nullable', 'string', 'max:100'],
-            // Optional coping-strategy fields. A guidance item stays valid with
-            // none of them set, which keeps existing content editable as-is.
-            'title' => ['nullable', 'string', 'max:255'],
-            'summary' => ['nullable', 'string', 'max:500'],
-            'when_it_helps' => ['nullable', 'string', 'max:500'],
-            'steps' => ['nullable', 'string', 'max:4000'],
-            'duration_minutes' => ['nullable', 'integer', 'min:1', 'max:600'],
-            'related_intervention_id' => ['nullable', 'integer', 'exists:interventions,id'],
-            // Matching rules: which assessment outcomes this guidance suits.
-            'band_ids' => ['nullable', 'array'],
-            'band_ids.*' => ['integer', 'exists:stress_score_bands,id'],
-            'section_ids' => ['nullable', 'array'],
-            'section_ids.*' => ['integer', 'exists:questionnaire_sections,id'],
-            'status' => ['required', Rule::in(PersonalGuidance::STATUSES)],
-            'publish_at' => ['nullable', 'date'],
-            'expires_at' => array_values(array_filter([
-                'nullable', 'date',
-                $this->filled('publish_at') ? 'after:publish_at' : null,
-            ])),
+            'content_category_id' => ['nullable', 'integer', 'exists:content_categories,id'],
+            'position' => ['integer', 'min:0', 'max:9999'],
+            'is_active' => ['boolean'],
         ];
     }
 
@@ -62,7 +52,6 @@ class PersonalGuidanceRequest extends FormRequest
     {
         return [
             'author.required' => 'A motivational quote needs an author.',
-            'expires_at.after' => 'The expiry must be later than the publish date.',
         ];
     }
 }

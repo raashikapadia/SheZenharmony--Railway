@@ -43,16 +43,20 @@ class RecommendedGuidanceService
      * Guidance matched to the assessment, most relevant first. Falls back to
      * general published guidance so the student never sees an empty toolkit.
      *
+     * Matches tips and quotes alike — a quote can carry the same band/section
+     * rules a tip can, so "Recommended for You" is never tip-only.
+     *
      * @return Collection<int, PersonalGuidance>
      */
     public function forAssessment(?StressAssessment $assessment, int $limit = 4): Collection
     {
         $bandId = $assessment?->stress_score_band_id;
         $sectionIds = $this->focusSectionIds($assessment);
+        $types = [PersonalGuidance::TYPE_GUIDANCE, PersonalGuidance::TYPE_QUOTE];
 
         $matched = PersonalGuidance::query()
             ->visible()
-            ->where('type', PersonalGuidance::TYPE_GUIDANCE)
+            ->whereIn('type', $types)
             ->whereHas('recommendations', function ($rule) use ($bandId, $sectionIds): void {
                 $rule->where('is_active', true)
                     ->where(function ($match) use ($bandId, $sectionIds): void {
@@ -77,7 +81,7 @@ class RecommendedGuidanceService
         // Top up with guidance that applies to everyone (no active rules).
         $general = PersonalGuidance::query()
             ->visible()
-            ->where('type', PersonalGuidance::TYPE_GUIDANCE)
+            ->whereIn('type', $types)
             ->whereDoesntHave('recommendations', fn ($rule) => $rule->where('is_active', true))
             ->whereNotIn('id', $matched->pluck('id')->all())
             ->with('relatedIntervention')
@@ -119,9 +123,11 @@ class RecommendedGuidanceService
             'summary' => $guidance->summary,
             'when_it_helps' => $guidance->when_it_helps,
             'steps' => $guidance->stepList(),
+            'resource_url' => $guidance->resource_url,
             'duration_minutes' => $guidance->duration_minutes,
             'content' => $guidance->content,
-            'category' => $guidance->category,
+            'author' => $guidance->attribution(),
+            'category' => $guidance->categoryName(),
             'related_activity' => $guidance->relatedIntervention === null ? null : [
                 'title' => $guidance->relatedIntervention->title,
                 'content_type' => $guidance->relatedIntervention->content_type,

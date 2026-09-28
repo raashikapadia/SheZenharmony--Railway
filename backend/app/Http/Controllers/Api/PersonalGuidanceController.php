@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ContentCategory;
 use App\Models\PersonalGuidance;
 use App\Models\StudentIdentity;
 use App\Services\RecommendedGuidanceService;
@@ -66,6 +67,61 @@ class PersonalGuidanceController extends Controller
                 ])
                 ->values(),
         ]);
+    }
+
+    /**
+     * Every published item of one content type — Advice & Coping, Daily
+     * Affirmations (affirmation or quote), or Wellbeing Tips — for the app's
+     * browsable sections. Not matched to an assessment: just the admin's own
+     * display order, optionally narrowed to one category.
+     */
+    public function index(Request $request, RecommendedGuidanceService $service): JsonResponse
+    {
+        $identity = $this->identity($request);
+        $type = $request->query('type');
+        abort_unless(in_array($type, PersonalGuidance::TYPES, true), 422);
+
+        $categoryId = $request->query('category_id');
+        $favouriteIds = $this->favouriteIds($identity);
+
+        $items = PersonalGuidance::query()
+            ->visible()
+            ->where('type', $type)
+            ->when($categoryId, fn ($q) => $q->where('content_category_id', (int) $categoryId))
+            ->with('relatedIntervention')
+            ->inDisplayOrder()
+            ->get();
+
+        return response()->json([
+            'data' => $items
+                ->map(fn (PersonalGuidance $item): array => $service->payload($item) + [
+                    'is_favourite' => $favouriteIds->contains($item->id),
+                ])
+                ->values(),
+        ]);
+    }
+
+    /**
+     * Categories currently in use by published items of one content type,
+     * for the browsable sections' filter chips. Never returns a category
+     * with nothing visible in it, so a chip is never a dead end.
+     */
+    public function categories(Request $request): JsonResponse
+    {
+        $type = $request->query('type');
+
+        $categories = ContentCategory::query()
+            ->where('is_active', true)
+            ->whereHas('personalGuidance', function ($query) use ($type): void {
+                $query->visible();
+                if (in_array($type, PersonalGuidance::TYPES, true)) {
+                    $query->where('type', $type);
+                }
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json(['data' => $categories]);
     }
 
     /**
@@ -146,9 +202,12 @@ class PersonalGuidanceController extends Controller
         return [
             'id' => $guidance->id,
             'type' => $guidance->type,
+            'title' => $guidance->title,
             'content' => $guidance->content,
             'author' => $guidance->attribution(),
-            'category' => $guidance->category,
+            'category' => $guidance->categoryName(),
+            'steps' => $guidance->stepList(),
+            'resource_url' => $guidance->resource_url,
             'is_favourite' => $favouriteIds->contains($guidance->id),
         ];
     }

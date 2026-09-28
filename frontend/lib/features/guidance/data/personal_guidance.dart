@@ -1,6 +1,26 @@
 /// A single piece of Home Page encouragement. All content is authored by the
 /// SheZen admin and served by the backend — nothing here is bundled in the app.
-enum GuidanceType { affirmation, quote, guidance }
+///
+/// Three of these back the app's three Personal Guidance sections:
+/// [guidance] is 🌿 Advice & Coping, [affirmation] and [quote] together are
+/// ✨ Daily Affirmations, and [tip] is ☀️ Daily Wellbeing Tips.
+enum GuidanceType { affirmation, quote, guidance, tip }
+
+/// An admin-managed category a Tip or Quote can be filed under — the same
+/// list an admin picks from when publishing content, so a filter chip never
+/// shows something the app doesn't actually have.
+class GuidanceCategory {
+  const GuidanceCategory({required this.id, required this.name});
+
+  final int id;
+  final String name;
+
+  factory GuidanceCategory.fromJson(Map<String, dynamic> json) =>
+      GuidanceCategory(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        name: (json['name'] as String? ?? '').trim(),
+      );
+}
 
 /// A wellbeing activity an admin has linked to a piece of guidance, so the
 /// student can move straight from advice to something they can try.
@@ -35,6 +55,7 @@ class PersonalGuidance {
     this.summary,
     this.whenItHelps,
     this.steps = const [],
+    this.resourceUrl,
     this.durationMinutes,
     this.relatedActivity,
   });
@@ -55,8 +76,14 @@ class PersonalGuidance {
   final String? summary;
   final String? whenItHelps;
   final List<String> steps;
+
+  /// An optional external link an admin attached (e.g. a helpful article).
+  final String? resourceUrl;
   final int? durationMinutes;
   final RelatedActivity? relatedActivity;
+
+  /// The single "try this" action to show inline on a card, when one was set.
+  String? get tryThis => steps.isEmpty ? null : steps.first;
 
   /// True when this item has enough detail to present as a practical strategy
   /// rather than a short tip.
@@ -89,6 +116,9 @@ class PersonalGuidance {
           .map((step) => step.toString().trim())
           .where((step) => step.isNotEmpty)
           .toList(),
+      resourceUrl: (json['resource_url'] as String?)?.trim().isEmpty ?? true
+          ? null
+          : (json['resource_url'] as String).trim(),
       durationMinutes: (json['duration_minutes'] as num?)?.toInt(),
       relatedActivity: related is Map<String, dynamic>
           ? RelatedActivity.fromJson(related)
@@ -107,6 +137,7 @@ class PersonalGuidance {
     summary: summary,
     whenItHelps: whenItHelps,
     steps: steps,
+    resourceUrl: resourceUrl,
     durationMinutes: durationMinutes,
     relatedActivity: relatedActivity,
   );
@@ -114,6 +145,7 @@ class PersonalGuidance {
   static GuidanceType _typeFrom(String? raw) => switch (raw) {
     'affirmation' => GuidanceType.affirmation,
     'quote' => GuidanceType.quote,
+    'tip' => GuidanceType.tip,
     _ => GuidanceType.guidance,
   };
 }
@@ -151,6 +183,15 @@ class GuidanceToolkit {
   List<PersonalGuidance> get affirmations =>
       items.where((item) => item.type == GuidanceType.affirmation).toList();
 
+  /// The single best-matched Tip, for the "Recommended for you" preview —
+  /// items already arrive ordered most-relevant-first.
+  PersonalGuidance? get recommendedGuidance =>
+      items.where((item) => item.type == GuidanceType.guidance).firstOrNull;
+
+  /// The single best-matched Quote, for the same preview.
+  PersonalGuidance? get recommendedQuote =>
+      items.where((item) => item.type == GuidanceType.quote).firstOrNull;
+
   factory GuidanceToolkit.fromJson(Map<String, dynamic> json) =>
       GuidanceToolkit(
         hasCheckIn: json['has_check_in'] as bool? ?? false,
@@ -162,4 +203,8 @@ class GuidanceToolkit {
             .map(PersonalGuidance.fromJson)
             .toList(),
       );
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull => isEmpty ? null : first;
 }

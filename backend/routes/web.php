@@ -2,18 +2,21 @@
 
 use App\Http\Controllers\Web\AdminAuthController;
 use App\Http\Controllers\Web\AdminChatBuddyReleaseController;
+use App\Http\Controllers\Web\AdminContentCategoryController;
 use App\Http\Controllers\Web\AdminDashboardController;
 use App\Http\Controllers\Web\AdminGamesController;
+use App\Http\Controllers\Web\AdminGuidanceController;
 use App\Http\Controllers\Web\AdminHelplineResourceController;
 use App\Http\Controllers\Web\AdminInterventionController;
 use App\Http\Controllers\Web\AdminPersonalGuidanceController;
 use App\Http\Controllers\Web\AdminPositiveEngagementController;
-use App\Http\Controllers\Web\AdminQuizController;
 use App\Http\Controllers\Web\AdminQuestionController;
 use App\Http\Controllers\Web\AdminQuestionnaireController;
+use App\Http\Controllers\Web\AdminQuizController;
 use App\Http\Controllers\Web\AdminSectionController;
 use App\Http\Controllers\Web\AdminStudentController;
 use App\Http\Controllers\Web\AdminStudentStressController;
+use App\Http\Controllers\Web\AdminTipController;
 use App\Http\Controllers\Web\AdminWellbeingActivityController;
 use Illuminate\Support\Facades\Route;
 
@@ -81,6 +84,16 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('interventions', AdminInterventionController::class)->except(['show']);
     Route::resource('wellbeing_activities', AdminWellbeingActivityController::class)->except(['show']);
     Route::resource('personal-guidance', AdminPersonalGuidanceController::class)->except(['show'])->parameters(['personal-guidance' => 'personalGuidance']);
+    Route::get('personal-guidance/{personalGuidance}/preview', [AdminPersonalGuidanceController::class, 'preview'])->name('personal-guidance.preview');
+    // A sibling resource rather than nesting under personal-guidance/, which
+    // already binds {personalGuidance} for the guidance item itself.
+    Route::resource('personal-guidance-categories', AdminContentCategoryController::class)->except(['show'])->parameters(['personal-guidance-categories' => 'contentCategory']);
+    // Coping strategies and practical advice — a dedicated, simplified screen
+    // over the same `personal_guidance` rows (type = 'guidance'). Also a
+    // sibling resource for the same reason as the categories route above.
+    Route::resource('guidance', AdminGuidanceController::class)->except(['show'])->parameters(['guidance' => 'guidance']);
+    // Everyday wellbeing suggestions (type = 'tip') — same shape as Guidance.
+    Route::resource('wellbeing-tips', AdminTipController::class)->except(['show'])->parameters(['wellbeing-tips' => 'wellbeingTip']);
     // Helpline resources shown in the student Resource tab.
     Route::resource('resources', AdminHelplineResourceController::class)->except(['show']);
     // Games and quizzes live under Positive Engagement. Declared before the

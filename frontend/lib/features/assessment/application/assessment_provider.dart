@@ -31,7 +31,7 @@ class AssessmentProvider extends ChangeNotifier {
 
   final bool closeApiServiceOnDispose;
 
-  QuestionnairePager _pager;
+  final QuestionnairePager _pager;
   AssessmentLoadState _state = AssessmentLoadState.loading;
   AssessmentQuestionnaire? _questionnaire;
   List<QuestionnairePage> _pages = const [];
@@ -64,11 +64,6 @@ class AssessmentProvider extends ChangeNotifier {
       : (_pages.last.section == null
             ? _pages.last.sectionIndex
             : _pages.last.sectionIndex + 1);
-
-  /// The single chosen option, or the first of several — kept for
-  /// single-answer widgets and tests; multi-select widgets use
-  /// [selectedOptionsFor].
-  int? selectedOptionFor(int questionId) => _answers[questionId]?.firstOrNull;
 
   /// Every option ticked for [questionId], in the order they were chosen.
   List<int> selectedOptionsFor(int questionId) =>
@@ -106,31 +101,6 @@ class AssessmentProvider extends ChangeNotifier {
     for (final item in currentPage?.questions ?? const <PagedQuestion>[])
       if (item.question.required && !isAnswered(item.question.id)) item,
   ];
-
-  bool get canGoNext => !isLastPage && unansweredOnCurrentPage.isEmpty;
-
-  /// Re-lays the pages out for a different budget — typically once the
-  /// screen knows its height. Keeps the user on the page holding whatever
-  /// question they were looking at.
-  void repaginate(QuestionnairePager pager) {
-    final questionnaire = _questionnaire;
-    _pager = pager;
-    if (questionnaire == null) return;
-
-    final anchor = currentPage?.questions.firstOrNull?.question.id;
-    _pages = _pager.paginate(questionnaire);
-    _pageIndex = anchor == null ? 0 : _pageHolding(anchor);
-    notifyListeners();
-  }
-
-  int _pageHolding(int questionId) {
-    for (final (index, page) in _pages.indexed) {
-      if (page.questions.any((item) => item.question.id == questionId)) {
-        return index;
-      }
-    }
-    return 0;
-  }
 
   // ---- Lifecycle ---------------------------------------------------------
 

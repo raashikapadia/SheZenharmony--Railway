@@ -222,6 +222,7 @@ flutter config --no-enable-web --no-enable-windows-desktop
 
 Architecture references:
 
+- `docs/CODEBASE_GUIDE.md` = start here: what is in the code and where it lives
 - `docs/ARCHITECTURE.md` = runtime and privacy boundaries
 - `docs/PROJECT_STRUCTURE.md` = source ownership and folder conventions
 - `docs/API_STARTER.md` = current API overview

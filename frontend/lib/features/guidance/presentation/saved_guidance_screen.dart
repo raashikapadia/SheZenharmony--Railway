@@ -95,7 +95,11 @@ class _SavedCard extends StatelessWidget {
       GuidanceType.quote => guidance.author,
       GuidanceType.guidance => guidance.author ?? 'SheZen',
       GuidanceType.affirmation => null,
+      GuidanceType.tip => null,
     };
+    final isQuoteStyle =
+        guidance.type == GuidanceType.affirmation ||
+        guidance.type == GuidanceType.quote;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -103,9 +107,7 @@ class _SavedCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              guidance.type == GuidanceType.guidance
-                  ? guidance.content
-                  : '“${guidance.content}”',
+              isQuoteStyle ? '“${guidance.content}”' : guidance.content,
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(height: 1.35),

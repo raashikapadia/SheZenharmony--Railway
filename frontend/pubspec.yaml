@@ -42,6 +42,8 @@ dependencies:
   webview_flutter_android: ^4.14.1
   webview_flutter_wkwebview: ^3.26.1
   youtube_player_iframe: ^6.0.2
+  # Text sharing for a quote card's share button — the app's own share sheet.
+  share_plus: ^11.0.0
 
 dev_dependencies:
   flutter_test:

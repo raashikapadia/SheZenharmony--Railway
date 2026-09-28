@@ -45,6 +45,13 @@ class PersonalGuidanceSeeder extends Seeder
             ['Believe you can and you are halfway there.', 'Theodore Roosevelt', 'Confidence'],
         ];
 
+        $tips = [
+            ['Drink some water', 'Staying hydrated helps your focus and your mood — keep a bottle nearby today.', 'Wellbeing'],
+            ['Take a short break', 'A five minute pause between tasks helps you come back with a clearer head.', 'Wellbeing'],
+            ['Step outside for a moment', 'A little daylight and fresh air can lift your mood more than you expect.', 'Wellbeing'],
+            ['Practice deep breathing', 'Three slow breaths can take the edge off a stressful moment.', 'Wellbeing'],
+        ];
+
         foreach ($affirmations as [$content, $category]) {
             $this->create(PersonalGuidance::TYPE_AFFIRMATION, $content, null, $category);
         }
@@ -56,12 +63,17 @@ class PersonalGuidanceSeeder extends Seeder
         foreach ($quotes as [$content, $author, $category]) {
             $this->create(PersonalGuidance::TYPE_QUOTE, $content, $author, $category);
         }
+
+        foreach ($tips as [$title, $content, $category]) {
+            $this->create(PersonalGuidance::TYPE_TIP, $content, null, $category, $title);
+        }
     }
 
-    private function create(string $type, string $content, ?string $author, string $category): void
+    private function create(string $type, string $content, ?string $author, string $category, ?string $title = null): void
     {
         PersonalGuidance::query()->create([
             'type' => $type,
+            'title' => $title,
             'content' => $content,
             'author' => $author,
             'category' => $category,

@@ -490,32 +490,6 @@ class _AppSparkleBurstState extends State<AppSparkleBurst>
   }
 }
 
-/// A small solid heart, for the quiet affectionate beats.
-class HeartPainter extends CustomPainter {
-  const HeartPainter({required this.color, this.opacity = 1});
-
-  final Color color;
-  final double opacity;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final paint = Paint()..color = color.withValues(alpha: opacity);
-
-    final path = Path()
-      ..moveTo(w / 2, h * 0.92)
-      ..cubicTo(-w * 0.18, h * 0.52, w * 0.16, -h * 0.08, w / 2, h * 0.3)
-      ..cubicTo(w * 0.84, -h * 0.08, w * 1.18, h * 0.52, w / 2, h * 0.92)
-      ..close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(HeartPainter old) =>
-      old.color != color || old.opacity != opacity;
-}
-
 /// A short emotional aside in the script face — "You are enough".
 ///
 /// Deliberately narrow in purpose: the type system reserves script for feeling,
@@ -584,57 +558,6 @@ class AppEyebrow extends StatelessWidget {
   }
 }
 
-/// The standard panel: ivory surface, hairline, wide soft shadow, generous
-/// radius. Everything that is not a tinted feature card is one of these.
-class AppSoftCard extends StatelessWidget {
-  const AppSoftCard({
-    super.key,
-    required this.child,
-    this.padding = const EdgeInsets.all(AppSpacing.xl),
-    this.color = AppColors.surface,
-    this.gradient,
-    this.onTap,
-    this.radius = AppRadii.card,
-    this.border = true,
-  });
-
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-  final Color color;
-  final Gradient? gradient;
-  final VoidCallback? onTap;
-  final double radius;
-  final bool border;
-
-  @override
-  Widget build(BuildContext context) {
-    final shape = BorderRadius.circular(radius);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: shape,
-        boxShadow: AppShadows.soft,
-      ),
-      child: Material(
-        color: gradient == null ? color : Colors.transparent,
-        borderRadius: shape,
-        clipBehavior: Clip.antiAlias,
-        child: Ink(
-          decoration: BoxDecoration(
-            gradient: gradient,
-            borderRadius: shape,
-            border: border ? Border.all(color: AppColors.outline) : null,
-          ),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: shape,
-            child: Padding(padding: padding, child: child),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class AppSectionHeader extends StatelessWidget {
   const AppSectionHeader({super.key, required this.title, this.subtitle});
 
@@ -655,6 +578,42 @@ class AppSectionHeader extends StatelessWidget {
           ).textTheme.bodyMedium?.copyWith(color: AppColors.muted),
         ),
       ],
+    ],
+  );
+}
+
+/// A pushed screen's `AppBar` title, in SheZen's own voice, rather than a bare
+/// default `Text`: a soft accent glyph, a touch of weight and letter-spacing.
+///
+/// New — not yet applied to every screen's `AppBar`. Screens keep their
+/// existing plain title until each is deliberately moved over, so nothing
+/// changes underneath a screen this widget hasn't reached yet.
+class AppScreenHeading extends StatelessWidget {
+  const AppScreenHeading(this.text, {super.key, this.icon});
+
+  final String text;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      if (icon != null) ...[
+        Icon(icon, size: 19, color: AppColors.primary),
+        const SizedBox(width: AppSpacing.xs),
+      ],
+      Flexible(
+        child: Text(
+          text,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 19,
+            letterSpacing: 0.15,
+            color: AppColors.ink,
+          ),
+        ),
+      ),
     ],
   );
 }

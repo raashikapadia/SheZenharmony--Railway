@@ -19,6 +19,7 @@ class PersonalGuidanceSeederTest extends TestCase
         $this->assertTrue(PersonalGuidance::query()->visible()->where('type', 'affirmation')->exists());
         $this->assertTrue(PersonalGuidance::query()->visible()->where('type', 'quote')->whereNotNull('author')->exists());
         $this->assertTrue(PersonalGuidance::query()->visible()->where('type', 'guidance')->exists());
+        $this->assertTrue(PersonalGuidance::query()->visible()->where('type', 'tip')->exists());
     }
 
     public function test_seeder_is_a_noop_when_content_already_exists(): void

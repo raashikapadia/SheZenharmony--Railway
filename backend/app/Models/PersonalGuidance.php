@@ -20,13 +20,15 @@ class PersonalGuidance extends Model
 
     public const TYPE_GUIDANCE = 'guidance';
 
+    public const TYPE_TIP = 'tip';
+
     public const STATUS_DRAFT = 'draft';
 
     public const STATUS_PUBLISHED = 'published';
 
     public const STATUS_UNPUBLISHED = 'unpublished';
 
-    public const TYPES = [self::TYPE_AFFIRMATION, self::TYPE_QUOTE, self::TYPE_GUIDANCE];
+    public const TYPES = [self::TYPE_AFFIRMATION, self::TYPE_QUOTE, self::TYPE_GUIDANCE, self::TYPE_TIP];
 
     public const STATUSES = [self::STATUS_DRAFT, self::STATUS_PUBLISHED, self::STATUS_UNPUBLISHED];
 
@@ -38,11 +40,14 @@ class PersonalGuidance extends Model
         'summary',
         'when_it_helps',
         'steps',
+        'resource_url',
         'duration_minutes',
         'related_intervention_id',
         'content',
         'author',
         'category',
+        'content_category_id',
+        'position',
         'status',
         'publish_at',
         'expires_at',
@@ -55,6 +60,7 @@ class PersonalGuidance extends Model
             'publish_at' => 'datetime',
             'expires_at' => 'datetime',
             'duration_minutes' => 'integer',
+            'position' => 'integer',
         ];
     }
 
@@ -68,6 +74,25 @@ class PersonalGuidance extends Model
     public function relatedIntervention(): BelongsTo
     {
         return $this->belongsTo(Intervention::class, 'related_intervention_id');
+    }
+
+    /** The admin-managed category, when one has been assigned. */
+    public function contentCategory(): BelongsTo
+    {
+        return $this->belongsTo(ContentCategory::class);
+    }
+
+    /**
+     * The category name to display: the managed category when one is set,
+     * otherwise the legacy free-text value — so guidance saved before
+     * managed categories existed keeps showing its category unchanged.
+     */
+    public function categoryName(): ?string
+    {
+        $name = $this->contentCategory?->name ?? $this->category;
+        $name = trim((string) $name);
+
+        return $name !== '' ? $name : null;
     }
 
     /** The steps stored as one per line, ready to render as a list. */
@@ -89,6 +114,16 @@ class PersonalGuidance extends Model
             ->where('status', self::STATUS_PUBLISHED)
             ->where(fn (Builder $q) => $q->whereNull('publish_at')->orWhere('publish_at', '<=', now()))
             ->where(fn (Builder $q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
+    }
+
+    /**
+     * The student-facing order: the admin's manual position, then oldest
+     * first so equal positions stay stable. Mirrors
+     * {@see HelplineResource::scopeInDisplayOrder()}.
+     */
+    public function scopeInDisplayOrder(Builder $query): Builder
+    {
+        return $query->orderBy('position')->orderBy('id');
     }
 
     public function isVisible(): bool
