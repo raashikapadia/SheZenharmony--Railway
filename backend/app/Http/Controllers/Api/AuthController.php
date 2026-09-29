@@ -220,8 +220,11 @@ class AuthController extends Controller
     /**
      * Login.
      *
-     * Maximum 3 failed password attempts.
-     * After 3 failures, login is locked for 5 minutes.
+     * Maximum 3 failed password attempts for the
+     * same email + IP address combination.
+     *
+     * After 3 failures, that email + IP combination
+     * is locked for 5 minutes.
      *
      * Successful password authentication continues
      * through the existing OTP/MFA process.
@@ -257,19 +260,35 @@ class AuthController extends Controller
         $email = $credentials['email'];
 
         /*
-         * Cache keys for failed attempts and lockout.
+         * Get the IP address of the device making
+         * the login request.
          */
-        $attemptsKey = 'login_attempts:' . $email;
-        $lockKey = 'login_locked:' . $email;
+        $ip = $request->ip();
 
         /*
-         * Check whether this email is currently locked.
+         * Cache keys now use BOTH email and IP.
+         *
+         * This prevents someone from another IP address
+         * from locking a student's account by entering
+         * the wrong password repeatedly.
+         */
+        $attemptsKey =
+            'login_attempts:' . $email . '|' . $ip;
+
+        $lockKey =
+            'login_locked:' . $email . '|' . $ip;
+
+        /*
+         * Check whether this email + IP combination
+         * is currently locked.
          */
         if (Cache::has($lockKey)) {
             return response()->json([
                 'code' => 'login_locked',
+
                 'message' =>
                     'Too many failed login attempts. Try again later.',
+
                 'retry_after' => 300,
             ], 429);
         }
@@ -317,7 +336,8 @@ class AuthController extends Controller
             /*
              * Third failed attempt.
              *
-             * Lock the email for 5 minutes.
+             * Lock this email + IP combination
+             * for 5 minutes.
              */
             if ($attempts >= 3) {
                 Cache::put(
@@ -330,8 +350,10 @@ class AuthController extends Controller
 
                 return response()->json([
                     'code' => 'login_locked',
+
                     'message' =>
                         'Too many failed login attempts. Try again later.',
+
                     'retry_after' => 300,
                 ], 429);
             }
@@ -359,7 +381,8 @@ class AuthController extends Controller
         /*
          * Correct password.
          *
-         * Reset failed login attempts.
+         * Reset failed login attempts for this
+         * email + IP combination.
          */
         Cache::forget($attemptsKey);
         Cache::forget($lockKey);
