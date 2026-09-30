@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 
@@ -34,8 +35,19 @@ class AdminAuthController extends Controller
          */
         $loginKey = 'admin-login:' . strtolower($credentials['email']) . '|' . $request->ip();
 
+        Log::info('ADMIN LOGIN DEBUG - request received', [
+            'email' => $credentials['email'],
+            'ip' => $request->ip(),
+            'too_many_attempts' => RateLimiter::tooManyAttempts($loginKey, 3),
+        ]);
+
         if (RateLimiter::tooManyAttempts($loginKey, 3)) {
             $seconds = RateLimiter::availableIn($loginKey);
+
+            Log::warning('ADMIN LOGIN DEBUG - rate limited', [
+                'email' => $credentials['email'],
+                'seconds_remaining' => $seconds,
+            ]);
 
             return back()
                 ->withErrors([
@@ -44,8 +56,24 @@ class AdminAuthController extends Controller
                 ->onlyInput('email');
         }
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+        /*
+         * Attempt authentication.
+         */
+        $authenticated = Auth::attempt(
+            $credentials,
+            $request->boolean('remember')
+        );
+
+        Log::info('ADMIN LOGIN DEBUG - Auth::attempt', [
+            'authenticated' => $authenticated,
+        ]);
+
+        if (! $authenticated) {
             RateLimiter::hit($loginKey, 300);
+
+            Log::warning('ADMIN LOGIN DEBUG - Auth::attempt FAILED', [
+                'email' => $credentials['email'],
+            ]);
 
             return back()
                 ->withErrors([
@@ -54,11 +82,33 @@ class AdminAuthController extends Controller
                 ->onlyInput('email');
         }
 
-        if (! Auth::user()?->isAdmin() || Auth::user()?->account_status !== 'active') {
+        /*
+         * Authentication succeeded.
+         * Check that the authenticated user is an active administrator.
+         */
+        $user = Auth::user();
+
+        Log::info('ADMIN LOGIN DEBUG - user check', [
+            'id' => $user?->id,
+            'email' => $user?->email,
+            'role' => $user?->role,
+            'account_status' => $user?->account_status,
+            'is_admin' => $user?->isAdmin(),
+        ]);
+
+        if (! $user?->isAdmin() || $user?->account_status !== 'active') {
             Auth::logout();
 
             RateLimiter::hit($loginKey, 300);
 
+            Log::warning('ADMIN LOGIN DEBUG - ADMIN CHECK FAILED', [
+                'id' => $user?->id,
+                'email' => $user?->email,
+                'role' => $user?->role,
+                'account_status' => $user?->account_status,
+                'is_admin' => $user?->isAdmin(),
+            ]);
+
             return back()
                 ->withErrors([
                     'email' => 'The supplied administrator credentials are incorrect.',
@@ -66,10 +116,17 @@ class AdminAuthController extends Controller
                 ->onlyInput('email');
         }
 
-        // Successful admin login clears the failed-attempt counter.
+        /*
+         * Successful admin login.
+         */
         RateLimiter::clear($loginKey);
 
         $request->session()->regenerate();
+
+        Log::info('ADMIN LOGIN DEBUG - LOGIN SUCCESSFUL', [
+            'id' => $user->id,
+            'email' => $user->email,
+        ]);
 
         return redirect()->intended(route('admin.dashboard'));
     }
@@ -77,6 +134,7 @@ class AdminAuthController extends Controller
     public function destroy(Request $request): RedirectResponse
     {
         Auth::logout();
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
