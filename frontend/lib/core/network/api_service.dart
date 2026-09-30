@@ -35,6 +35,7 @@ class ApiService {
     String deviceName = 'SheZen mobile app',
   }) async {
     final http.Response response;
+
     try {
       response = await _client
           .post(
@@ -59,11 +60,13 @@ class ApiService {
       );
     } on TimeoutException {
       throw const ApiException(
-        'The verification email is taking longer than expected. Try signing in with the same email and password to continue.',
+        'The verification email is taking longer than expected. '
+        'Try signing in with the same email and password to continue.',
       );
     }
 
     final body = _decodeObject(response);
+
     if (response.statusCode != 201) {
       throw ApiException(
         _errorMessage(body, 'Registration failed.'),
@@ -81,12 +84,17 @@ class ApiService {
     }
   }
 
+  // ---------------------------------------------------------------------
+  // LOGIN
+  // ---------------------------------------------------------------------
+
   Future<AuthChallenge> login({
     required String email,
     required String password,
     String deviceName = 'SheZen mobile app',
   }) async {
     final http.Response response;
+
     try {
       response = await _client
           .post(
@@ -108,26 +116,89 @@ class ApiService {
       );
     } on TimeoutException {
       throw const ApiException(
-        'The verification email is taking longer than expected. Please try again.',
+        'The verification email is taking longer than expected. '
+        'Please try again.',
       );
     }
 
     final body = _decodeObject(response);
-    if (response.statusCode != 200) {
+
+    /*
+     * Successful login:
+     *
+     * HTTP 200
+     *
+     * The backend returns an OTP challenge.
+     */
+    if (response.statusCode == 200) {
+      try {
+        return AuthChallenge.fromResponse(body);
+      } on FormatException {
+        throw const ApiException(
+          'Backend returned an unexpected sign-in response.',
+        );
+      }
+    }
+
+    /*
+     * Login temporarily locked.
+     *
+     * Laravel returns HTTP 429 after the failed-login threshold
+     * has been reached.
+     *
+     * The status code is preserved so AuthProvider can detect:
+     *
+     *     e.statusCode == 429
+     *
+     * The backend also returns:
+     *
+     *     retry_after
+     *
+     * and potentially:
+     *
+     *     errors
+     */
+    if (response.statusCode == 429) {
       throw ApiException(
-        _errorMessage(body, 'Sign in failed.'),
-        statusCode: response.statusCode,
+        _errorMessage(
+          body,
+          'Too many failed login attempts. '
+          'Please try again after 5 minutes.',
+        ),
+        statusCode: 429,
+        fieldErrors: _fieldErrors(body),
       );
     }
 
-    try {
-      return AuthChallenge.fromResponse(body);
-    } on FormatException {
-      throw const ApiException(
-        'Backend returned an unexpected sign-in response.',
+    /*
+     * Account is on hold.
+     *
+     * Laravel returns HTTP 423.
+     */
+    if (response.statusCode == 423) {
+      throw ApiException(
+        _errorMessage(
+          body,
+          'Your SheZen Harmony account is currently on hold.',
+        ),
+        statusCode: 423,
+        fieldErrors: _fieldErrors(body),
       );
     }
+
+    /*
+     * Other login errors.
+     */
+    throw ApiException(
+      _errorMessage(body, 'Sign in failed.'),
+      statusCode: response.statusCode,
+      fieldErrors: _fieldErrors(body),
+    );
   }
+
+  // ---------------------------------------------------------------------
+  // OTP / MFA
+  // ---------------------------------------------------------------------
 
   Future<AuthSession> verifyOtp({
     required String challengeId,
@@ -137,6 +208,7 @@ class ApiService {
       Uri.parse('${ApiConfig.baseUrl}/v1/auth/verify-otp'),
       {'challenge_id': challengeId, 'code': code},
     );
+
     try {
       return AuthSession.fromJson(response);
     } on FormatException {
@@ -151,6 +223,7 @@ class ApiService {
       Uri.parse('${ApiConfig.baseUrl}/v1/auth/resend-otp'),
       {'challenge_id': challengeId},
     );
+
     try {
       return AuthChallenge.fromResponse(response);
     } on FormatException {
@@ -159,6 +232,10 @@ class ApiService {
       );
     }
   }
+
+  // ---------------------------------------------------------------------
+  // PASSWORD RESET
+  // ---------------------------------------------------------------------
 
   Future<void> requestPasswordReset(String email) async {
     await _postPublicJson(
@@ -191,14 +268,20 @@ class ApiService {
     );
   }
 
-  /// Re-fetches the current user from the backend — used on app resume so
-  /// completion status and role always reflect real server state rather
-  /// than a cached client value.
+  // ---------------------------------------------------------------------
+  // AUTHENTICATED USER
+  // ---------------------------------------------------------------------
+
+  /// Re-fetches the current user from the backend.
+  ///
+  /// Used on app resume so completion status and role always reflect
+  /// real server state rather than a cached client value.
   Future<AuthSession> me(String token) async {
     final body = await _getJson(
       Uri.parse('${ApiConfig.baseUrl}/v1/auth/me'),
       token,
     );
+
     try {
       return AuthSession.fromJson({'token': token, 'user': body['user']});
     } on FormatException {
@@ -213,6 +296,7 @@ class ApiService {
       Uri.parse('${ApiConfig.baseUrl}/v1/profile'),
       token,
     );
+
     return body['data'] as Map<String, dynamic>? ?? const {};
   }
 
@@ -221,6 +305,7 @@ class ApiService {
       Uri.parse('${ApiConfig.baseUrl}/v1/chat-buddy'),
       token,
     );
+
     return ChatBuddyContent.fromJson(body);
   }
 
@@ -234,6 +319,7 @@ class ApiService {
       token,
       {'message': message},
     );
+
     return ChatBuddyReply.fromJson(body);
   }
 
@@ -249,6 +335,7 @@ class ApiService {
       token,
       updates,
     );
+
     return body['data'] as Map<String, dynamic>? ?? const {};
   }
 
@@ -261,6 +348,7 @@ class ApiService {
       token,
       const {'privacy_consent': true},
     );
+
     try {
       return AuthSession.fromJson({'token': token, 'user': body['user']});
     } on FormatException {
@@ -288,6 +376,10 @@ class ApiService {
     );
   }
 
+  // ---------------------------------------------------------------------
+  // HEALTH
+  // ---------------------------------------------------------------------
+
   Future<Map<String, dynamic>> health() async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/health');
 
@@ -311,8 +403,13 @@ class ApiService {
     return body;
   }
 
+  // ---------------------------------------------------------------------
+  // QUESTIONS
+  // ---------------------------------------------------------------------
+
   Future<List<dynamic>> questions() async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/v1/questions');
+
     final response = await _client.get(
       uri,
       headers: const {'Accept': 'application/json'},
@@ -326,6 +423,7 @@ class ApiService {
     }
 
     final body = jsonDecode(response.body);
+
     if (body is Map<String, dynamic> && body['data'] is List) {
       return body['data'] as List<dynamic>;
     }
@@ -334,13 +432,15 @@ class ApiService {
   }
 
   // ---------------------------------------------------------------------
-  // Assessments (student-facing).
+  // ASSESSMENTS
   // ---------------------------------------------------------------------
 
   /// The one live questionnaire, as the Stress Level section asks for it.
   Future<AssessmentQuestionnaire> activeQuestionnaire() async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/v1/questionnaires/active');
+
     final http.Response response;
+
     try {
       response = await _client
           .get(uri, headers: const {'Accept': 'application/json'})
@@ -354,16 +454,15 @@ class ApiService {
         'Network error — check your connection and that the server is reachable.',
       );
     }
+
     final body = _handleResponse(response);
+
     return AssessmentQuestionnaire.fromJson(
       body['data'] as Map<String, dynamic>,
     );
   }
 
-  /// [answers] maps questionId -> the chosen option id(s). A single-answer
-  /// question sends `option_id`; a multi-select one sends `option_ids`. The
-  /// backend independently recalculates the score and level from these IDs
-  /// — it never trusts a score computed on the client.
+  /// [answers] maps questionId -> chosen option id(s).
   Future<AssessmentResult> submitAssessment(
     String token,
     int questionnaireId,
@@ -384,6 +483,7 @@ class ApiService {
         ],
       },
     );
+
     return AssessmentResult.fromJson(body);
   }
 
@@ -393,21 +493,26 @@ class ApiService {
       Uri.parse('${ApiConfig.baseUrl}/v1/assessments'),
       token,
     );
+
     return (body['data'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(AssessmentSummary.fromJson)
         .toList();
   }
 
-  /// One completed assessment belonging to the authenticated student. The
-  /// backend enforces ownership and returns 404 for anyone else's id.
+  /// One completed assessment belonging to the authenticated student.
   Future<AssessmentDetail> assessmentDetail(String token, int id) async {
     final body = await _getJson(
       Uri.parse('${ApiConfig.baseUrl}/v1/assessments/$id'),
       token,
     );
+
     return AssessmentDetail.fromJson(body['data'] as Map<String, dynamic>);
   }
+
+  // ---------------------------------------------------------------------
+  // WELLBEING ACTIVITIES
+  // ---------------------------------------------------------------------
 
   Future<List<WellbeingActivity>> wellbeingActivities() async {
     final responses = await Future.wait([
@@ -416,18 +521,22 @@ class ApiService {
         Uri.parse('${ApiConfig.baseUrl}/v1/interventions').replace(
           queryParameters: {
             'content_type':
-                'journaling,breathing,grounding,mindfulness,relaxation,activity,resource',
+                'journaling,breathing,grounding,mindfulness,'
+                'relaxation,activity,resource',
           },
         ),
       ),
     ]);
+
     final videoActivities = (responses[0]['data'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(WellbeingActivity.fromJson);
+
     final guidedActivities =
         (responses[1]['data'] as List<dynamic>? ?? const [])
             .whereType<Map<String, dynamic>>()
             .map(WellbeingActivity.fromInterventionJson);
+
     return [...guidedActivities, ...videoActivities];
   }
 
@@ -436,6 +545,7 @@ class ApiService {
     final body = await _getPublicJson(
       Uri.parse('${ApiConfig.baseUrl}/v1/helplines'),
     );
+
     return (body['data'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(HelplineResource.fromJson)
@@ -446,26 +556,27 @@ class ApiService {
     final uri = Uri.parse('${ApiConfig.baseUrl}/v1/interventions').replace(
       queryParameters: {'content_type': 'quiz,motivation,positive_engagement'},
     );
+
     final body = await _getPublicJson(uri);
+
     return (body['data'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(PositiveContent.fromJson)
         .toList();
   }
 
-  /// The games an admin has published, in the order the backend returns them.
-  ///
-  /// The response is authoritative: a game the admin has hidden must not
-  /// appear, so nothing is merged into it. [offlineGames] stands in only when
-  /// the backend cannot be reached at all — the games themselves run on the
-  /// device, so an outage should not empty the list. Those stand-ins carry no
-  /// `id`, which is what stops a play being recorded against nothing.
+  // ---------------------------------------------------------------------
+  // GAMES
+  // ---------------------------------------------------------------------
+
   Future<List<PositiveContent>> games() async {
     final uri = Uri.parse(
       '${ApiConfig.baseUrl}/v1/interventions',
     ).replace(queryParameters: {'content_type': 'game'});
+
     try {
       final body = await _getPublicJson(uri);
+
       return (body['data'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map(PositiveContent.fromJson)
@@ -475,9 +586,6 @@ class ApiService {
     }
   }
 
-  /// The games bundled with the app, shown only when the backend is
-  /// unreachable. Slugs match the backend catalogue so the same dispatch
-  /// applies either way.
   static const offlineGames = [
     PositiveContent(
       slug: 'breathing-challenge',
@@ -517,8 +625,7 @@ class ApiService {
       slug: 'coping-match',
       title: 'Coping Match',
       description:
-          'Meet a stressful moment and choose the coping strategy that fits '
-          'it best.',
+          'Meet a stressful moment and choose the coping strategy that fits it best.',
       contentType: 'game',
       instructions: '',
       externalUrl: '',
@@ -527,8 +634,7 @@ class ApiService {
       slug: 'myth-or-fact',
       title: 'Myth or Fact',
       description:
-          'Decide whether what people say about stress and mental health is '
-          'true.',
+          'Decide whether what people say about stress and mental health is true.',
       contentType: 'game',
       instructions: '',
       externalUrl: '',
@@ -537,8 +643,7 @@ class ApiService {
       slug: 'body-signals',
       title: 'Body Signals',
       description:
-          'Learn where stress shows up in your body and what each signal is '
-          'telling you.',
+          'Learn where stress shows up in your body and what each signal is telling you.',
       contentType: 'game',
       instructions: '',
       externalUrl: '',
@@ -547,8 +652,7 @@ class ApiService {
       slug: 'wellbeing-wordsearch',
       title: 'Wellbeing Word Search',
       description:
-          'Find the coping words hidden in the grid and learn what each one '
-          'means.',
+          'Find the coping words hidden in the grid and learn what each one means.',
       contentType: 'game',
       instructions: '',
       externalUrl: '',
@@ -566,10 +670,15 @@ class ApiService {
     );
   }
 
+  // ---------------------------------------------------------------------
+  // MANAGED QUIZZES
+  // ---------------------------------------------------------------------
+
   Future<List<ManagedQuiz>> managedQuizzes() async {
     final body = await _getPublicJson(
       Uri.parse('${ApiConfig.baseUrl}/v1/positive-engagement/quizzes'),
     );
+
     return (body['data'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(ManagedQuiz.fromJson)
@@ -589,6 +698,7 @@ class ApiService {
       token,
       {'answers': answers.map((key, value) => MapEntry(key.toString(), value))},
     );
+
     return body['data'] as Map<String, dynamic>? ?? const {};
   }
 
@@ -606,14 +716,20 @@ class ApiService {
       token,
       {'question_id': questionId, 'answer': answer},
     );
+
     return body['data'] as Map<String, dynamic>? ?? const {};
   }
+
+  // ---------------------------------------------------------------------
+  // GRATITUDE
+  // ---------------------------------------------------------------------
 
   Future<List<GratitudeEntry>> gratitudeEntries(String token) async {
     final body = await _getJson(
       Uri.parse('${ApiConfig.baseUrl}/v1/positive-engagement/gratitude'),
       token,
     );
+
     return (body['data'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(GratitudeEntry.fromJson)
@@ -631,6 +747,7 @@ class ApiService {
       token,
       {'text': text, 'symbol': symbol},
     );
+
     return GratitudeEntry.fromJson(body['data'] as Map<String, dynamic>);
   }
 
@@ -643,15 +760,10 @@ class ApiService {
     );
   }
 
-  /// Pushes the device's diary up and returns the merged result.
-  ///
-  /// Deliberately untyped: the diary models and the merge rules live in the
-  /// diary feature, and this facade only carries the request, so the contract
-  /// can change without touching shared network code.
-  ///
-  /// [lock] is the student's single diary PIN as this device knows it. Omitted
-  /// when the device has none to offer, which the server reads as "no opinion"
-  /// rather than "remove it".
+  // ---------------------------------------------------------------------
+  // DIARY
+  // ---------------------------------------------------------------------
+
   Future<({List<Map<String, dynamic>> diaries, Map<String, dynamic>? lock})>
   syncDiaries(
     String token,
@@ -662,8 +774,9 @@ class ApiService {
       'POST',
       Uri.parse('${ApiConfig.baseUrl}/v1/diary/sync'),
       token,
-      {'diaries': diaries, 'lock': ?lock},
+      {'diaries': diaries, if (lock != null) 'lock': lock},
     );
+
     return (
       diaries: (body['data'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
@@ -673,17 +786,15 @@ class ApiService {
   }
 
   // ---------------------------------------------------------------------
-  // Personal Guidance (student Home Page) — small, admin-authored moments
-  // of encouragement. Separate from wellbeing activities and stress content.
+  // PERSONAL GUIDANCE
   // ---------------------------------------------------------------------
 
-  /// Today's guidance, or null when the admin has nothing published (the
-  /// caller shows a gentle empty state rather than an error).
   Future<PersonalGuidance?> currentGuidance(String token) async {
     final body = await _getJson(
       Uri.parse('${ApiConfig.baseUrl}/v1/personal-guidance/current'),
       token,
     );
+
     return _guidanceOrNull(body['data']);
   }
 
@@ -697,18 +808,18 @@ class ApiService {
             if (excludeId != null) 'exclude': excludeId.toString(),
           },
         );
+
     final body = await _getJson(uri, token);
+
     return _guidanceOrNull(body['data']);
   }
 
-  /// The student's personalised toolkit, matched to their latest check-in by
-  /// the admin's rules. Always returns something usable — the backend falls
-  /// back to general guidance when nothing matches.
   Future<GuidanceToolkit> guidanceToolkit(String token) async {
     final body = await _getJson(
       Uri.parse('${ApiConfig.baseUrl}/v1/personal-guidance/for-you'),
       token,
     );
+
     return GuidanceToolkit.fromJson(body);
   }
 
@@ -717,16 +828,13 @@ class ApiService {
       Uri.parse('${ApiConfig.baseUrl}/v1/personal-guidance/favourites'),
       token,
     );
+
     return (body['data'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(PersonalGuidance.fromJson)
         .toList();
   }
 
-  /// Every published item of one content type — Advice & Coping, an
-  /// affirmation, a motivational quote, or a Wellbeing Tip — for the app's
-  /// browsable sections: the admin's own display order, not matched to an
-  /// assessment. Optionally narrowed to one category.
   Future<List<PersonalGuidance>> guidanceList(
     String token, {
     required GuidanceType type,
@@ -738,15 +846,15 @@ class ApiService {
         if (categoryId != null) 'category_id': categoryId.toString(),
       },
     );
+
     final body = await _getJson(uri, token);
+
     return (body['data'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(PersonalGuidance.fromJson)
         .toList();
   }
 
-  /// The categories currently offered as filter chips for [type] — only ones
-  /// with at least one published item, so a chip is never a dead end.
   Future<List<GuidanceCategory>> guidanceCategories(
     String token, {
     required GuidanceType type,
@@ -754,7 +862,9 @@ class ApiService {
     final uri = Uri.parse(
       '${ApiConfig.baseUrl}/v1/personal-guidance/categories',
     ).replace(queryParameters: {'type': _guidanceTypeParam(type)});
+
     final body = await _getJson(uri, token);
+
     return (body['data'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(GuidanceCategory.fromJson)
@@ -784,6 +894,10 @@ class ApiService {
   PersonalGuidance? _guidanceOrNull(Object? data) =>
       data is Map<String, dynamic> ? PersonalGuidance.fromJson(data) : null;
 
+  // ---------------------------------------------------------------------
+  // HTTP HELPERS
+  // ---------------------------------------------------------------------
+
   void close() => _client.close();
 
   Future<Map<String, dynamic>> _postPublicJson(
@@ -791,6 +905,7 @@ class ApiService {
     Map<String, dynamic> payload,
   ) async {
     final http.Response response;
+
     try {
       response = await _client
           .post(
@@ -808,7 +923,8 @@ class ApiService {
       );
     } on TimeoutException {
       throw const ApiException(
-        'The email service is taking longer than expected. Please try again.',
+        'The email service is taking longer than expected. '
+        'Please try again.',
       );
     }
 
@@ -817,28 +933,28 @@ class ApiService {
 
   Future<Map<String, dynamic>> _getPublicJson(Uri uri) async {
     final http.Response response;
+
     try {
       response = await _client
           .get(uri, headers: const {'Accept': 'application/json'})
           .timeout(const Duration(seconds: 10));
     } on http.ClientException {
       throw const ApiException(
-        'Unable to connect to SheZen. Check your connection and try again.',
+        'Unable to connect to SheZen. '
+        'Check your connection and try again.',
       );
     } on TimeoutException {
       throw const ApiException(
         'SheZen is taking longer than expected. Please try again.',
       );
     }
+
     return _handleResponse(response);
   }
 
-  // ---------------------------------------------------------------------
-  // Internal helpers
-  // ---------------------------------------------------------------------
-
   Future<Map<String, dynamic>> _getJson(Uri uri, String token) async {
     final http.Response response;
+
     try {
       response = await _client
           .get(uri, headers: _authorizedHeaders(token))
@@ -852,6 +968,7 @@ class ApiService {
         'Network error — check your connection and that the server is reachable.',
       );
     }
+
     return _handleResponse(response);
   }
 
@@ -865,27 +982,33 @@ class ApiService {
       ..._authorizedHeaders(token),
       'Content-Type': 'application/json',
     };
+
     final body = payload == null ? null : jsonEncode(payload);
 
     final http.Response response;
+
     try {
       switch (method) {
         case 'POST':
           response = await _client
               .post(uri, headers: headers, body: body)
               .timeout(requestTimeout);
+
         case 'PUT':
           response = await _client
               .put(uri, headers: headers, body: body)
               .timeout(requestTimeout);
+
         case 'PATCH':
           response = await _client
               .patch(uri, headers: headers, body: body)
               .timeout(requestTimeout);
+
         case 'DELETE':
           response = await _client
               .delete(uri, headers: headers, body: body)
               .timeout(requestTimeout);
+
         default:
           throw ArgumentError('Unsupported method: $method');
       }
@@ -898,8 +1021,13 @@ class ApiService {
         'Network error — check your connection and that the server is reachable.',
       );
     }
+
     return _handleResponse(response);
   }
+
+  // ---------------------------------------------------------------------
+  // RESPONSE HANDLING
+  // ---------------------------------------------------------------------
 
   Map<String, dynamic> _handleResponse(http.Response response) {
     final body = _decodeObject(response);
@@ -910,6 +1038,7 @@ class ApiService {
           'Backend returned an unexpected response. Please try again.',
         );
       }
+
       return body;
     }
 
@@ -923,13 +1052,24 @@ class ApiService {
   String _fallbackMessageFor(int statusCode) {
     return switch (statusCode) {
       401 => 'Your session has expired. Please sign in again.',
+
       403 => 'You do not have permission to do that.',
+
       404 => 'That item could not be found — it may have been removed.',
+
       409 =>
         'This could not be completed due to a conflict with existing data.',
-      423 => 'Your SheZen Harmony account is currently on hold.',
+
       422 => 'Please correct the highlighted fields.',
+
+      423 => 'Your SheZen Harmony account is currently on hold.',
+
+      429 =>
+        'Too many failed login attempts. '
+            'Please try again after 5 minutes.',
+
       >= 500 => 'The server ran into a problem. Please try again shortly.',
+
       _ => 'Something went wrong (HTTP $statusCode).',
     };
   }
@@ -942,6 +1082,7 @@ class ApiService {
   Map<String, dynamic> _decodeObject(http.Response response) {
     try {
       final body = jsonDecode(response.body);
+
       if (body is Map<String, dynamic>) {
         return body;
       }
@@ -962,13 +1103,16 @@ class ApiService {
 
   String _errorMessage(Map<String, dynamic> body, String fallback) {
     final message = body['message'];
+
     if (message is String && message.isNotEmpty) {
       return message;
     }
 
     final errors = body['errors'];
+
     if (errors is Map<String, dynamic>) {
       final first = errors.values.whereType<List>().firstOrNull;
+
       if (first != null && first.isNotEmpty) {
         return first.first.toString();
       }
@@ -979,9 +1123,13 @@ class ApiService {
 
   Map<String, List<String>>? _fieldErrors(Map<String, dynamic> body) {
     final errors = body['errors'];
-    if (errors is! Map<String, dynamic>) return null;
+
+    if (errors is! Map<String, dynamic>) {
+      return null;
+    }
 
     final result = <String, List<String>>{};
+
     for (final entry in errors.entries) {
       if (entry.value is List) {
         result[entry.key] = (entry.value as List)
@@ -989,15 +1137,22 @@ class ApiService {
             .toList();
       }
     }
+
     return result.isEmpty ? null : result;
   }
 }
+
+// -------------------------------------------------------------------------
+// API EXCEPTION
+// -------------------------------------------------------------------------
 
 class ApiException implements Exception {
   const ApiException(this.message, {this.statusCode, this.fieldErrors});
 
   final String message;
+
   final int? statusCode;
+
   final Map<String, List<String>>? fieldErrors;
 
   String? fieldError(String field) => fieldErrors?[field]?.firstOrNull;
@@ -1005,6 +1160,10 @@ class ApiException implements Exception {
   @override
   String toString() => message;
 }
+
+// -------------------------------------------------------------------------
+// LIST EXTENSION
+// -------------------------------------------------------------------------
 
 extension _FirstOrNull<T> on List<T> {
   T? get firstOrNull => isEmpty ? null : first;

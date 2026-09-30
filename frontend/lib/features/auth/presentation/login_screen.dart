@@ -23,14 +23,18 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _obscurePassword = true;
 
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+
       final notice = context.read<AuthProvider>().takeAccountHoldNotice();
+
       if (notice != null) {
         _showAccountHoldDialog(notice);
       }
@@ -46,14 +50,24 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    final success = await context.read<AuthProvider>().login(
+
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    final auth = context.read<AuthProvider>();
+
+    final success = await auth.login(
       email: _emailController.text.trim(),
       password: _passwordController.text,
     );
+
     if (!mounted) return;
+
+    // Successful login.
     if (success) {
-      final challenge = context.read<AuthProvider>().pendingMfa;
+      final challenge = auth.pendingMfa;
+
       if (challenge != null) {
         await Navigator.of(context).push<bool>(
           MaterialPageRoute(
@@ -61,20 +75,73 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       }
+
       return;
     }
-    final holdNotice = context.read<AuthProvider>().takeAccountHoldNotice();
+
+    // ---------------------------------------------------------------
+    // LOGIN TEMPORARILY LOCKED
+    // ---------------------------------------------------------------
+    if (auth.loginTemporarilyLocked) {
+      await _showLoginLockedDialog();
+      return;
+    }
+
+    // ---------------------------------------------------------------
+    // EXISTING ACCOUNT HOLD
+    // ---------------------------------------------------------------
+    final holdNotice = auth.takeAccountHoldNotice();
+
     if (holdNotice != null) {
       await _showAccountHoldDialog(holdNotice);
       return;
     }
+
+    // ---------------------------------------------------------------
+    // NORMAL LOGIN FAILURE
+    // ---------------------------------------------------------------
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          context.read<AuthProvider>().error ??
+          auth.error ??
               'We couldn\'t sign you in. Check your details and try again.',
         ),
       ),
+    );
+  }
+
+  Future<void> _showLoginLockedDialog() {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          icon: const Icon(Icons.lock_outline, size: 44, color: _teal),
+          title: const Text(
+            'Login Temporarily Locked',
+            textAlign: TextAlign.center,
+          ),
+          content: const Text(
+            'Too many failed login attempts.\n\n'
+            'Please try again after 5 minutes.',
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -99,8 +166,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final reset = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const PasswordResetScreen()),
     );
+
     if (!mounted || reset != true) return;
+
     _passwordController.clear();
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Password reset successfully. Please sign in.'),
@@ -111,6 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -123,16 +194,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Sign-in is the one screen with room for the full lockup,
-                    // and the first thing a student sees, so it carries the
-                    // brand rather than a generic wellbeing glyph.
                     const Align(
                       child: SheZenLogo(
                         height: 132,
                         variant: SheZenLogoVariant.full,
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
                     Text(
                       'Welcome',
                       textAlign: TextAlign.center,
@@ -143,13 +213,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: _ink,
                           ),
                     ),
+
                     const SizedBox(height: 8),
+
                     const Text(
                       'Sign in with your USP student account',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: _muted),
                     ),
+
                     const SizedBox(height: 34),
+
                     _LoginField(
                       controller: _emailController,
                       label: 'USP student email',
@@ -158,22 +232,30 @@ class _LoginScreenState extends State<LoginScreen> {
                       textInputAction: TextInputAction.next,
                       validator: (value) {
                         final email = value?.trim() ?? '';
-                        if (email.isEmpty) return 'Enter your email address.';
+
+                        if (email.isEmpty) {
+                          return 'Enter your email address.';
+                        }
+
                         if (!RegExp(
                           r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
                         ).hasMatch(email)) {
                           return 'Enter a valid email address.';
                         }
+
                         if (!RegExp(
                           r'^[^@\s]+@student\.usp\.ac\.fj$',
                           caseSensitive: false,
                         ).hasMatch(email)) {
                           return 'Use your @student.usp.ac.fj email.';
                         }
+
                         return null;
                       },
                     ),
+
                     const SizedBox(height: 18),
+
                     _LoginField(
                       controller: _passwordController,
                       label: 'Password',
@@ -196,10 +278,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           size: 19,
                         ),
                       ),
-                      validator: (value) => value == null || value.isEmpty
-                          ? 'Enter your password.'
-                          : null,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Enter your password.';
+                        }
+
+                        return null;
+                      },
                     ),
+
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
@@ -207,7 +294,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: const Text('Forgot Password?'),
                       ),
                     ),
+
                     const SizedBox(height: 18),
+
                     FilledButton(
                       style: FilledButton.styleFrom(
                         backgroundColor: _teal,
@@ -224,7 +313,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             )
                           : const Text('Sign in'),
                     ),
+
                     const SizedBox(height: 8),
+
                     const Row(
                       children: [
                         Expanded(child: Divider()),
@@ -235,7 +326,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         Expanded(child: Divider()),
                       ],
                     ),
+
                     const SizedBox(height: 18),
+
                     OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: _ink,
@@ -251,7 +344,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                       child: const Text('Create Account'),
                     ),
+
                     const SizedBox(height: 26),
+
                     const Text(
                       'Your university login is used only to verify that you are an enrolled student. Inside SheZen you are represented by a pseudonymous SheZen ID.',
                       textAlign: TextAlign.center,
@@ -296,40 +391,43 @@ class _LoginField extends StatelessWidget {
   final Widget? suffixIcon;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Padding(
-        padding: const EdgeInsets.only(left: 2, bottom: 7),
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: _ink,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 2, bottom: 7),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
-      ),
-      TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        autofillHints: autofillHints,
-        textInputAction: textInputAction,
-        obscureText: obscureText,
-        onFieldSubmitted: onFieldSubmitted,
-        validator: validator,
-        decoration: InputDecoration(
-          hintText: label,
-          suffixIcon: suffixIcon,
-          isDense: true,
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 13,
+
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          autofillHints: autofillHints,
+          textInputAction: textInputAction,
+          obscureText: obscureText,
+          onFieldSubmitted: onFieldSubmitted,
+          validator: validator,
+          decoration: InputDecoration(
+            hintText: label,
+            suffixIcon: suffixIcon,
+            isDense: true,
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 13,
+            ),
           ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }

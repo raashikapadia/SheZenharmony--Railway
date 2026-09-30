@@ -29,6 +29,8 @@ class AuthProvider extends ChangeNotifier {
   AuthChallenge? _pendingMfa;
   bool _isLoading = false;
   bool _isDeletingAccount = false;
+  bool _loginTemporarilyLocked = false;
+
   String? _error;
   String? _accountHoldNotice;
   Map<String, List<String>>? _fieldErrors;
@@ -38,6 +40,7 @@ class AuthProvider extends ChangeNotifier {
   AuthChallenge? get pendingMfa => _pendingMfa;
   bool get isLoading => _isLoading;
   bool get isDeletingAccount => _isDeletingAccount;
+  bool get loginTemporarilyLocked => _loginTemporarilyLocked;
   String? get error => _error;
   String? get accountHoldNotice => _accountHoldNotice;
   Map<String, List<String>>? get fieldErrors => _fieldErrors;
@@ -46,11 +49,7 @@ class AuthProvider extends ChangeNotifier {
       _session?.hasCompletedRequiredAssessment ?? false;
   bool get hasCurrentConsent => _session?.hasCurrentConsent ?? false;
 
-  /// Resolves the session before ever reporting `signedIn` — the mandatory
-  /// questionnaire gate makes a one-time decision as soon as the app
-  /// considers the user signed in, so that decision must be based on real
-  /// backend truth, not an optimistic guess filled in ahead of the network
-  /// call. Status stays `unknown` (loading) until this settles.
+  /// Resolves the session before ever reporting `signedIn`.
   Future<void> restoreSession() async {
     try {
       final stored = await _storage.read().timeout(restoreTimeout);
@@ -66,13 +65,16 @@ class AuthProvider extends ChangeNotifier {
       _status = AuthStatus.signedIn;
     } on ApiException catch (error, stackTrace) {
       _session = null;
+
       if (error.statusCode == 423) {
         _accountHoldNotice = error.message;
       }
+
       _logRestoreFailure(
         'API failure (HTTP ${error.statusCode ?? 'unknown'})',
         stackTrace,
       );
+
       if (error.statusCode == 401 || error.statusCode == 423) {
         await _clearStoredSession();
       }
@@ -87,6 +89,7 @@ class AuthProvider extends ChangeNotifier {
       if (_status == AuthStatus.unknown) {
         _status = AuthStatus.signedOut;
       }
+
       notifyListeners();
     }
   }
@@ -101,6 +104,7 @@ class AuthProvider extends ChangeNotifier {
 
   void _logRestoreFailure(String reason, StackTrace stackTrace) {
     if (!kDebugMode) return;
+
     debugPrint('AuthProvider.restoreSession failed: $reason. Signing out.');
     debugPrint(stackTrace.toString());
   }
@@ -117,6 +121,8 @@ class AuthProvider extends ChangeNotifier {
     _error = null;
     _accountHoldNotice = null;
     _fieldErrors = null;
+    _loginTemporarilyLocked = false;
+
     notifyListeners();
 
     try {
@@ -127,6 +133,7 @@ class AuthProvider extends ChangeNotifier {
         demographics: demographics,
         privacyConsent: privacyConsent,
       );
+
       return true;
     } on ApiException catch (e) {
       _error = e.message;
@@ -144,16 +151,30 @@ class AuthProvider extends ChangeNotifier {
     _error = null;
     _accountHoldNotice = null;
     _fieldErrors = null;
+
+    // Reset the previous lockout state before making a new request.
+    _loginTemporarilyLocked = false;
+
     notifyListeners();
 
     try {
       _pendingMfa = await _apiService.login(email: email, password: password);
+
       return true;
     } on ApiException catch (e) {
       _error = e.message;
+      _fieldErrors = e.fieldErrors;
+
+      // HTTP 429 = too many failed login attempts / temporary lockout.
+      if (e.statusCode == 429) {
+        _loginTemporarilyLocked = true;
+      }
+
+      // HTTP 423 = existing account hold.
       if (e.statusCode == 423) {
         _accountHoldNotice = e.message;
       }
+
       return false;
     } finally {
       _isLoading = false;
@@ -168,16 +189,21 @@ class AuthProvider extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     _fieldErrors = null;
+
     notifyListeners();
+
     try {
       final session = await _apiService.verifyOtp(
         challengeId: challenge.id,
         code: code,
       );
+
       _pendingMfa = null;
       _session = session;
       _status = AuthStatus.signedIn;
+
       await _persist(session);
+
       return true;
     } on ApiException catch (error) {
       _error = error.message;
@@ -196,7 +222,9 @@ class AuthProvider extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     _fieldErrors = null;
+
     notifyListeners();
+
     try {
       _pendingMfa = await _apiService.resendOtp(challenge.id);
       return true;
@@ -232,10 +260,13 @@ class AuthProvider extends ChangeNotifier {
 
   Future<bool> _runPasswordReset(Future<void> Function() action) async {
     if (_isLoading) return false;
+
     _isLoading = true;
     _error = null;
     _fieldErrors = null;
+
     notifyListeners();
+
     try {
       await action();
       return true;
@@ -249,25 +280,28 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Called right after a successful assessment submission so the mandatory
-  /// gate clears immediately, without waiting for another round trip. The
-  /// underlying truth is still the backend row that was just created.
+  /// Called right after a successful assessment submission.
   void markAssessmentCompleted() {
-    if (_session == null || _session!.hasCompletedRequiredAssessment) return;
+    if (_session == null || _session!.hasCompletedRequiredAssessment) {
+      return;
+    }
+
     _session = _session!.copyWith(hasCompletedRequiredAssessment: true);
+
     notifyListeners();
   }
 
-  /// "Yes" on the consent screen for an account that exists already (the
-  /// wording changed since it registered). New accounts consent as part of
-  /// [register]; both paths write the same backend consent row.
+  /// "Yes" on the consent screen.
   Future<bool> acceptConsent() async {
     final token = _session?.token;
+
     if (token == null || _isLoading) return false;
 
     _isLoading = true;
     _error = null;
+
     notifyListeners();
+
     try {
       _session = await _apiService.recordConsent(token);
       return true;
@@ -280,20 +314,20 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// "No" on the consent screen. Without consent the account may not keep
-  /// any data, so this is the existing account deletion — then the device is
-  /// signed out whether or not the server call got through, so the app can
-  /// close and reopen only at the sign-in screen. Returns whether the
-  /// backend confirmed the deletion.
+  /// "No" on the consent screen.
   Future<bool> declineConsent() async {
     final deleted = await deleteAccount();
+
     if (!deleted) {
       _session = null;
       _pendingMfa = null;
       _status = AuthStatus.signedOut;
+
       await _storage.clear();
+
       notifyListeners();
     }
+
     return deleted;
   }
 
@@ -305,34 +339,42 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> logout() async {
     final token = _session?.token;
+
     _session = null;
     _pendingMfa = null;
     _status = AuthStatus.signedOut;
+
     await _storage.clear();
+
     notifyListeners();
 
     if (token != null) {
       try {
         await _apiService.logout(token);
       } on ApiException {
-        // Token is already discarded locally; a failed remote revoke isn't
-        // actionable from the UI at this point.
+        // Token is already discarded locally.
       }
     }
   }
 
   Future<bool> deleteAccount() async {
     final token = _session?.token;
+
     if (token == null || _isDeletingAccount) return false;
 
     _isDeletingAccount = true;
     _error = null;
+
     notifyListeners();
+
     try {
       await _apiService.deleteAccount(token);
+
       _session = null;
       _status = AuthStatus.signedOut;
+
       await _storage.clear();
+
       return true;
     } on ApiException catch (error) {
       _error = error.message;

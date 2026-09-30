@@ -220,10 +220,10 @@ class AuthController extends Controller
     /**
      * Login.
      *
-     * Maximum 3 failed password attempts for the
+     * Maximum 5 failed password attempts for the
      * same email + IP address combination.
      *
-     * After 3 failures, that email + IP combination
+     * After 5 failures, that email + IP combination
      * is locked for 5 minutes.
      *
      * Successful password authentication continues
@@ -233,12 +233,19 @@ class AuthController extends Controller
         Request $request,
         EmailOtpService $otpService
     ): JsonResponse {
+        /*
+         * Normalize the email before using it for
+         * database lookup and cache keys.
+         */
         $request->merge([
             'email' => strtolower(
                 trim((string) $request->input('email'))
             ),
         ]);
 
+        /*
+         * Validate login fields.
+         */
         $credentials = $request->validate([
             'email' => [
                 'required',
@@ -260,17 +267,15 @@ class AuthController extends Controller
         $email = $credentials['email'];
 
         /*
-         * Get the IP address of the device making
-         * the login request.
+         * Get the IP address making the login request.
          */
         $ip = $request->ip();
 
         /*
-         * Cache keys now use BOTH email and IP.
+         * Use BOTH email and IP address in the cache keys.
          *
-         * This prevents someone from another IP address
-         * from locking a student's account by entering
-         * the wrong password repeatedly.
+         * This means the failed-login counter is specific
+         * to one email + one IP combination.
          */
         $attemptsKey =
             'login_attempts:' . $email . '|' . $ip;
@@ -289,12 +294,15 @@ class AuthController extends Controller
                 'message' =>
                     'Too many failed login attempts. Try again later.',
 
+                /*
+                 * 300 seconds = 5 minutes.
+                 */
                 'retry_after' => 300,
             ], 429);
         }
 
         /*
-         * Find the user.
+         * Find the user by email.
          */
         $user = User::query()
             ->where('email', $email)
@@ -302,7 +310,7 @@ class AuthController extends Controller
 
         /*
          * Wrong email OR wrong password counts
-         * as one failed attempt.
+         * as one failed login attempt.
          */
         if (
             !$user ||
@@ -312,7 +320,7 @@ class AuthController extends Controller
             )
         ) {
             /*
-             * Get current failed attempts.
+             * Get the current number of failed attempts.
              */
             $attempts = (int) Cache::get(
                 $attemptsKey,
@@ -320,12 +328,12 @@ class AuthController extends Controller
             );
 
             /*
-             * Increase failed attempts.
+             * Increase the failed-attempt counter.
              */
             $attempts++;
 
             /*
-             * Store the number of attempts for 5 minutes.
+             * Keep the attempt counter for 5 minutes.
              */
             Cache::put(
                 $attemptsKey,
@@ -334,18 +342,22 @@ class AuthController extends Controller
             );
 
             /*
-             * Third failed attempt.
+             * Fifth failed attempt.
              *
              * Lock this email + IP combination
              * for 5 minutes.
              */
-            if ($attempts >= 3) {
+            if ($attempts >= 5) {
                 Cache::put(
                     $lockKey,
                     true,
                     now()->addMinutes(5)
                 );
 
+                /*
+                 * The separate attempt counter is no longer
+                 * required because the lock itself is active.
+                 */
                 Cache::forget($attemptsKey);
 
                 return response()->json([
@@ -354,19 +366,27 @@ class AuthController extends Controller
                     'message' =>
                         'Too many failed login attempts. Try again later.',
 
+                    /*
+                     * Tell Flutter that the lock lasts
+                     * approximately 300 seconds.
+                     */
                     'retry_after' => 300,
                 ], 429);
             }
 
             /*
-             * Tell the user how many attempts remain.
+             * Calculate remaining attempts.
              */
-            $remainingAttempts = 3 - $attempts;
+            $remainingAttempts = 5 - $attempts;
 
             $attemptMessage = $remainingAttempts === 1
                 ? '1 attempt remaining.'
                 : "{$remainingAttempts} attempts remaining.";
 
+            /*
+             * Return a normal validation error for failed
+             * attempts before the lockout threshold.
+             */
             throw ValidationException::withMessages([
                 'email' => [
                     'The supplied credentials are incorrect.',
@@ -381,8 +401,8 @@ class AuthController extends Controller
         /*
          * Correct password.
          *
-         * Reset failed login attempts for this
-         * email + IP combination.
+         * Clear any previous failed-login counter and lock
+         * for this email + IP combination.
          */
         Cache::forget($attemptsKey);
         Cache::forget($lockKey);
@@ -435,7 +455,10 @@ class AuthController extends Controller
         );
 
         /*
-         * Existing OTP process.
+         * Existing OTP/MFA process.
+         *
+         * The successful password check does NOT
+         * bypass OTP verification.
          */
         $challenge = $otpService->issue(
             $user,
