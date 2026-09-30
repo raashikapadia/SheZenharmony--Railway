@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["php84", "php84Packages.composer"]
+
+[providers]
+php = "8.4"
+
+[build]
+buildCommand = "composer install --no-dev --optimize-autoloader"
+
+[deploy]
+startCommand = "php artisan serve --host=0.0.0.0 --port=$PORT"
