@@ -42,3 +42,6 @@ Thumbs.db
 .idea/
 *.iml
 .claude/
+
+# Exclude nested original project repository
+SheZenHarmony/
